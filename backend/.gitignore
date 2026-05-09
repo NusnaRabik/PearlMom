@@ -1,0 +1,22 @@
+node_modules/
+.env
+.env.*
+logs/
+*.log
+
+coverage/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Database
+*.sqlite
+*.db
+*.sql
+
+# Testing
+jest-cache/
