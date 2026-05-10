@@ -1,11 +1,18 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/public/LandingPage';
+import LoginPage from './pages/public/LoginPage';
 
 function App() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <LandingPage />
-    </div>
+    <Router>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
