@@ -6,7 +6,7 @@ import {
   User, Briefcase, Activity, Syringe, 
   Utensils, Calendar, ArrowRight, ShieldCheck 
 } from 'lucide-react';
-import heroImage from '../../assets/hero-image.png';
+import heroImage from '../../assets/mother.png';
 import doctorTabletImage from '../../assets/doctor_tablet.png';
 import babyHandImage from '../../assets/baby_hand.png';
 
