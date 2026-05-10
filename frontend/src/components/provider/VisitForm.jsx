@@ -1,1 +1,0 @@
-ThriposhaCriteria.jsx
