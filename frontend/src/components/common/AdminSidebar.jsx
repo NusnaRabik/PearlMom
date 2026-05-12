@@ -1,59 +1,47 @@
-// frontend/src/components/common/Sidebar.jsx
+// frontend/src/components/common/AdminSidebar.jsx
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Apple, 
-  CalendarCheck, 
-  Users, 
+  Users,
   Settings,
+  Shield,
   ChevronLeft,
   Menu,
   LogOut,
-  Bell
+  Bell,
+  Activity,
+  Database
 } from 'lucide-react';
 
-const Sidebar = () => {
+const AdminSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
   const menuItems = [
     {
-      path: '/provider/dashboard',
+      path: '/admin/dashboard',
       icon: LayoutDashboard,
       label: 'Dashboard',
-      description: 'Overview & Analytics'
+      description: 'System Overview'
     },
     {
-      path: '/provider/nutrition',
-      icon: Apple,
-      label: 'Nutrition Program',
-      description: 'Thriposha Management'
-    },
-    {
-      path: '/provider/clinic-visit',
-      icon: CalendarCheck,
-      label: 'Clinic Visit',
-      description: 'Visit Management'
-    },
-    {
-      path: '/provider/mothers',
+      path: '/admin/users',
       icon: Users,
-      label: 'Assigned Mothers',
-      description: 'Patient List'
+      label: 'User & System',
+      description: 'Management'
     },
     {
-      path: '/provider/settings',
+      path: '/admin/settings',
       icon: Settings,
-      label: 'Settings',
-      description: 'Provider Settings'
+      label: 'Admin Settings',
+      description: 'Profile & Security'
     }
   ];
 
-  // Function to check if current path matches menu item
   const isActiveRoute = (path) => {
-    if (path === '/provider/dashboard') {
-      return location.pathname === '/provider/dashboard' || location.pathname === '/provider/' || location.pathname === '/provider';
+    if (path === '/admin/dashboard') {
+      return location.pathname === '/admin/dashboard' || location.pathname === '/admin/' || location.pathname === '/admin';
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
@@ -64,9 +52,9 @@ const Sidebar = () => {
       <div className="p-4 border-b border-gray-200">
         {collapsed ? (
           <div className="flex flex-col items-center space-y-2">
-            <Link to="/provider/dashboard" className="flex items-center justify-center">
+            <Link to="/admin/dashboard" className="flex items-center justify-center">
               <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">PM</span>
+                <Shield className="text-white" size={18} />
               </div>
             </Link>
             <button
@@ -78,11 +66,11 @@ const Sidebar = () => {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <Link to="/provider/dashboard" className="flex items-center space-x-2">
+            <Link to="/admin/dashboard" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">PM</span>
+                <Shield className="text-white" size={18} />
               </div>
-              <span className="font-semibold text-gray-800">PearlMom</span>
+              <span className="font-semibold text-gray-800">PearlMom Admin</span>
             </Link>
             <button
               onClick={() => setCollapsed(!collapsed)}
@@ -124,14 +112,28 @@ const Sidebar = () => {
         })}
       </nav>
 
+      {/* System Status */}
+      {!collapsed && (
+        <div className="px-4 py-3 border-t border-gray-200">
+          <div className="flex items-center space-x-2 text-xs text-gray-500">
+            <Activity size={14} className="text-green-500" />
+            <span>System Operational</span>
+          </div>
+          <div className="mt-1 flex items-center space-x-2 text-xs text-gray-500">
+            <Database size={14} className="text-pink-500" />
+            <span>1,284 Records</span>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Section */}
       <div className="p-4 border-t border-gray-200 space-y-2">
         <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
-          <Bell size={20} className="text-gray-400" />
+          <Bell size={20} />
           {!collapsed && (
             <>
-              <span className="text-sm flex-1 text-left">Notifications</span>
-              <span className="bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+              <span className="text-sm">Notifications</span>
+              <span className="ml-auto bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">5</span>
             </>
           )}
         </button>
@@ -139,7 +141,7 @@ const Sidebar = () => {
           to="/"
           className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600"
         >
-          <LogOut size={20} className="text-gray-400" />
+          <LogOut size={20} />
           {!collapsed && <span className="text-sm">Logout</span>}
         </Link>
       </div>
@@ -147,4 +149,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default AdminSidebar;

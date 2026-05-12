@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
@@ -17,7 +18,7 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-slate-900 mb-4">Resources</h4>
             <ul className="space-y-3">
-              <li><a href="#" className="text-sm text-slate-500 hover:text-primary-600">FAQ</a></li>
+              <li><Link to="/help" className="text-sm text-slate-500 hover:text-primary-600">Help & Support</Link></li>
               <li><a href="#" className="text-sm text-slate-500 hover:text-primary-600">Health Blog</a></li>
               <li><a href="#" className="text-sm text-slate-500 hover:text-primary-600">Nutrition Guide</a></li>
             </ul>
@@ -37,8 +38,8 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-slate-900 mb-4">Portals</h4>
             <ul className="space-y-3">
-              <li><a href="#" className="text-sm text-slate-500 hover:text-primary-600">Provider Portal</a></li>
-              <li><a href="#" className="text-sm text-slate-500 hover:text-primary-600">MOH Dashboard</a></li>
+              <li><Link to="/provider/dashboard" className="text-sm text-slate-500 hover:text-primary-600">Provider Dashboard</Link></li>
+              <li><Link to="/admin/dashboard" className="text-sm text-slate-500 hover:text-primary-600">MOH Admin Dashboard</Link></li>
             </ul>
           </div>
         </div>
@@ -46,7 +47,7 @@ const Footer = () => {
         {/* Copyright */}
         <div className="text-center pt-8 border-t border-gray-100">
           <p className="text-xs text-slate-400">
-            &copy; 2024 PEARL MOM. The Digital Sanctuary for Maternal Health.
+            &copy; {new Date().getFullYear()} PEARL MOM. The Digital Sanctuary for Maternal Health. All rights reserved.
           </p>
         </div>
       </div>
