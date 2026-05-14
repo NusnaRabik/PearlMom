@@ -1,4 +1,4 @@
-// frontend/src/components/provider/MotherSearchBar.jsx
+ // frontend/src/components/provider/MotherSearchBar.jsx
 import React, { useState, useEffect } from 'react';
 import { Search, X, Loader } from 'lucide-react';
 
