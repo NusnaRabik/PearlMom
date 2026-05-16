@@ -13,7 +13,7 @@ const Navbar = () => {
       <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
         <a href="/#benefits" className="text-primary-600 border-b-2 border-primary-500 pb-1 hover:text-primary-700">Benefits</a>
         <a href="/#how-it-works" className="hover:text-primary-600 transition-colors">How It Works</a>
-        <a href="/#providers" className="hover:text-primary-600 transition-colors">Providers</a>
+        <Link to="/provider" className="hover:text-primary-600 transition-colors">Providers</Link>
         <Link to="/help" className="hover:text-primary-600 transition-colors">FAQ</Link>
       </div>
 
