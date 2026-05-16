@@ -114,11 +114,11 @@ const MotherDashboard = () => {
           
           <button className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start space-x-4 hover:shadow-md transition-shadow text-left">
             <div className="bg-[#f1f5f9] p-3 rounded-xl">
-              <Calendar className="text-[#64748b]" size={24} />
+              <MapPin className="text-[#64748b]" size={24} />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Book Appointment</h3>
-              <p className="text-sm text-gray-500">Schedule a checkup</p>
+              <h3 className="font-semibold text-gray-900">Find Medical Center</h3>
+              <p className="text-sm text-gray-500">Locate nearby clinics</p>
             </div>
           </button>
           
@@ -135,21 +135,7 @@ const MotherDashboard = () => {
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Next Appointment */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-[#38bdf8]"></div>
-            <div className="flex justify-between items-start mb-6">
-              <div className="bg-[#e0f2fe] p-2.5 rounded-lg text-[#0284c7]">
-                <Calendar size={20} />
-              </div>
-              <span className="bg-[#e0f2fe] text-[#0284c7] text-xs font-bold px-2.5 py-1 rounded-full">
-                CONFIRMED
-              </span>
-            </div>
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Next Appointment</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Nov 24, 10:30 AM</h3>
-            <p className="text-sm text-gray-600">Consultation with <span className="font-medium text-[#0ea5e9]">Dr. Perera</span></p>
-          </div>
+
 
           {/* Vaccination Due */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
@@ -184,7 +170,7 @@ const MotherDashboard = () => {
           </div>
 
           {/* Recent Test Results */}
-          <div className="bg-[#fafafa] p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+          <div className="bg-[#fafafa] p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:col-span-2">
             <div className="flex justify-between items-center mb-6">
               <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Test Results</div>
               <span className="bg-[#dcfce7] text-[#166534] text-xs font-bold px-2 py-0.5 rounded">NORMAL</span>
