@@ -58,7 +58,7 @@ const Footer = () => {
 
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-center text-sm text-gray-400">
-            © {currentYear} Maternal Matrix Health. All rights reserved.
+            © {currentYear} PEARL MOM. All rights reserved.
           </p>
         </div>
       </div>

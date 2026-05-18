@@ -1,13 +1,25 @@
-// frontend/src/pages/provider/MothersListPage.jsx
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, AlertCircle, ChevronRight, Eye } from 'lucide-react';
+import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart } from 'lucide-react';
 import MotherSearchBar from '../../components/provider/MotherSearchBar';
 
 const MothersListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedMother, setSelectedMother] = useState(null);
+  const [addSuccess, setAddSuccess] = useState(false);
 
-  const mothers = [
+  // New Mother Form
+  const [newMother, setNewMother] = useState({
+    motherId: '',
+    fullName: '',
+    age: '',
+    edd: '',
+    bloodGroup: ''
+  });
+
+  const [mothers, setMothers] = useState([
     {
       id: 'MOT-2024-001',
       name: 'Elena Rodriguez',
@@ -17,7 +29,14 @@ const MothersListPage = () => {
       status: 'High-risk',
       statusType: 'high-risk',
       lastVisit: '2 days ago',
-      color: 'red'
+      color: 'red',
+      bloodGroup: 'A+',
+      phone: '+94 77 123 4567',
+      address: '42, Galle Road, Colombo 03',
+      weeks: 24,
+      bp: '120/80',
+      weight: '68.5 kg',
+      fhr: '145 bpm'
     },
     {
       id: 'MOT-2024-045',
@@ -28,7 +47,14 @@ const MothersListPage = () => {
       status: 'Normal',
       statusType: 'normal',
       lastVisit: '1 week ago',
-      color: 'green'
+      color: 'green',
+      bloodGroup: 'O+',
+      phone: '+94 71 234 5678',
+      address: '15, Kandy Road, Kandy',
+      weeks: 28,
+      bp: '118/75',
+      weight: '72.3 kg',
+      fhr: '152 bpm'
     },
     {
       id: 'MOT-2024-089',
@@ -39,7 +65,14 @@ const MothersListPage = () => {
       status: 'Postnatal',
       statusType: 'postnatal',
       lastVisit: 'Yesterday',
-      color: 'blue'
+      color: 'blue',
+      bloodGroup: 'B+',
+      phone: '+94 76 345 6789',
+      address: '8, Main Street, Jaffna',
+      weeks: 4,
+      bp: '122/82',
+      weight: '65.0 kg',
+      fhr: '—'
     },
     {
       id: 'MOT-2024-112',
@@ -50,7 +83,14 @@ const MothersListPage = () => {
       status: 'High-risk',
       statusType: 'high-risk',
       lastVisit: '3 days ago',
-      color: 'red'
+      color: 'red',
+      bloodGroup: 'AB-',
+      phone: '+94 70 456 7890',
+      address: '25, Sea Street, Colombo 11',
+      weeks: 32,
+      bp: '135/88',
+      weight: '75.8 kg',
+      fhr: '140 bpm'
     },
     {
       id: 'MOT-2024-156',
@@ -61,7 +101,14 @@ const MothersListPage = () => {
       status: 'Normal',
       statusType: 'normal',
       lastVisit: '5 days ago',
-      color: 'green'
+      color: 'green',
+      bloodGroup: 'A-',
+      phone: '+94 77 567 8901',
+      address: '12, Hill Street, Nuwara Eliya',
+      weeks: 20,
+      bp: '115/72',
+      weight: '63.2 kg',
+      fhr: '148 bpm'
     },
     {
       id: 'MOT-2024-203',
@@ -72,34 +119,80 @@ const MothersListPage = () => {
       status: 'High-risk',
       statusType: 'high-risk',
       lastVisit: '1 day ago',
-      color: 'red'
+      color: 'red',
+      bloodGroup: 'O-',
+      phone: '+94 71 678 9012',
+      address: '5, Temple Road, Galle',
+      weeks: 18,
+      bp: '130/85',
+      weight: '58.6 kg',
+      fhr: '155 bpm'
     }
-  ];
+  ]);
 
-  // Filter and search logic
   const filteredMothers = useMemo(() => {
     return mothers.filter((mother) => {
-      // Search filter
       const searchMatch = 
         searchTerm === '' || 
         mother.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         mother.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         mother.pregnancy.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // Status filter
       const statusMatch = 
         filterStatus === 'all' || 
         mother.statusType === filterStatus;
 
       return searchMatch && statusMatch;
     });
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, filterStatus, mothers]);
 
-  // Count high-risk mothers with overdue visits
   const highRiskOverdue = mothers.filter(
     m => m.statusType === 'high-risk' && 
     (m.lastVisit.includes('10') || m.lastVisit.includes('week'))
   ).length;
+
+  const handleAddMother = () => {
+    if (!newMother.motherId || !newMother.fullName || !newMother.age) return;
+
+    const mother = {
+      id: newMother.motherId,
+      name: newMother.fullName,
+      pregnancy: 'New Registration',
+      age: parseInt(newMother.age),
+      edd: newMother.edd || '—',
+      status: 'Normal',
+      statusType: 'normal',
+      lastVisit: 'Never',
+      color: 'green',
+      bloodGroup: newMother.bloodGroup || 'N/A',
+      phone: 'N/A',
+      address: 'N/A',
+      weeks: 0,
+      bp: 'N/A',
+      weight: 'N/A',
+      fhr: 'N/A'
+    };
+
+    setMothers([mother, ...mothers]);
+    setAddSuccess(true);
+
+    setTimeout(() => {
+      setShowAddModal(false);
+      setAddSuccess(false);
+      setNewMother({
+        motherId: '',
+        fullName: '',
+        age: '',
+        edd: '',
+        bloodGroup: ''
+      });
+    }, 1500);
+  };
+
+  const handleViewProfile = (mother) => {
+    setSelectedMother(mother);
+    setShowProfileModal(true);
+  };
 
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
@@ -109,8 +202,12 @@ const MothersListPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Assigned Patients</h1>
           <p className="text-gray-500 mt-1">Manage and monitor the health progress of mothers under your clinical care.</p>
         </div>
-        <button className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors whitespace-nowrap">
-          Add New Patient
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors whitespace-nowrap flex items-center space-x-2"
+        >
+          <Plus size={16} />
+          <span>Add New Mother</span>
         </button>
       </div>
 
@@ -134,7 +231,6 @@ const MothersListPage = () => {
           </select>
         </div>
         
-        {/* Search Results Count */}
         {(searchTerm || filterStatus !== 'all') && (
           <div className="mt-3 text-sm text-gray-500">
             Found {filteredMothers.length} {filteredMothers.length === 1 ? 'patient' : 'patients'}
@@ -218,7 +314,10 @@ const MothersListPage = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button className="text-pink-600 hover:text-pink-900 font-medium text-sm transition-colors">
+                      <button 
+                        onClick={() => handleViewProfile(mother)}
+                        className="text-pink-600 hover:text-pink-900 font-medium text-sm transition-colors"
+                      >
                         View Profile
                       </button>
                     </td>
@@ -252,9 +351,7 @@ const MothersListPage = () => {
           </p>
           {filteredMothers.length > 0 && (
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50" disabled>
-                Previous
-              </button>
+              <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50" disabled>Previous</button>
               <button className="px-3 py-1 bg-pink-600 text-white rounded text-sm">1</button>
               <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50">2</button>
               <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50">3</button>
@@ -263,6 +360,249 @@ const MothersListPage = () => {
           )}
         </div>
       </div>
+
+      {/* Add New Mother Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-pink-100 rounded-lg">
+                  <User className="h-5 w-5 text-pink-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Add New Mother</h2>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {addSuccess ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Mother Added Successfully!</h3>
+                  <p className="text-sm text-gray-500">The new mother has been registered.</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Mother ID *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., MOT-2024-001"
+                      value={newMother.motherId}
+                      onChange={(e) => setNewMother({...newMother, motherId: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Elena Rodriguez"
+                      value={newMother.fullName}
+                      onChange={(e) => setNewMother({...newMother, fullName: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Age *</label>
+                    <input
+                      type="number"
+                      placeholder="e.g., 28"
+                      value={newMother.age}
+                      onChange={(e) => setNewMother({...newMother, age: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Expected Due Date (EDD)</label>
+                    <input
+                      type="date"
+                      value={newMother.edd}
+                      onChange={(e) => setNewMother({...newMother, edd: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Blood Group</label>
+                    <select
+                      value={newMother.bloodGroup}
+                      onChange={(e) => setNewMother({...newMother, bloodGroup: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    >
+                      <option value="">Select Blood Group</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!addSuccess && (
+              <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddMother}
+                  disabled={!newMother.motherId || !newMother.fullName || !newMother.age}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                    !newMother.motherId || !newMother.fullName || !newMother.age
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-pink-600 hover:bg-pink-700'
+                  }`}
+                >
+                  Add Mother
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* View Profile Modal */}
+      {showProfileModal && selectedMother && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <h2 className="text-xl font-semibold text-gray-900">Mother Profile</h2>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Profile Header */}
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-2xl font-semibold text-pink-600">
+                    {selectedMother.name.split(' ').map(n => n[0]).join('')}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{selectedMother.name}</h3>
+                  <p className="text-sm text-gray-500">{selectedMother.id}</p>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
+                    selectedMother.color === 'red' ? 'bg-red-100 text-red-800' :
+                    selectedMother.color === 'green' ? 'bg-green-100 text-green-800' :
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                    {selectedMother.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Calendar size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-500">EDD</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">{selectedMother.edd}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Droplet size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-500">Blood Group</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">{selectedMother.bloodGroup}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <User size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-500">Age</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">{selectedMother.age} years</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Activity size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-500">Pregnancy Week</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">{selectedMother.weeks} Weeks</p>
+                </div>
+              </div>
+
+              {/* Vitals */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Vitals</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-pink-50 rounded-lg text-center border border-pink-100">
+                    <p className="text-xs text-gray-500 mb-1">BP</p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMother.bp}</p>
+                  </div>
+                  <div className="p-3 bg-pink-50 rounded-lg text-center border border-pink-100">
+                    <p className="text-xs text-gray-500 mb-1">Weight</p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMother.weight}</p>
+                  </div>
+                  <div className="p-3 bg-pink-50 rounded-lg text-center border border-pink-100">
+                    <p className="text-xs text-gray-500 mb-1">FHR</p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMother.fhr}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Info */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <Phone size={16} className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Phone</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedMother.phone}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <MapPin size={16} className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Address</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedMother.address}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <Calendar size={16} className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Last Visit</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedMother.lastVisit}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
