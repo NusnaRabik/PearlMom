@@ -18,7 +18,7 @@ const Navbar = () => {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }
-      }, 100);
+      }, 150);
     } else {
       // Already on home page, just scroll
       const element = document.getElementById(sectionId);
@@ -30,8 +30,38 @@ const Navbar = () => {
   };
 
   const handleHomeClick = (e) => {
-    if (location.pathname === '/') {
-      e.preventDefault();
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      // Navigate to home page first
+      navigate('/');
+      // Wait for navigation then scroll to hero
+      setTimeout(() => {
+        const element = document.getElementById('hero-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 150);
+    } else {
+      // Already on home page, scroll to hero section
+      const element = document.getElementById('hero-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        // Fallback: scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+    setIsOpen(false);
+  };
+
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 150);
+    } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setIsOpen(false);
@@ -45,7 +75,7 @@ const Navbar = () => {
           <Link 
             to="/" 
             className="flex items-center space-x-2 flex-shrink-0"
-            onClick={handleHomeClick}
+            onClick={handleLogoClick}
           >
             <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">PM</span>
@@ -77,6 +107,7 @@ const Navbar = () => {
               <Link 
                 to="/help" 
                 className="text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 px-4 py-2 rounded-lg transition-colors font-medium"
+                onClick={() => setIsOpen(false)}
               >
                 FAQ
               </Link>

@@ -1,5 +1,5 @@
 // frontend/src/components/common/Sidebar.jsx
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -7,14 +7,10 @@ import {
   CalendarCheck, 
   Users, 
   Settings,
-  ChevronLeft,
-  Menu,
-  LogOut,
-  Bell
+  HelpCircle
 } from 'lucide-react';
 
 const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
   const menuItems = [
@@ -41,12 +37,6 @@ const Sidebar = () => {
       icon: Users,
       label: 'Assigned Mothers',
       description: 'Patient List'
-    },
-    {
-      path: '/provider/settings',
-      icon: Settings,
-      label: 'Settings',
-      description: 'Provider Settings'
     }
   ];
 
@@ -59,39 +49,15 @@ const Sidebar = () => {
   };
   
   return (
-    <div className={`${collapsed ? 'w-20' : 'w-64'} h-screen bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}>
+    <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
       {/* Logo Section */}
       <div className="p-4 border-b border-gray-200">
-        {collapsed ? (
-          <div className="flex flex-col items-center space-y-2">
-            <Link to="/provider/dashboard" className="flex items-center justify-center">
-              <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">PM</span>
-              </div>
-            </Link>
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <Menu size={20} />
-            </button>
+        <Link to="/provider/dashboard" className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">PM</span>
           </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <Link to="/provider/dashboard" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">PM</span>
-              </div>
-              <span className="font-semibold text-gray-800">PearlMom</span>
-            </Link>
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <ChevronLeft size={20} />
-            </button>
-          </div>
-        )}
+          <span className="font-semibold text-gray-800">PearlMom</span>
+        </Link>
       </div>
 
       {/* Navigation Items */}
@@ -107,16 +73,13 @@ const Sidebar = () => {
                   ? 'bg-pink-50 text-pink-600 shadow-sm' 
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
-              title={collapsed ? item.label : ''}
             >
               <item.icon size={20} className={isActive ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
-              {!collapsed && (
-                <div className="flex flex-col flex-1">
-                  <span className="text-sm font-medium">{item.label}</span>
-                  <span className="text-xs text-gray-400">{item.description}</span>
-                </div>
-              )}
-              {isActive && !collapsed && (
+              <div className="flex flex-col flex-1">
+                <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-xs text-gray-400">{item.description}</span>
+              </div>
+              {isActive && (
                 <div className="w-1.5 h-8 bg-pink-500 rounded-full"></div>
               )}
             </Link>
@@ -125,22 +88,43 @@ const Sidebar = () => {
       </nav>
 
       {/* Bottom Section */}
-      <div className="p-4 border-t border-gray-200 space-y-2">
-        <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
-          <Bell size={20} className="text-gray-400" />
-          {!collapsed && (
-            <>
-              <span className="text-sm flex-1 text-left">Notifications</span>
-              <span className="bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-            </>
-          )}
-        </button>
+      <div className="p-4 border-t border-gray-200 space-y-1">
+        {/* Help & Support */}
         <Link
-          to="/"
-          className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600"
+          to="/help"
+          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
+            location.pathname === '/help'
+              ? 'bg-pink-50 text-pink-600 shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
         >
-          <LogOut size={20} className="text-gray-400" />
-          {!collapsed && <span className="text-sm">Logout</span>}
+          <HelpCircle size={20} className={location.pathname === '/help' ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
+          <div className="flex flex-col flex-1">
+            <span className="text-sm font-medium">Help & Support</span>
+            <span className="text-xs text-gray-400">FAQs & Contact</span>
+          </div>
+          {location.pathname === '/help' && (
+            <div className="w-1.5 h-8 bg-pink-500 rounded-full"></div>
+          )}
+        </Link>
+
+        {/* Provider Settings */}
+        <Link
+          to="/provider/settings"
+          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
+            isActiveRoute('/provider/settings')
+              ? 'bg-pink-50 text-pink-600 shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
+        >
+          <Settings size={20} className={isActiveRoute('/provider/settings') ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
+          <div className="flex flex-col flex-1">
+            <span className="text-sm font-medium">Settings</span>
+            <span className="text-xs text-gray-400">Provider Settings</span>
+          </div>
+          {isActiveRoute('/provider/settings') && (
+            <div className="w-1.5 h-8 bg-pink-500 rounded-full"></div>
+          )}
         </Link>
       </div>
     </div>
