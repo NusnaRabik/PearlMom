@@ -1,9 +1,8 @@
-// frontend/src/pages/provider/NutritionMgmtPage.jsx
 import React, { useState } from 'react';
 import { 
   Calculator, Package, FileText, Download, TrendingUp, 
   ChevronRight, CheckCircle, X, User, Calendar, Phone, 
-  MapPin, Activity, Heart, Info
+  MapPin, Activity, Heart, Info, Plus
 } from 'lucide-react';
 import ThriposhaCriteria from '../../components/provider/ThriposhaCriteria';
 
@@ -16,8 +15,18 @@ const NutritionMgmtPage = () => {
   const [selectedLog, setSelectedLog] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [showNewDistribution, setShowNewDistribution] = useState(false);
 
-  const recentLogs = [
+  // New Distribution Form
+  const [newDistribution, setNewDistribution] = useState({
+    recipientName: '',
+    recipientId: '',
+    dateOfIssue: '',
+    packets: '1'
+  });
+  const [distributionSuccess, setDistributionSuccess] = useState(false);
+
+  const [recentLogs, setRecentLogs] = useState([
     {
       name: 'Kushani Mendis',
       id: '#MM-7721',
@@ -60,13 +69,12 @@ const NutritionMgmtPage = () => {
       nextEligible: 'Nov 22, 2024',
       notes: 'High BMI case. Monitoring for gestational diabetes. 2 packets recommended.'
     }
-  ];
+  ]);
 
   const calculateEligibility = () => {
     if (pregnancyWeek && bmi && motherName && motherId) {
       setIsCalculating(true);
       
-      // Simulate calculation delay
       setTimeout(() => {
         if (parseFloat(bmi) < 18.5 || parseFloat(bmi) > 30) {
           setEligibilityResult({
@@ -118,15 +126,46 @@ const NutritionMgmtPage = () => {
 
   const handleDistribute = () => {
     if (eligibilityResult && eligibilityResult.eligible) {
-      // Add distribution logic here
       alert(`Successfully distributed ${eligibilityResult.packets} packet(s) to ${motherName}`);
-      // Reset form
       setMotherName('');
       setMotherId('');
       setPregnancyWeek('');
       setBmi('');
       setEligibilityResult(null);
     }
+  };
+
+  const handleAddDistribution = () => {
+    // Add new distribution to logs
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    const newLog = {
+      name: newDistribution.recipientName,
+      id: newDistribution.recipientId,
+      week: 'N/A',
+      packets: parseInt(newDistribution.packets),
+      date: newDistribution.dateOfIssue || today,
+      bmi: 'N/A',
+      phone: 'N/A',
+      address: 'N/A',
+      status: 'Active',
+      lastDistribution: newDistribution.dateOfIssue || today,
+      nextEligible: 'N/A',
+      notes: 'New distribution recorded.'
+    };
+    
+    setRecentLogs([newLog, ...recentLogs]);
+    setDistributionSuccess(true);
+    
+    setTimeout(() => {
+      setShowNewDistribution(false);
+      setDistributionSuccess(false);
+      setNewDistribution({
+        recipientName: '',
+        recipientId: '',
+        dateOfIssue: '',
+        packets: '1'
+      });
+    }, 1500);
   };
 
   return (
@@ -137,21 +176,25 @@ const NutritionMgmtPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Nutrition & Wellness Log</h1>
           <p className="text-gray-500 mt-1">Streamline your maternal support flow. Monitor Thriposha distribution and ensure every mother receives the care they need.</p>
         </div>
-        <button className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors whitespace-nowrap">
-          New Distribution
+        <button 
+          onClick={() => setShowNewDistribution(true)}
+          className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors whitespace-nowrap flex items-center space-x-2"
+        >
+          <Plus size={16} />
+          <span>New Distribution</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Eligibility Calculator - Made Bigger */}
+        {/* Eligibility Calculator */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm p-6 border-2 border-pink-100">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold flex items-center">
-                <Calculator className="mr-3 text-blue-500" size={24} />
+                <Calculator className="mr-3 text-pink-500" size={24} />
                 Eligibility Calculator
               </h2>
-              <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+              <span className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-xs font-medium">
                 Thriposha Program
               </span>
             </div>
@@ -277,7 +320,7 @@ const NutritionMgmtPage = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
-              <Package className="mr-2 text-orange-500" size={20} />
+              <Package className="mr-2 text-pink-500" size={20} />
               Quick Distribution Log
             </h2>
             
@@ -324,7 +367,6 @@ const NutritionMgmtPage = () => {
               </table>
             </div>
 
-            {/* Show if no logs */}
             {recentLogs.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <Package size={48} className="mx-auto text-gray-300 mb-3" />
@@ -336,43 +378,21 @@ const NutritionMgmtPage = () => {
           {/* Reports & Insights */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
-              <FileText className="mr-2 text-green-500" size={20} />
+              <FileText className="mr-2 text-pink-500" size={20} />
               Reports & Insights
             </h2>
             <p className="text-sm text-gray-500 mb-4">Generate compliant documentation for ministry review.</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <button className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-pink-300 transition-all">
                 <div className="flex items-center space-x-3">
-                  <FileText size={20} className="text-gray-400" />
+                  <FileText size={20} className="text-pink-400" />
                   <div className="text-left">
-                    <p className="text-sm font-medium text-gray-900">Monthly Distribution</p>
-                    <p className="text-xs text-gray-500">OCTOBER 2024</p>
+                    <p className="text-sm font-medium text-gray-900">Monthly Distribution Report</p>
+                    <p className="text-xs text-gray-500">October 2024 - Download PDF</p>
                   </div>
                 </div>
-                <Download size={16} className="text-gray-400" />
-              </button>
-              
-              <button className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
-                <div className="flex items-center space-x-3">
-                  <Package size={20} className="text-gray-400" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-gray-900">Inventory Audit</p>
-                    <p className="text-xs text-gray-500">CSV EXPORT</p>
-                  </div>
-                </div>
-                <Download size={16} className="text-gray-400" />
-              </button>
-              
-              <button className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
-                <div className="flex items-center space-x-3">
-                  <TrendingUp size={20} className="text-gray-400" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-gray-900">Custom Analytics</p>
-                    <p className="text-xs text-gray-500">VIEW HUB</p>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-gray-400" />
+                <Download size={16} className="text-pink-500" />
               </button>
             </div>
           </div>
@@ -412,11 +432,109 @@ const NutritionMgmtPage = () => {
         </div>
       </div>
 
+      {/* New Distribution Modal */}
+      {showNewDistribution && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-pink-100 rounded-lg">
+                  <Package className="h-5 w-5 text-pink-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">New Distribution</h2>
+              </div>
+              <button
+                onClick={() => setShowNewDistribution(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {distributionSuccess ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle size={32} className="text-green-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Distribution Recorded!</h3>
+                  <p className="text-sm text-gray-500">The new distribution has been added to the log.</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Recipient Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Kushani Mendis"
+                      value={newDistribution.recipientName}
+                      onChange={(e) => setNewDistribution({...newDistribution, recipientName: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Recipient ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., #MM-7721"
+                      value={newDistribution.recipientId}
+                      onChange={(e) => setNewDistribution({...newDistribution, recipientId: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Issue</label>
+                    <input
+                      type="date"
+                      value={newDistribution.dateOfIssue}
+                      onChange={(e) => setNewDistribution({...newDistribution, dateOfIssue: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Number of Packets</label>
+                    <select
+                      value={newDistribution.packets}
+                      onChange={(e) => setNewDistribution({...newDistribution, packets: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    >
+                      <option value="1">01 Packet</option>
+                      <option value="2">02 Packets</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!distributionSuccess && (
+              <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                <button
+                  onClick={() => setShowNewDistribution(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddDistribution}
+                  disabled={!newDistribution.recipientName || !newDistribution.recipientId}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                    !newDistribution.recipientName || !newDistribution.recipientId
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-pink-600 hover:bg-pink-700'
+                  }`}
+                >
+                  Add Distribution
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Detail Modal */}
       {isModalOpen && selectedLog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Distribution Details</h2>
               <button
@@ -427,9 +545,7 @@ const NutritionMgmtPage = () => {
               </button>
             </div>
 
-            {/* Modal Content */}
             <div className="p-6 space-y-6">
-              {/* Recipient Info */}
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
                   <span className="text-2xl font-semibold text-pink-600">
@@ -447,7 +563,6 @@ const NutritionMgmtPage = () => {
                 </div>
               </div>
 
-              {/* Details Grid */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-2 mb-1">
@@ -479,7 +594,6 @@ const NutritionMgmtPage = () => {
                 </div>
               </div>
 
-              {/* Address */}
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-2 mb-1">
                   <MapPin size={16} className="text-gray-400" />
@@ -488,7 +602,6 @@ const NutritionMgmtPage = () => {
                 <p className="text-sm font-medium text-gray-900">{selectedLog.address}</p>
               </div>
 
-              {/* Distribution Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-xs text-blue-600 font-medium mb-1">Last Distribution</p>
@@ -500,7 +613,6 @@ const NutritionMgmtPage = () => {
                 </div>
               </div>
 
-              {/* Notes */}
               <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <div className="flex items-start space-x-2">
                   <Info size={16} className="text-yellow-600 mt-0.5" />
@@ -512,7 +624,6 @@ const NutritionMgmtPage = () => {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={handleCloseModal}
