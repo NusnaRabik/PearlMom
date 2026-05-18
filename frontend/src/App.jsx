@@ -2,6 +2,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/public/LandingPage';
+import LoginPage from './pages/public/LoginPage';
+import RegisterPage from './pages/public/RegisterPage';
+import HelpSupportPage from './pages/public/HelpSupportPage';
 import ProviderDashboard from './pages/provider/ProviderDashboard';
 import ProviderProfileSettings from './pages/provider/ProviderProfileSettings';
 import MothersListPage from './pages/provider/MothersListPage';
@@ -10,27 +13,78 @@ import NutritionMgmtPage from './pages/provider/NutritionMgmtPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProfileSettings from './pages/admin/AdminProfileSettings';
 import UserSystemMgmtPage from './pages/admin/UserSystemMgmtPage';
+import MotherDashboard from './pages/mother/MotherDashboard';
+import EMCHCardPage from './pages/mother/EMCHCardPage';
+import VaccinationSchedulerPage from './pages/mother/VaccinationSchedulerPage';
+import ClinicLocatorPage from './pages/mother/ClinicLocatorPage';
+import NutritionTrackerPage from './pages/mother/NutritionTrackerPage';
+import MotherProfileSettings from './pages/mother/MotherProfileSettings';
 import Sidebar from './components/common/Sidebar';
 import AdminSidebar from './components/common/AdminSidebar';
+import MotherSidebar from './components/common/MotherSidebar';
 import Footer from './components/common/Footer';
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* Landing Page - renders directly with its own Navbar and Footer */}
         <Route path="/" element={<LandingPage />} />
+        
+        {/* Login Page - renders directly with its own Footer */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Register Page - renders directly with its own Footer */}
+        <Route path="/register" element={<RegisterPage />} />
+        
+        {/* Mother Routes with Sidebar Layout */}
+        <Route path="/mother/*" element={<MotherLayout />} />
         
         {/* Provider Routes with Sidebar Layout */}
         <Route path="/provider/*" element={<ProviderLayout />} />
         
         {/* Admin Routes with Sidebar Layout */}
         <Route path="/admin/*" element={<AdminLayout />} />
+        
+        {/* Catch-all redirect to landing page */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
 }
 
+// Mother Layout with Mother Sidebar
+function MotherLayout() {
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Mother Sidebar - Fixed on left */}
+      <div className="fixed left-0 top-0 h-screen z-30">
+        <MotherSidebar />
+      </div>
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col ml-64 min-h-screen">
+        {/* Scrollable Main Content */}
+        <main className="flex-1 overflow-y-auto">
+          <Routes>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<MotherDashboard />} />
+            <Route path="emch-card" element={<EMCHCardPage />} />
+            <Route path="vaccination" element={<VaccinationSchedulerPage />} />
+            <Route path="clinic-locator" element={<ClinicLocatorPage />} />
+            <Route path="nutrition" element={<NutritionTrackerPage />} />
+            <Route path="settings" element={<MotherProfileSettings />} />
+          </Routes>
+          
+          {/* Footer at the bottom of content */}
+          <Footer />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// Provider Layout with Sidebar
 function ProviderLayout() {
   return (
     <div className="flex h-screen bg-gray-50">
@@ -60,6 +114,7 @@ function ProviderLayout() {
   );
 }
 
+// Admin Layout with Admin Sidebar
 function AdminLayout() {
   return (
     <div className="flex h-screen bg-gray-50">
