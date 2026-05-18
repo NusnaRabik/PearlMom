@@ -23,6 +23,7 @@ import Sidebar from './components/common/Sidebar';
 import AdminSidebar from './components/common/AdminSidebar';
 import MotherSidebar from './components/common/MotherSidebar';
 import Footer from './components/common/Footer';
+import Navbar from './components/common/Navbar';
 
 function App() {
   return (
@@ -30,6 +31,17 @@ function App() {
       <Routes>
         {/* Landing Page - renders directly with its own Navbar and Footer */}
         <Route path="/" element={<LandingPage />} />
+        
+        {/* Help & Support - with Navbar and Footer */}
+        <Route path="/help" element={
+          <div className="min-h-screen bg-slate-50 flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              <HelpSupportPage />
+            </main>
+            <Footer />
+          </div>
+        } />
         
         {/* Login Page - renders directly with its own Footer */}
         <Route path="/login" element={<LoginPage />} />

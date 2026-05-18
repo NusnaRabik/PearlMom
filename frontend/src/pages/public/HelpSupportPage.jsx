@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Search, ChevronDown, ChevronUp, Phone, UploadCloud, Asterisk, ExternalLink, GraduationCap, CheckCircle2, PlayCircle, FileText, Bug, MessageSquare, Info, Clock } from 'lucide-react';
-import Navbar from '../../components/common/Navbar';
-import Footer from '../../components/common/Footer';
 
 const HelpSupportPage = () => {
   const [activeTab, setActiveTab] = useState('Mother');
@@ -9,7 +7,7 @@ const HelpSupportPage = () => {
   const [expandedFaq, setExpandedFaq] = useState(0);
   
   // Form States
-  const [formType, setFormType] = useState('contact'); // 'contact' or 'bug'
+  const [formType, setFormType] = useState('contact');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -63,25 +61,26 @@ const HelpSupportPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitSuccess(false);
-    // Simulate network request
     setTimeout(() => {
       setIsSubmitting(false);
       setSubmitSuccess(true);
-      e.target.reset(); // Reset form fields
-      setTimeout(() => setSubmitSuccess(false), 5000); // Hide message after 5s
+      e.target.reset();
+      setTimeout(() => setSubmitSuccess(false), 5000);
     }, 1200);
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-[#f9fafb]">
-      <Navbar />
-
-      {/* Hero Section */}
-      <section className="relative pt-20 pb-16 px-4 sm:px-6 lg:px-8 bg-white border-b border-slate-100 overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-slate-50 to-slate-200/40 rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+    <div className="flex-grow">
+      {/* Hero Section - Pink Theme */}
+      <section className="relative pt-20 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-pink-50 via-white to-rose-50 border-b border-pink-100 overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-pink-200/40 to-rose-200/30 rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-pink-100/40 to-transparent rounded-full blur-3xl opacity-40 -translate-x-1/3 translate-y-1/2 pointer-events-none"></div>
         
         <div className="relative max-w-4xl mx-auto text-center z-10">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 tracking-tight">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-pink-100 rounded-2xl mb-6">
+            <Info className="h-8 w-8 text-pink-600" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">
             How can we help you today?
           </h1>
           <p className="text-lg text-slate-600 mb-10">
@@ -90,13 +89,13 @@ const HelpSupportPage = () => {
           
           <div className="max-w-2xl mx-auto relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full group transition-shadow hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)]">
             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-[#2280a5] transition-colors" />
+              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-pink-500 transition-colors" />
             </div>
             <input 
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-12 pr-6 py-4 border border-slate-200 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-[#2280a5]/20 focus:border-[#2280a5] text-slate-800 placeholder-slate-400 text-base transition-all"
+              className="block w-full pl-12 pr-6 py-4 border border-slate-200 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 text-slate-800 placeholder-slate-400 text-base transition-all"
               placeholder="Search for answers, guides, or help topics..."
             />
           </div>
@@ -121,7 +120,7 @@ const HelpSupportPage = () => {
                     onClick={() => { setActiveTab(tab); setExpandedFaq(0); }}
                     className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
                       activeTab === tab 
-                        ? 'bg-white text-[#2280a5] shadow-sm' 
+                        ? 'bg-white text-pink-600 shadow-sm' 
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
@@ -137,7 +136,7 @@ const HelpSupportPage = () => {
                     <div 
                       key={index} 
                       className={`border rounded-2xl transition-all duration-300 overflow-hidden ${
-                        expandedFaq === index ? 'border-slate-200 shadow-sm bg-white' : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50'
+                        expandedFaq === index ? 'border-pink-200 shadow-sm bg-white' : 'border-slate-100 bg-white hover:border-pink-200 hover:bg-pink-50/30'
                       }`}
                     >
                       <button
@@ -149,7 +148,7 @@ const HelpSupportPage = () => {
                         </span>
                         <div className="flex-shrink-0 text-slate-400">
                           {expandedFaq === index ? (
-                            <ChevronUp className="h-5 w-5 text-[#2280a5]" />
+                            <ChevronUp className="h-5 w-5 text-pink-500" />
                           ) : (
                             <ChevronDown className="h-5 w-5" />
                           )}
@@ -175,44 +174,21 @@ const HelpSupportPage = () => {
               </div>
             </div>
 
-            {/* Video Tutorials & User Guides */}
+            {/* Download Manuals Section */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900 mb-6">Tutorials & User Guides</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-6">User Guides & Manuals</h2>
               
-              {/* Videos */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-800 group cursor-pointer border border-slate-200">
-                  <div className="absolute inset-0 bg-slate-700/50 group-hover:bg-slate-700/30 transition-colors z-10"></div>
-                  <div className="absolute inset-0 flex items-center justify-center z-20">
-                    <PlayCircle className="w-12 h-12 text-white/90 group-hover:scale-110 transition-transform drop-shadow-md" />
-                  </div>
-                  <div className="absolute bottom-3 left-4 z-20">
-                    <p className="text-white font-semibold text-sm drop-shadow-md">Getting Started (Module 1)</p>
-                  </div>
-                </div>
-                <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-800 group cursor-pointer border border-slate-200">
-                  <div className="absolute inset-0 bg-slate-700/50 group-hover:bg-slate-700/30 transition-colors z-10"></div>
-                  <div className="absolute inset-0 flex items-center justify-center z-20">
-                    <PlayCircle className="w-12 h-12 text-white/90 group-hover:scale-110 transition-transform drop-shadow-md" />
-                  </div>
-                  <div className="absolute bottom-3 left-4 z-20">
-                    <p className="text-white font-semibold text-sm drop-shadow-md">Navigating E-MCH Card</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Downloads */}
               <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
                 <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Download Manuals</h3>
                 <div className="flex flex-wrap gap-3">
-                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-[#2280a5] hover:border-[#2280a5]/30 transition-colors">
-                    <FileText className="w-4 h-4 text-red-500" /> English PDF
+                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-pink-600 hover:border-pink-300 transition-colors">
+                    <FileText className="w-4 h-4 text-pink-500" /> English PDF
                   </button>
-                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-[#2280a5] hover:border-[#2280a5]/30 transition-colors">
-                    <FileText className="w-4 h-4 text-red-500" /> Sinhala PDF
+                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-pink-600 hover:border-pink-300 transition-colors">
+                    <FileText className="w-4 h-4 text-pink-500" /> Sinhala PDF
                   </button>
-                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-[#2280a5] hover:border-[#2280a5]/30 transition-colors">
-                    <FileText className="w-4 h-4 text-red-500" /> Tamil PDF
+                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-pink-600 hover:border-pink-300 transition-colors">
+                    <FileText className="w-4 h-4 text-pink-500" /> Tamil PDF
                   </button>
                 </div>
               </div>
@@ -231,7 +207,7 @@ const HelpSupportPage = () => {
                 <div className="flex bg-slate-100 p-1 rounded-xl">
                   <button 
                     onClick={() => setFormType('contact')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${formType === 'contact' ? 'bg-white shadow-sm text-[#2280a5]' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${formType === 'contact' ? 'bg-white shadow-sm text-pink-600' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     <MessageSquare className="w-4 h-4" /> Contact
                   </button>
@@ -254,17 +230,16 @@ const HelpSupportPage = () => {
               <form onSubmit={handleFormSubmit} className="space-y-6 relative">
                 {isSubmitting && (
                   <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2280a5]"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
                   </div>
                 )}
 
-                {/* Common File Upload */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {formType === 'contact' ? (
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Subject</label>
                       <div className="relative group">
-                        <select required className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3.5 text-[15px] focus:bg-white focus:border-[#2280a5] focus:ring-4 focus:ring-[#2280a5]/10 outline-none transition-all text-slate-700 font-medium appearance-none hover:border-slate-300 cursor-pointer">
+                        <select required className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all text-slate-700 font-medium appearance-none hover:border-slate-300 cursor-pointer">
                           <option value="">Select a topic</option>
                           <option value="technical">Technical Issue</option>
                           <option value="account">Account Issue</option>
@@ -277,13 +252,13 @@ const HelpSupportPage = () => {
                   ) : (
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Page where issue occurred</label>
-                      <input required type="text" placeholder="e.g. Dashboard, Registration" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-[#2280a5] focus:ring-4 focus:ring-[#2280a5]/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
+                      <input required type="text" placeholder="e.g. Dashboard, Registration" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
                     </div>
                   )}
                   
                   <div>
                     <label className="block text-[12px] font-bold text-slate-700 mb-2">Attachment (Optional)</label>
-                    <label className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-[#2280a5] font-semibold rounded-xl px-4 py-3.5 transition-colors border border-transparent cursor-pointer">
+                    <label className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-pink-600 font-semibold rounded-xl px-4 py-3.5 transition-colors border border-transparent cursor-pointer">
                       <UploadCloud className="h-5 w-5" />
                       <span>Upload Screenshot</span>
                       <input type="file" className="hidden" accept="image/*" />
@@ -295,16 +270,15 @@ const HelpSupportPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Browser / Device Information</label>
-                      <input required type="text" placeholder="e.g. Chrome on Windows 11, Safari on iOS" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-[#2280a5] focus:ring-4 focus:ring-[#2280a5]/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
+                      <input required type="text" placeholder="e.g. Chrome on Windows 11, Safari on iOS" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
                     </div>
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Steps to Reproduce</label>
-                      <textarea required rows="1" placeholder="1. Go to... 2. Click..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-[#2280a5] focus:ring-4 focus:ring-[#2280a5]/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 resize-none hover:border-slate-300"></textarea>
+                      <textarea required rows="1" placeholder="1. Go to... 2. Click..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 resize-none hover:border-slate-300"></textarea>
                     </div>
                   </div>
                 )}
 
-                {/* Message Textarea */}
                 <div>
                   <label className="block text-[12px] font-bold text-slate-700 mb-2">
                     {formType === 'contact' ? 'Message' : 'Description of the problem'}
@@ -313,12 +287,11 @@ const HelpSupportPage = () => {
                     required
                     rows="4" 
                     placeholder={formType === 'contact' ? "Describe your issue or inquiry in detail..." : "What exactly happened? What were you expecting to happen?"}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-[15px] focus:bg-white focus:border-[#2280a5] focus:ring-4 focus:ring-[#2280a5]/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 resize-none hover:border-slate-300"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 resize-none hover:border-slate-300"
                   ></textarea>
                 </div>
 
-                {/* Submit Button */}
-                <button disabled={isSubmitting} type="submit" className={`w-full flex justify-center items-center py-4 px-4 rounded-xl shadow-lg text-base font-bold text-white transition-all duration-300 ${formType === 'contact' ? 'bg-[#2280a5] hover:bg-[#1a6685] shadow-[#2280a5]/20 hover:shadow-xl hover:-translate-y-0.5 focus:ring-4 focus:ring-[#2280a5]/20' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20 hover:shadow-xl hover:-translate-y-0.5 focus:ring-4 focus:ring-red-600/20'}`}>
+                <button disabled={isSubmitting} type="submit" className={`w-full flex justify-center items-center py-4 px-4 rounded-xl shadow-lg text-base font-bold text-white transition-all duration-300 ${formType === 'contact' ? 'bg-pink-600 hover:bg-pink-700 shadow-pink-600/20 hover:shadow-xl hover:-translate-y-0.5 focus:ring-4 focus:ring-pink-500/20' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20 hover:shadow-xl hover:-translate-y-0.5 focus:ring-4 focus:ring-red-600/20'}`}>
                   {isSubmitting ? 'Submitting...' : formType === 'contact' ? 'Send Message' : 'Submit Bug Report'}
                 </button>
               </form>
@@ -330,7 +303,7 @@ const HelpSupportPage = () => {
           <div className="lg:w-[35%] space-y-6">
             
             {/* Emergency Contacts Card */}
-            <div className="bg-[#fff5f5] rounded-3xl p-7 border border-red-100">
+            <div className="bg-red-50 rounded-3xl p-7 border border-red-100">
               <div className="flex items-center gap-2 mb-6">
                 <Asterisk className="h-5 w-5 text-red-600" />
                 <h3 className="text-lg font-bold text-red-800">Emergency Contacts</h3>
@@ -341,8 +314,8 @@ const HelpSupportPage = () => {
                   <Phone className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest mb-1">Swasariya Call Center</p>
-                  <p className="text-3xl font-black text-red-700 tracking-tight">1999</p>
+                  <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest mb-1">Suwa Seriya Ambulance</p>
+                  <p className="text-3xl font-black text-red-700 tracking-tight">1990</p>
                 </div>
               </div>
               
@@ -353,7 +326,7 @@ const HelpSupportPage = () => {
                   <p className="text-[11px] text-slate-500 mt-1">Available 24/7 for urgent care.</p>
                 </div>
                 
-                <div className="h-px bg-red-200/50 w-full"></div>
+                <div className="h-px bg-red-200 w-full"></div>
                 
                 <div>
                   <p className="text-[12px] font-bold text-slate-800 mb-0.5">Nearest Hospital Emergency</p>
@@ -361,7 +334,7 @@ const HelpSupportPage = () => {
                   <p className="text-[15px] text-slate-600 mt-0.5">+94 11 269 1111</p>
                 </div>
 
-                <div className="h-px bg-red-200/50 w-full"></div>
+                <div className="h-px bg-red-200 w-full"></div>
 
                 <a href="#" className="flex items-center justify-between group">
                   <div>
@@ -373,64 +346,19 @@ const HelpSupportPage = () => {
               </div>
             </div>
 
-            {/* System Status Card */}
-            <div className="bg-white rounded-3xl p-7 shadow-sm border border-slate-100">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-slate-900">System Status</h3>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold tracking-wide">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                  LIVE
-                </span>
-              </div>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50">
-                  <span className="text-sm font-semibold text-slate-700">System Uptime</span>
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-[#2280a5]">
-                    <Clock className="w-4 h-4" />
-                    99.98%
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50">
-                  <span className="text-sm font-semibold text-slate-700">Mobile App</span>
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-green-600">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Functional
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50">
-                  <span className="text-sm font-semibold text-slate-700">Provider Portal</span>
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-green-600">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Functional
-                  </span>
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Maintenance Alerts</p>
-                <div className="bg-[#fefce8] border border-yellow-200 rounded-xl p-4 flex gap-3">
-                  <Info className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-                  <p className="text-[13px] text-yellow-800 font-medium leading-relaxed">
-                    Scheduled maintenance on Nov 14, 02:00 AM UTC (approx. 30 mins downtime).
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Need Training Card */}
-            <div className="bg-gradient-to-br from-slate-50 to-[#f0f7f9] rounded-3xl p-7 border border-[#e1eff3] relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl p-7 border border-pink-100 relative overflow-hidden group hover:shadow-md transition-shadow">
               <div className="absolute -right-6 -bottom-6 opacity-[0.05] group-hover:opacity-10 transition-opacity">
                 <GraduationCap className="w-40 h-40" />
               </div>
               
               <div className="relative z-10">
-                <h3 className="text-lg font-bold text-[#1a6685] mb-3">Need Training?</h3>
+                <h3 className="text-lg font-bold text-pink-700 mb-3">Need Training?</h3>
                 <p className="text-sm text-slate-600 leading-relaxed mb-6">
                   Watch our step-by-step video tutorials on how to maximize your health tracking experience.
                 </p>
                 
-                <a href="#" className="inline-flex items-center gap-2 text-sm font-bold text-[#2280a5] hover:text-[#1a6685] transition-colors group-hover:underline underline-offset-4 decoration-[#2280a5]/30">
+                <a href="#" className="inline-flex items-center gap-2 text-sm font-bold text-pink-600 hover:text-pink-700 transition-colors group-hover:underline underline-offset-4 decoration-pink-300">
                   Open Academy
                   <ExternalLink className="w-4 h-4" />
                 </a>
@@ -441,8 +369,6 @@ const HelpSupportPage = () => {
           
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };
