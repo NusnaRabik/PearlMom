@@ -69,6 +69,12 @@ const RegisterPage = () => {
     setIsSubmitting(false);
 
     if (result.success) {
+      // SET NEW REGISTRATION FLAG for mother role only
+      if (joinAs.toLowerCase() === 'mother') {
+        localStorage.setItem('pearlmom_new_registration', 'true');
+        localStorage.removeItem('pearlmom_mother_profile_complete');
+      }
+      
       setSubmitSuccess(true);
       setTimeout(() => {
         if (result.role === 'mother') {

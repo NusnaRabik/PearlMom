@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Droplet, Apple, Download } from 'lucide-react';
+import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Droplet, Apple, Download, X, CheckCircle2, User, Heart } from 'lucide-react';
 import { useMother } from '../../hooks/useMother';
 import { useNotificationsHook } from '../../hooks/useNotifications';
 import { formatDate, getRelativeTime } from '../../utils/formatDate';
@@ -14,11 +14,90 @@ const MotherDashboard = () => {
   const { motherData, appointments, vaccinations, loading: motherLoading } = useMother('MTH-2024-001');
   const { notifications, unreadCount, markAllAsRead } = useNotificationsHook();
 
+  // Profile completion modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileCompleted, setProfileCompleted] = useState(false);
+  const [profileData, setProfileData] = useState({
+    fullName: '',
+    nic: '',
+    dob: '',
+    address: '',
+    bloodGroup: '',
+    pregnancyStatus: '',
+    expectedDeliveryDate: '',
+    currentWeight: '',
+    emergencyContact: ''
+  });
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState('');
+
+  // Check if profile needs to be completed - ONLY for new registrations
+  useEffect(() => {
+    const isNewRegistration = localStorage.getItem('pearlmom_new_registration');
+    const isProfileComplete = localStorage.getItem('pearlmom_mother_profile_complete');
+    
+    // Only show profile modal if:
+    // 1. User just registered (new_registration flag is 'true')
+    // 2. Profile is NOT yet completed
+    if (isNewRegistration === 'true' && !isProfileComplete) {
+      setShowProfileModal(true);
+    } else {
+      setProfileCompleted(true);
+      // Clean up the flag if profile is already complete
+      if (isProfileComplete) {
+        localStorage.removeItem('pearlmom_new_registration');
+      }
+    }
+  }, []);
+
+  const handleProfileInputChange = (e) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+    setProfileError('');
+  };
+
+  const handleProfileSubmit = (e) => {
+    e.preventDefault();
+    setProfileError('');
+
+    const requiredFields = ['fullName', 'nic', 'dob', 'address', 'bloodGroup', 'expectedDeliveryDate', 'currentWeight', 'emergencyContact'];
+    const emptyFields = requiredFields.filter(field => !profileData[field]);
+    
+    if (emptyFields.length > 0) {
+      setProfileError(`Please fill in all required fields: ${emptyFields.map(f => f.replace(/([A-Z])/g, ' $1').trim()).join(', ')}`);
+      return;
+    }
+
+    const profileInfo = {
+      ...profileData,
+      updatedAt: new Date().toISOString()
+    };
+    
+    localStorage.setItem('pearlmom_mother_profile', JSON.stringify(profileInfo));
+    localStorage.setItem('pearlmom_mother_profile_complete', 'true');
+    localStorage.removeItem('pearlmom_new_registration');
+    
+    setProfileSuccess(true);
+    
+    setTimeout(() => {
+      setShowProfileModal(false);
+      setProfileCompleted(true);
+      setProfileSuccess(false);
+    }, 2000);
+  };
+
+  const handleSkipProfile = () => {
+    setShowProfileModal(false);
+  };
+
   const handleDownloadReport = () => {
+    const storedProfile = localStorage.getItem('pearlmom_mother_profile');
+    const profile = storedProfile ? JSON.parse(storedProfile) : {};
+    
     const reportContent = `
 BLOOD TEST REPORT
 =================
-Patient: ${motherData?.fullName || 'Sample Mother'}
+Patient: ${profile.fullName || motherData?.fullName || 'Sample Mother'}
 Date: ${formatDate(new Date())}
 
 Results:
@@ -69,7 +148,7 @@ All values within normal range.
                   </div>
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">EDD</p>
-                    <p className="font-semibold">{formatDate('2025-02-14', 'long')}</p>
+                    <p className="font-semibold">{formatDate(profileData.expectedDeliveryDate || '2025-02-14', 'long')}</p>
                   </div>
                 </div>
               </div>
@@ -89,6 +168,27 @@ All values within normal range.
               </div>
             </div>
           </div>
+
+          {/* Profile Completion Reminder Banner - only shows if profile not completed and not first visit */}
+          {!profileCompleted && !showProfileModal && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-yellow-800">Complete Your Profile</p>
+                  <p className="text-xs text-yellow-600">Please fill in your health information to get personalized care.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowProfileModal(true)}
+                className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
+              >
+                Complete Now
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="hover:border-pink-300 cursor-pointer transition-all">
@@ -287,6 +387,130 @@ All values within normal range.
 
         </div>
       </div>
+
+      {/* Profile Completion Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-pink-100 rounded-lg">
+                  <Heart className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Complete Your Health Profile</h2>
+                  <p className="text-xs text-gray-500">This information helps us provide personalized care</p>
+                </div>
+              </div>
+              <button onClick={handleSkipProfile} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {profileSuccess ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 className="h-10 w-10 text-green-500" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Profile Completed!</h3>
+                  <p className="text-gray-500">Your health information has been saved successfully.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleProfileSubmit} className="space-y-5">
+                  {profileError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                      {profileError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                      <input type="text" name="fullName" value={profileData.fullName} onChange={handleProfileInputChange}
+                        placeholder="e.g., Elena Richardson"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">NIC Number *</label>
+                      <input type="text" name="nic" value={profileData.nic} onChange={handleProfileInputChange}
+                        placeholder="e.g., 987654321V"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                      <input type="date" name="dob" value={profileData.dob} onChange={handleProfileInputChange}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
+                      <select name="bloodGroup" value={profileData.bloodGroup} onChange={handleProfileInputChange}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                        <option value="">Select Blood Group</option>
+                        <option value="A+">A+</option><option value="A-">A-</option>
+                        <option value="B+">B+</option><option value="B-">B-</option>
+                        <option value="O+">O+</option><option value="O-">O-</option>
+                        <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Status</label>
+                      <select name="pregnancyStatus" value={profileData.pregnancyStatus} onChange={handleProfileInputChange}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                        <option value="">Select Status</option>
+                        <option value="Normal">Normal</option>
+                        <option value="High Risk">High Risk</option>
+                        <option value="Multiple Pregnancy">Multiple Pregnancy</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date *</label>
+                      <input type="date" name="expectedDeliveryDate" value={profileData.expectedDeliveryDate} onChange={handleProfileInputChange}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Current Weight (kg) *</label>
+                      <input type="number" name="currentWeight" value={profileData.currentWeight} onChange={handleProfileInputChange}
+                        placeholder="e.g., 65" step="0.1"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact *</label>
+                      <input type="tel" name="emergencyContact" value={profileData.emergencyContact} onChange={handleProfileInputChange}
+                        placeholder="e.g., +94 77 123 4567"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Home Address *</label>
+                    <textarea name="address" value={profileData.address} onChange={handleProfileInputChange} rows="2"
+                      placeholder="Enter your residential address"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"></textarea>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <button type="button" onClick={handleSkipProfile} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
+                      Skip for now
+                    </button>
+                    <div className="flex space-x-3">
+                      <button type="button" onClick={handleSkipProfile}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+                        Remind Later
+                      </button>
+                      <button type="submit"
+                        className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
+                        Save Profile
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
