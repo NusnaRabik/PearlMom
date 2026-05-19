@@ -1,18 +1,24 @@
-// frontend/src/pages/admin/AdminProfileSettings.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
-  Camera, Shield, Clock, Smartphone, Monitor, Tablet,
-  Eye, EyeOff, Lock, Mail, Check, X, Edit2, Save,
+  Camera, Shield, Eye, EyeOff, Lock, Mail, Check, X, Edit2, Save,
   AlertCircle, KeyRound
 } from 'lucide-react';
 
 const AdminProfileSettings = () => {
-  const [formData, setFormData] = useState({
+  const fileInputRef = useRef(null);
+  const [profileImage, setProfileImage] = useState(null);
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+
+  const [personalInfo, setPersonalInfo] = useState({
     fullName: 'Dr. Sarah Jenkins',
     email: 's.jenkins@pearlmom.health',
-    mobile: '+1 (555) 234-8901',
+    mobile: '+1 (555) 234-8901'
+  });
+
+  const [editPersonalInfo, setEditPersonalInfo] = useState({ ...personalInfo });
+
+  const [formData, setFormData] = useState({
     employeeId: 'PM-ADMIN-8829',
-    department: 'Clinical Operations',
     adminLevel: 'Tier 3 (Super Admin)',
     lastAccessUpdate: 'Oct 24, 2023'
   });
@@ -70,6 +76,32 @@ const AdminProfileSettings = () => {
     }
   ];
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditPersonalClick = () => {
+    setEditPersonalInfo({ ...personalInfo });
+    setIsEditingPersonal(true);
+  };
+
+  const handleSavePersonal = () => {
+    setPersonalInfo({ ...editPersonalInfo });
+    setIsEditingPersonal(false);
+  };
+
+  const handleCancelPersonal = () => {
+    setEditPersonalInfo({ ...personalInfo });
+    setIsEditingPersonal(false);
+  };
+
   const handlePasswordChange = () => {
     setPasswordError('');
     setPasswordSuccess('');
@@ -86,6 +118,11 @@ const AdminProfileSettings = () => {
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordError('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.oldPassword === passwordData.newPassword) {
+      setPasswordError('New password must be different from old password');
       return;
     }
 
@@ -139,63 +176,125 @@ const AdminProfileSettings = () => {
         <div className="space-y-6">
           {/* Personal Information */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4">Personal Information</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Personal Information</h2>
+              {!isEditingPersonal ? (
+                <button
+                  onClick={handleEditPersonalClick}
+                  className="flex items-center space-x-1 text-sm text-pink-600 hover:text-pink-700 font-medium"
+                >
+                  <Edit2 size={16} />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleCancelPersonal}
+                    className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-700 font-medium"
+                  >
+                    <X size={16} />
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    onClick={handleSavePersonal}
+                    className="flex items-center space-x-1 text-sm text-pink-600 hover:text-pink-700 font-medium"
+                  >
+                    <Save size={16} />
+                    <span>Save</span>
+                  </button>
+                </div>
+              )}
+            </div>
             
             <div className="flex items-center space-x-4 mb-6">
               <div className="relative">
-                <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-white">SJ</span>
+                <div 
+                  className="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center cursor-pointer overflow-hidden"
+                  style={profileImage ? { backgroundImage: `url(${profileImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {!profileImage && <span className="text-2xl font-semibold text-white">SJ</span>}
                 </div>
-                <button className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow">
+                <button 
+                  className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Camera size={14} className="text-gray-600" />
                 </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">{formData.fullName}</p>
+                <p className="text-sm font-medium text-gray-900">{personalInfo.fullName}</p>
                 <p className="text-xs text-pink-600 font-medium">Active Administrator</p>
-                <button className="text-sm text-pink-600 hover:text-pink-700 font-medium mt-1">
-                  Edit Profile
+                <button 
+                  className="text-sm text-pink-600 hover:text-pink-700 font-medium mt-1"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Change Photo
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                />
+            {isEditingPersonal ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={editPersonalInfo.fullName}
+                    onChange={(e) => setEditPersonalInfo({...editPersonalInfo, fullName: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={editPersonalInfo.email}
+                    onChange={(e) => setEditPersonalInfo({...editPersonalInfo, email: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                  <input
+                    type="tel"
+                    value={editPersonalInfo.mobile}
+                    onChange={(e) => setEditPersonalInfo({...editPersonalInfo, mobile: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                />
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Full Name</label>
+                  <p className="text-sm text-gray-900">{personalInfo.fullName}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Email Address</label>
+                  <p className="text-sm text-gray-900">{personalInfo.email}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Mobile Number</label>
+                  <p className="text-sm text-gray-900">{personalInfo.mobile}</p>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
-                <input
-                  type="tel"
-                  value={formData.mobile}
-                  onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Admin Identity */}
+          {/* Admin Identity - Removed Department */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4">Admin Identity</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID (READ ONLY)</label>
                 <input
                   type="text"
                   value={formData.employeeId}
@@ -204,16 +303,7 @@ const AdminProfileSettings = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                <input
-                  type="text"
-                  value={formData.department}
-                  onChange={(e) => setFormData({...formData, department: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admin Level</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admin Level (READ ONLY)</label>
                 <input
                   type="text"
                   value={formData.adminLevel}
@@ -236,7 +326,7 @@ const AdminProfileSettings = () => {
 
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Security & Authentication */}
+          {/* Security & Authentication - Only Change Password */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
               <Shield className="mr-2 text-gray-400" size={20} />
@@ -252,17 +342,8 @@ const AdminProfileSettings = () => {
                   onClick={() => setIsPasswordModalOpen(true)}
                   className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
                 >
-                  Update
+                  Update Password
                 </button>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">2-Factor Authentication</p>
-                  <p className="text-xs text-pink-600 mt-1">Mandatory Policy Active</p>
-                </div>
-                <div className="w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center">
-                  <Check size={14} className="text-white" />
-                </div>
               </div>
             </div>
           </div>
@@ -340,19 +421,19 @@ const AdminProfileSettings = () => {
               ))}
             </div>
           </div>
-
-          {/* Access Summary */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4">Access Summary</h2>
-            <p className="text-sm text-gray-500">
-              These permissions are assigned by the central hospital administration and are read-only for your current profile level.
-            </p>
-          </div>
         </div>
       </div>
 
+      {/* Access Summary - Full Width */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h2 className="text-lg font-semibold mb-4">Access Summary</h2>
+        <p className="text-sm text-gray-500">
+          These permissions are assigned by the central hospital administration and are read-only for your current profile level.
+        </p>
+      </div>
+
       {/* Save Button */}
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <button className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
           Cancel
         </button>
@@ -402,7 +483,7 @@ const AdminProfileSettings = () => {
                     type={showPasswords.old ? 'text' : 'password'}
                     value={passwordData.oldPassword}
                     onChange={(e) => setPasswordData({...passwordData, oldPassword: e.target.value})}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Enter old password"
                   />
                   <button
@@ -421,7 +502,7 @@ const AdminProfileSettings = () => {
                     type={showPasswords.new ? 'text' : 'password'}
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Enter new password"
                   />
                   <button
@@ -431,6 +512,7 @@ const AdminProfileSettings = () => {
                     {showPasswords.new ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
               </div>
 
               <div>
@@ -440,7 +522,7 @@ const AdminProfileSettings = () => {
                     type={showPasswords.confirm ? 'text' : 'password'}
                     value={passwordData.confirmPassword}
                     onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Confirm new password"
                   />
                   <button
@@ -463,7 +545,7 @@ const AdminProfileSettings = () => {
               </button>
             </div>
 
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <button
                 onClick={() => setIsPasswordModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
@@ -532,14 +614,14 @@ const AdminProfileSettings = () => {
                     type="email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Enter your email address"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <button
                 onClick={() => setIsForgotPasswordModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"

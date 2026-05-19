@@ -1,9 +1,8 @@
-// frontend/src/pages/admin/AdminDashboard.jsx
 import React, { useState } from 'react';
 import { 
   Users, Activity, Shield, TrendingUp, 
   CheckCircle, AlertTriangle,
-  Database, Server, Heart, Calendar
+  Database, Server, Heart, Calendar, Download
 } from 'lucide-react';
 import { LineChart, BarChart } from '../../components/charts';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -57,6 +56,25 @@ const AdminDashboard = () => {
     { month: 'Jun', total: 2682 }
   ];
 
+  // Monthly data for mothers and providers separately
+  const motherMonthlyData = [
+    { month: 'Jan', total: 1800 },
+    { month: 'Feb', total: 1920 },
+    { month: 'Mar', total: 2050 },
+    { month: 'Apr', total: 2000 },
+    { month: 'May', total: 2150 },
+    { month: 'Jun', total: 2300 }
+  ];
+
+  const providerMonthlyData = [
+    { month: 'Jan', total: 300 },
+    { month: 'Feb', total: 330 },
+    { month: 'Mar', total: 350 },
+    { month: 'Apr', total: 350 },
+    { month: 'May', total: 350 },
+    { month: 'Jun', total: 382 }
+  ];
+
   const regionalData = [
     { name: 'Central Province', value: 4102, color: '#EC4899' },
     { name: 'Eastern Province', value: 2840, color: '#F472B6' },
@@ -97,6 +115,83 @@ const AdminDashboard = () => {
       status: 'failed'
     }
   ];
+
+  const handleExportReport = () => {
+    const reportContent = `
+═══════════════════════════════════════════════════════
+         PEARL MOM - SYSTEM PERFORMANCE REPORT
+═══════════════════════════════════════════════════════
+Generated: ${new Date().toLocaleDateString()} | ${new Date().toLocaleTimeString()}
+═══════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SYSTEM OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Total Mothers Registered:    14,282  (+12%)
+  Active Providers:               842  (+4.2%)
+  High-risk Cases:                328  (+12)
+  Vaccination Coverage:          94.8%  (+2.1%)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MOTHER REGISTRATION TRENDS (Monthly)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ${motherMonthlyData.map(d => `  ${d.month}:  ${d.total} mothers`).join('\n  ')}
+
+  Total: ${motherMonthlyData.reduce((sum, d) => sum + d.total, 0)} mothers registered
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROVIDER REGISTRATION TRENDS (Monthly)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ${providerMonthlyData.map(d => `  ${d.month}:  ${d.total} providers`).join('\n  ')}
+
+  Total: ${providerMonthlyData.reduce((sum, d) => sum + d.total, 0)} providers registered
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DELIVERY SUCCESS RATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Safe Deliveries:    98.2%
+  Referred Cases:      1.5%
+  Complications:       0.3%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGIONAL PROVIDER PERFORMANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Central Province:    4,102 mothers
+  Eastern Province:    2,840 mothers
+  Northern Province:   1,920 mothers
+  Southern Province:   1,650 mothers
+  Western Province:    3,770 mothers
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RECENT SYSTEM ACTIVITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ${recentActivity.map(a => `  [${a.timestamp}] ${a.user} - ${a.action} (${a.status})`).join('\n  ')}
+
+═══════════════════════════════════════════════════════
+  System Status: OPERATIONAL  |  Uptime: 99.9%
+  Security: HIPAA Compliant   |  Encryption: AES-256
+═══════════════════════════════════════════════════════
+  © ${new Date().getFullYear()} PearlMom. All rights reserved.
+  This report is confidential and intended for authorized personnel only.
+═══════════════════════════════════════════════════════
+    `;
+
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `PearlMom_System_Report_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
 
   // Custom Doughnut Chart Component
   const DeliveryDoughnutChart = () => {
@@ -164,11 +259,12 @@ const AdminDashboard = () => {
           <p className="text-gray-500 mt-1">System-wide health metrics and provider efficiency overview for Pearl Mom network.</p>
         </div>
         <div className="flex space-x-3">
-          <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-            Export Report
-          </button>
-          <button className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
-            System Settings
+          <button 
+            onClick={handleExportReport}
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2"
+          >
+            <Download size={16} />
+            <span>Export Report</span>
           </button>
         </div>
       </div>

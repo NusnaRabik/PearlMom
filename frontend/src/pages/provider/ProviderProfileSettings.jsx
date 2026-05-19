@@ -1,16 +1,23 @@
-// frontend/src/pages/provider/ProviderProfileSettings.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
-  Camera, Shield, Clock, Smartphone, Monitor, Tablet,
-  Eye, EyeOff, Lock, Mail, Check, X, Edit2, Save,
-  Plus, Trash2, AlertCircle, KeyRound
+  Camera, Shield, Eye, EyeOff, Lock, Mail, Check, X, Edit2, Save,
+  AlertCircle, KeyRound
 } from 'lucide-react';
 
 const ProviderProfileSettings = () => {
-  const [formData, setFormData] = useState({
+  const fileInputRef = useRef(null);
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  
+  const [personalInfo, setPersonalInfo] = useState({
     fullName: 'Dr. Sarah Jenkins',
     email: 's.jenkins@pearlmom.health',
-    mobile: '+1 (555) 012-3456',
+    mobile: '+1 (555) 012-3456'
+  });
+
+  const [editPersonalInfo, setEditPersonalInfo] = useState({ ...personalInfo });
+
+  const [formData, setFormData] = useState({
     employeeId: 'PM-9942-MED',
     designation: 'Senior Obstetrician',
     clinic: 'Green Valley Maternal Center',
@@ -54,8 +61,6 @@ const ProviderProfileSettings = () => {
   const [clinicalAlerts, setClinicalAlerts] = useState({
     newAppointments: true,
     highRiskAlerts: true,
-    missedVisits: true,
-    labResults: true,
     vaccinationReminders: false
   });
 
@@ -65,19 +70,37 @@ const ProviderProfileSettings = () => {
     'Riverside Maternity'
   ];
 
-  const accessHistory = [
-    { device: 'MacBook Pro', browser: 'Chrome 120', location: 'London, UK', ip: '192.168.1.1', time: 'Current Session', icon: Monitor, status: 'active' },
-    { device: 'iPad Pro', browser: 'Safari 17', location: 'London, UK', ip: '192.168.1.2', time: '2 hours ago', icon: Tablet, status: 'expired' },
-    { device: 'Mobile App', browser: 'PearlMom iOS', location: 'London, UK', ip: '10.0.0.1', time: 'Yesterday, 09:15', icon: Smartphone, status: 'expired' },
-    { device: 'Windows PC', browser: 'Edge 120', location: 'Manchester, UK', ip: '172.16.0.1', time: 'Dec 15, 2024, 14:30', icon: Monitor, status: 'expired' }
-  ];
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditPersonalClick = () => {
+    setEditPersonalInfo({ ...personalInfo });
+    setIsEditingPersonal(true);
+  };
+
+  const handleSavePersonal = () => {
+    setPersonalInfo({ ...editPersonalInfo });
+    setIsEditingPersonal(false);
+  };
+
+  const handleCancelPersonal = () => {
+    setEditPersonalInfo({ ...personalInfo });
+    setIsEditingPersonal(false);
+  };
 
   // Handle Password Change
   const handlePasswordChange = () => {
     setPasswordError('');
     setPasswordSuccess('');
 
-    // Validation
     if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       setPasswordError('All fields are required');
       return;
@@ -98,7 +121,6 @@ const ProviderProfileSettings = () => {
       return;
     }
 
-    // Simulate API call
     setTimeout(() => {
       setPasswordSuccess('Password changed successfully!');
       setTimeout(() => {
@@ -117,7 +139,6 @@ const ProviderProfileSettings = () => {
     }
 
     setIsSending(true);
-    // Simulate API call
     setTimeout(() => {
       setForgotPasswordMessage('Password reset link has been sent to your email address.');
       setIsSending(false);
@@ -129,7 +150,6 @@ const ProviderProfileSettings = () => {
     }, 1500);
   };
 
-  // Handle Schedule Update
   const handleScheduleChange = (day, field, value) => {
     setSchedule(prev => ({
       ...prev,
@@ -152,18 +172,12 @@ const ProviderProfileSettings = () => {
 
   const handleSaveSchedule = () => {
     setIsEditingSchedule(false);
-    // Add API call here
   };
 
   const getDayName = (key) => {
     const days = {
-      monday: 'Monday',
-      tuesday: 'Tuesday',
-      wednesday: 'Wednesday',
-      thursday: 'Thursday',
-      friday: 'Friday',
-      saturday: 'Saturday',
-      sunday: 'Sunday'
+      monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+      thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday'
     };
     return days[key];
   };
@@ -181,53 +195,117 @@ const ProviderProfileSettings = () => {
         <div className="space-y-6">
           {/* Personal Information */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4">Personal Information</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Personal Information</h2>
+              {!isEditingPersonal ? (
+                <button
+                  onClick={handleEditPersonalClick}
+                  className="flex items-center space-x-1 text-sm text-pink-600 hover:text-pink-700 font-medium"
+                >
+                  <Edit2 size={16} />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleCancelPersonal}
+                    className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-700 font-medium"
+                  >
+                    <X size={16} />
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    onClick={handleSavePersonal}
+                    className="flex items-center space-x-1 text-sm text-pink-600 hover:text-pink-700 font-medium"
+                  >
+                    <Save size={16} />
+                    <span>Save</span>
+                  </button>
+                </div>
+              )}
+            </div>
             
             <div className="flex items-center space-x-4 mb-6">
               <div className="relative">
-                <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-white">SJ</span>
+                <div 
+                  className="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center cursor-pointer overflow-hidden"
+                  style={profileImage ? { backgroundImage: `url(${profileImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {!profileImage && <span className="text-2xl font-semibold text-white">SJ</span>}
                 </div>
-                <button className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow">
+                <button 
+                  className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Camera size={14} className="text-gray-600" />
                 </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">Profile Photo</p>
-                <button className="text-sm text-pink-600 hover:text-pink-700 font-medium">
+                <button 
+                  className="text-sm text-pink-600 hover:text-pink-700 font-medium"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   Change Photo
                 </button>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">FULL NAME</label>
-                <input
-                  type="text"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">EMAIL ADDRESS</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">MOBILE (OTP ENABLED)</label>
-                <input
-                  type="tel"
-                  value={formData.mobile}
-                  onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                />
-              </div>
+              {isEditingPersonal ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">FULL NAME</label>
+                    <input
+                      type="text"
+                      value={editPersonalInfo.fullName}
+                      onChange={(e) => setEditPersonalInfo({...editPersonalInfo, fullName: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">EMAIL ADDRESS</label>
+                    <input
+                      type="email"
+                      value={editPersonalInfo.email}
+                      onChange={(e) => setEditPersonalInfo({...editPersonalInfo, email: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">MOBILE (OTP ENABLED)</label>
+                    <input
+                      type="tel"
+                      value={editPersonalInfo.mobile}
+                      onChange={(e) => setEditPersonalInfo({...editPersonalInfo, mobile: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">FULL NAME</label>
+                    <p className="text-sm text-gray-900">{personalInfo.fullName}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">EMAIL ADDRESS</label>
+                    <p className="text-sm text-gray-900">{personalInfo.email}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">MOBILE (OTP ENABLED)</label>
+                    <p className="text-sm text-gray-900">{personalInfo.mobile}</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -277,7 +355,7 @@ const ProviderProfileSettings = () => {
 
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Work Preferences - Editable Schedule */}
+          {/* Work Preferences */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Work Preferences</h2>
@@ -364,7 +442,7 @@ const ProviderProfileSettings = () => {
             </div>
           </div>
 
-          {/* Security Settings - Without 2FA */}
+          {/* Security Settings */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
               <Shield className="mr-2 text-gray-400" size={20} />
@@ -391,7 +469,7 @@ const ProviderProfileSettings = () => {
       {/* Clinical Alerts - Full Width */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-semibold mb-6">Clinical Alerts & Notifications</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
             <div>
               <p className="text-sm font-medium text-gray-900">New Appointments</p>
@@ -428,40 +506,6 @@ const ProviderProfileSettings = () => {
 
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
             <div>
-              <p className="text-sm font-medium text-gray-900">Missed Visits</p>
-              <p className="text-xs text-gray-500 mt-1">Alert for patient follow-up</p>
-            </div>
-            <button
-              onClick={() => setClinicalAlerts({...clinicalAlerts, missedVisits: !clinicalAlerts.missedVisits})}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                clinicalAlerts.missedVisits ? 'bg-pink-500' : 'bg-gray-300'
-              }`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                clinicalAlerts.missedVisits ? 'left-6' : 'left-0.5'
-              }`}></div>
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Lab Results</p>
-              <p className="text-xs text-gray-500 mt-1">New lab report notifications</p>
-            </div>
-            <button
-              onClick={() => setClinicalAlerts({...clinicalAlerts, labResults: !clinicalAlerts.labResults})}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                clinicalAlerts.labResults ? 'bg-pink-500' : 'bg-gray-300'
-              }`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                clinicalAlerts.labResults ? 'left-6' : 'left-0.5'
-              }`}></div>
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
-            <div>
               <p className="text-sm font-medium text-gray-900">Vaccination Reminders</p>
               <p className="text-xs text-gray-500 mt-1">Upcoming vaccination alerts</p>
             </div>
@@ -479,68 +523,8 @@ const ProviderProfileSettings = () => {
         </div>
       </div>
 
-      {/* Access History - Full Width */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold flex items-center">
-            <Clock className="mr-2 text-gray-400" size={20} />
-            Access History
-          </h2>
-          <button className="text-sm text-pink-600 hover:text-pink-700 font-medium">
-            View Full Security Audit →
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Browser/App</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {accessHistory.map((access, index) => (
-                <tr key={index} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-3">
-                      <access.icon size={20} className="text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">{access.device}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600">{access.browser}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600">{access.location}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-mono text-gray-500">{access.ip}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600">{access.time}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      access.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {access.status === 'active' ? 'Active' : 'Expired'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex justify-end space-x-3 sticky bottom-4">
+      {/* Save Button - Fixed at Bottom */}
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <button className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
           Cancel
         </button>
@@ -590,7 +574,7 @@ const ProviderProfileSettings = () => {
                     type={showPasswords.old ? 'text' : 'password'}
                     value={passwordData.oldPassword}
                     onChange={(e) => setPasswordData({...passwordData, oldPassword: e.target.value})}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Enter old password"
                   />
                   <button
@@ -609,7 +593,7 @@ const ProviderProfileSettings = () => {
                     type={showPasswords.new ? 'text' : 'password'}
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Enter new password"
                   />
                   <button
@@ -629,7 +613,7 @@ const ProviderProfileSettings = () => {
                     type={showPasswords.confirm ? 'text' : 'password'}
                     value={passwordData.confirmPassword}
                     onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Confirm new password"
                   />
                   <button
@@ -652,7 +636,7 @@ const ProviderProfileSettings = () => {
               </button>
             </div>
 
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <button
                 onClick={() => setIsPasswordModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
@@ -676,8 +660,8 @@ const ProviderProfileSettings = () => {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <KeyRound size={20} className="text-blue-600" />
+                <div className="p-2 bg-pink-100 rounded-lg">
+                  <KeyRound size={20} className="text-pink-600" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">Forgot Password</h2>
               </div>
@@ -721,14 +705,14 @@ const ProviderProfileSettings = () => {
                     type="email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                     placeholder="Enter your email address"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <button
                 onClick={() => setIsForgotPasswordModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
@@ -739,7 +723,7 @@ const ProviderProfileSettings = () => {
                 onClick={handleForgotPassword}
                 disabled={isSending}
                 className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
-                  isSending ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                  isSending ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'
                 }`}
               >
                 {isSending ? 'Sending...' : 'Send Reset Link'}

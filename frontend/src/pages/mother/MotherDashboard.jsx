@@ -9,7 +9,6 @@ const MotherDashboard = () => {
   const pregnancyProgress = 70; // percentage
 
   const handleDownloadReport = () => {
-    // Create a simple text file for demo
     const reportContent = `
 BLOOD TEST REPORT
 =================
@@ -44,27 +43,28 @@ All values within normal range.
         {/* Main Left Column (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Hero Widget */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0c5c56] to-[#14998d] text-white p-8">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full border-4 border-white/10 opacity-50"></div>
+          {/* Hero Widget - Pink Theme */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500 text-white p-8 shadow-lg">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full border-4 border-white/10 opacity-30"></div>
+            <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full border-4 border-white/10 opacity-20"></div>
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center">
               <div>
-                <Badge className="bg-white/20 text-white hover:bg-white/30 border-none mb-4">
+                <Badge className="bg-white/20 text-white hover:bg-white/30 border-none mb-4 px-3 py-1">
                   <span className="mr-1">❤️</span> 3rd Trimester
                 </Badge>
                 <h2 className="text-4xl font-bold mb-2">Week 28 of 40</h2>
-                <p className="text-white/80 max-w-sm mb-6 leading-relaxed">
+                <p className="text-pink-100 max-w-sm mb-6 leading-relaxed">
                   Your baby is the size of a large eggplant. 84 days until your journey begins!
                 </p>
                 <div className="flex gap-8">
                   <div>
-                    <p className="text-xs text-white/60 mb-1 uppercase tracking-wider">Status</p>
+                    <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">Status</p>
                     <p className="font-semibold flex items-center">
-                      <span className="h-2 w-2 rounded-full bg-[#86efac] mr-2"></span> Low Risk
+                      <span className="h-2 w-2 rounded-full bg-green-300 mr-2"></span> Low Risk
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-white/60 mb-1 uppercase tracking-wider">EDD</p>
+                    <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">EDD</p>
                     <p className="font-semibold">Feb 14, 2025</p>
                   </div>
                 </div>
@@ -97,20 +97,20 @@ All values within normal range.
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-3xl font-bold">{pregnancyProgress}%</span>
-                    <span className="text-xs text-white/80">Complete</span>
+                    <span className="text-xs text-pink-100">Complete</span>
                   </div>
                 </div>
-                <p className="text-center text-xs text-white/70 mt-2 uppercase tracking-wide">Pregnancy Progress</p>
+                <p className="text-center text-xs text-pink-200 mt-2 uppercase tracking-wide">Pregnancy Progress</p>
               </div>
             </div>
           </div>
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="hover:border-[#0f766e]/30 cursor-pointer transition-all">
+            <Card className="hover:border-pink-300 cursor-pointer transition-all">
               <Link to="/mother/emch-card">
                 <CardContent className="p-5 flex items-center space-x-4">
-                  <div className="h-12 w-12 rounded-xl bg-sky-50 flex items-center justify-center text-[#0369a1]">
+                  <div className="h-12 w-12 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600">
                     <FileText className="h-6 w-6" />
                   </div>
                   <div>
@@ -120,10 +120,10 @@ All values within normal range.
                 </CardContent>
               </Link>
             </Card>
-            <Card className="hover:border-[#0f766e]/30 cursor-pointer transition-all">
+            <Card className="hover:border-pink-300 cursor-pointer transition-all">
               <Link to="/mother/vaccination">
                 <CardContent className="p-5 flex items-center space-x-4">
-                  <div className="h-12 w-12 rounded-xl bg-teal-50 flex items-center justify-center text-[#0f766e]">
+                  <div className="h-12 w-12 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600">
                     <Syringe className="h-6 w-6" />
                   </div>
                   <div>
@@ -140,14 +140,14 @@ All values within normal range.
             <Card>
               <CardContent className="p-6">
                  <div className="flex justify-between items-start mb-4">
-                   <div className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                   <div className="h-10 w-10 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600">
                      <Calendar className="h-5 w-5" />
                    </div>
                    <Badge variant="success">CONFIRMED</Badge>
                  </div>
                  <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mb-1">NEXT APPOINTMENT</p>
                  <h4 className="text-xl font-bold text-gray-900 mb-1">Nov 24, 10:30 AM</h4>
-                 <p className="text-sm text-gray-600">Consultation with <span className="font-medium text-[#0f766e]">Dr. Perera</span></p>
+                 <p className="text-sm text-gray-600">Consultation with <span className="font-medium text-pink-600">Dr. Perera</span></p>
               </CardContent>
             </Card>
             <Card>
@@ -176,7 +176,7 @@ All values within normal range.
                 <p className="text-gray-700 text-sm leading-relaxed mb-6 italic">
                   "Patient shows normal weight gain. Fetal heartbeat stable at 145 bpm. Iron supplements continued."
                 </p>
-                <button className="text-sm font-medium text-[#0f766e] flex items-center hover:underline">
+                <button className="text-sm font-medium text-pink-600 flex items-center hover:underline">
                   VIEW FULL SUMMARY <ChevronRight className="h-4 w-4 ml-1" />
                 </button>
               </CardContent>
@@ -203,7 +203,7 @@ All values within normal range.
                 </div>
                 <button 
                   onClick={handleDownloadReport}
-                  className="w-full mt-4 py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2"
+                  className="w-full mt-4 py-2 border border-pink-200 rounded-lg text-sm font-medium text-pink-600 hover:bg-pink-50 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Download className="h-4 w-4" />
                   <span>DOWNLOAD BLOOD REPORT</span>
@@ -219,13 +219,13 @@ All values within normal range.
           
           {/* Find Hospital */}
           <div>
-            <h3 className="text-lg font-bold text-red-600 flex items-center mb-4">
+            <h3 className="text-lg font-bold text-pink-600 flex items-center mb-4">
               <span className="text-xl mr-2">📍</span> Quick Actions
             </h3>
             <div className="space-y-3">
               <button 
                 onClick={() => navigate('/mother/clinic-locator')}
-                className="w-full rounded-xl bg-gray-100 p-4 text-gray-900 flex items-center hover:bg-gray-200 transition"
+                className="w-full rounded-xl bg-gray-100 p-4 text-gray-900 flex items-center hover:bg-pink-50 transition"
               >
                 <div className="bg-white p-2 rounded-lg mr-4 text-gray-500">
                   <MapPin className="h-6 w-6" />
@@ -244,13 +244,13 @@ All values within normal range.
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold text-gray-900">Alerts & Tips</h3>
-                <button className="text-xs font-medium text-blue-600 hover:underline">MARK ALL READ</button>
+                <button className="text-xs font-medium text-pink-600 hover:underline">MARK ALL READ</button>
               </div>
               <div className="space-y-6">
                 
                 <div className="flex">
                   <div className="mr-4 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                    <div className="h-8 w-8 rounded-full bg-pink-50 flex items-center justify-center text-pink-600">
                       <Calendar className="h-4 w-4" />
                     </div>
                   </div>
@@ -295,12 +295,12 @@ All values within normal range.
           </Card>
 
           {/* Video Guide widget */}
-          <div className="rounded-2xl overflow-hidden relative group cursor-pointer h-48 bg-gradient-to-br from-blue-900 to-teal-800">
+          <div className="rounded-2xl overflow-hidden relative group cursor-pointer h-48 bg-gradient-to-br from-pink-600 to-rose-700">
             <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1555252117-426bf85fc585?auto=format&fit=crop&q=80')" }}></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
             <div className="absolute bottom-4 left-4 right-4">
               <Badge className="bg-white/20 text-white border-none mb-2 backdrop-blur-sm tracking-wider uppercase text-[10px]">VIDEO GUIDE</Badge>
-              <h3 className="font-bold text-white text-lg leading-tight group-hover:text-teal-200 transition-colors">Gentle Stretching for 3rd Trimester</h3>
+              <h3 className="font-bold text-white text-lg leading-tight group-hover:text-pink-200 transition-colors">Gentle Stretching for 3rd Trimester</h3>
             </div>
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
