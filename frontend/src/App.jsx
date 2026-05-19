@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage';
 import RegisterPage from './pages/public/RegisterPage';
@@ -24,59 +25,61 @@ import AdminSidebar from './components/common/AdminSidebar';
 import MotherSidebar from './components/common/MotherSidebar';
 import Footer from './components/common/Footer';
 import Navbar from './components/common/Navbar';
+import ProtectedRoute from './components/common/ProtectedRoute';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Landing Page - renders directly with its own Navbar and Footer */}
-        <Route path="/" element={<LandingPage />} />
-        
-        {/* Help & Support - with Navbar and Footer */}
-        <Route path="/help" element={
-          <div className="min-h-screen bg-slate-50 flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <HelpSupportPage />
-            </main>
-            <Footer />
-          </div>
-        } />
-        
-        {/* Login Page - renders directly with its own Footer */}
-        <Route path="/login" element={<LoginPage />} />
-        
-        {/* Register Page - renders directly with its own Footer */}
-        <Route path="/register" element={<RegisterPage />} />
-        
-        {/* Mother Routes with Sidebar Layout */}
-        <Route path="/mother/*" element={<MotherLayout />} />
-        
-        {/* Provider Routes with Sidebar Layout */}
-        <Route path="/provider/*" element={<ProviderLayout />} />
-        
-        {/* Admin Routes with Sidebar Layout */}
-        <Route path="/admin/*" element={<AdminLayout />} />
-        
-        {/* Catch-all redirect to landing page */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
+      
+      <Route path="/help" element={
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+          <Navbar />
+          <main className="flex-1">
+            <HelpSupportPage />
+          </main>
+          <Footer />
+        </div>
+      } />
+      
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      
+      {/* Protected Mother Routes */}
+      <Route path="/mother/*" element={
+        <ProtectedRoute allowedRoles={['mother']}>
+          <MotherLayout />
+        </ProtectedRoute>
+      } />
+      
+      {/* Protected Provider Routes */}
+      <Route path="/provider/*" element={
+        <ProtectedRoute allowedRoles={['provider']}>
+          <ProviderLayout />
+        </ProtectedRoute>
+      } />
+      
+      {/* Protected Admin Routes */}
+      <Route path="/admin/*" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
-// Mother Layout with Mother Sidebar
+// Mother Layout
 function MotherLayout() {
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Mother Sidebar - Fixed on left */}
       <div className="fixed left-0 top-0 h-screen z-30">
         <MotherSidebar />
       </div>
-      
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col ml-64 min-h-screen">
-        {/* Scrollable Main Content */}
         <main className="flex-1 overflow-y-auto">
           <Routes>
             <Route index element={<Navigate to="dashboard" replace />} />
@@ -87,8 +90,6 @@ function MotherLayout() {
             <Route path="nutrition" element={<NutritionTrackerPage />} />
             <Route path="settings" element={<MotherProfileSettings />} />
           </Routes>
-          
-          {/* Footer at the bottom of content */}
           <Footer />
         </main>
       </div>
@@ -96,18 +97,14 @@ function MotherLayout() {
   );
 }
 
-// Provider Layout with Sidebar
+// Provider Layout
 function ProviderLayout() {
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar - Fixed on left */}
       <div className="fixed left-0 top-0 h-screen z-30">
         <Sidebar />
       </div>
-      
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col ml-64 min-h-screen">
-        {/* Scrollable Main Content */}
         <main className="flex-1 overflow-y-auto">
           <Routes>
             <Route index element={<Navigate to="dashboard" replace />} />
@@ -117,8 +114,6 @@ function ProviderLayout() {
             <Route path="clinic-visit" element={<ClinicVisitPage />} />
             <Route path="nutrition" element={<NutritionMgmtPage />} />
           </Routes>
-          
-          {/* Footer at the bottom of content */}
           <Footer />
         </main>
       </div>
@@ -126,18 +121,14 @@ function ProviderLayout() {
   );
 }
 
-// Admin Layout with Admin Sidebar
+// Admin Layout
 function AdminLayout() {
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Admin Sidebar - Fixed on left */}
       <div className="fixed left-0 top-0 h-screen z-30">
         <AdminSidebar />
       </div>
-      
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col ml-64 min-h-screen">
-        {/* Scrollable Main Content */}
         <main className="flex-1 overflow-y-auto">
           <Routes>
             <Route index element={<Navigate to="dashboard" replace />} />
@@ -145,8 +136,6 @@ function AdminLayout() {
             <Route path="settings" element={<AdminProfileSettings />} />
             <Route path="users" element={<UserSystemMgmtPage />} />
           </Routes>
-          
-          {/* Footer at the bottom of content */}
           <Footer />
         </main>
       </div>

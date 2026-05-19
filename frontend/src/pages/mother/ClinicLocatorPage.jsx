@@ -1,9 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Search, MapPin, Navigation, Phone, Heart, Plus, Minus, Target, Clock, Star } from 'lucide-react';
+import { useGeolocation } from '../../hooks/useGeolocation';
 
 const ClinicLocatorPage = () => {
+  const { 
+    location, 
+    loading: geoLoading, 
+    error: geoError,
+    getCurrentPosition
+  } = useGeolocation();
+  
+  const [userLocation, setUserLocation] = useState('Colombo 07, Sri Lanka');
+
+  useEffect(() => {
+    getCurrentPosition();
+  }, []);
+
+  useEffect(() => {
+    if (location) {
+      setUserLocation(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+    }
+  }, [location]);
+
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
       
@@ -184,7 +204,7 @@ const ClinicLocatorPage = () => {
               </div>
             </div>
             <p className="mt-4 text-lg font-semibold text-gray-800 drop-shadow-md">Your Location</p>
-            <p className="text-sm text-gray-600">Colombo 07, Sri Lanka</p>
+            <p className="text-sm text-gray-600">{userLocation}</p>
           </div>
 
           {/* Map Overlays */}

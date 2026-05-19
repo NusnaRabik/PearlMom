@@ -3,16 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Droplet, Apple, Download } from 'lucide-react';
+import { useMother } from '../../hooks/useMother';
+import { useNotificationsHook } from '../../hooks/useNotifications';
 
 const MotherDashboard = () => {
   const navigate = useNavigate();
-  const pregnancyProgress = 70; // percentage
+  const pregnancyProgress = 70;
+
+  // Use hooks
+  const { motherData, appointments, vaccinations, loading: motherLoading } = useMother('MTH-2024-001');
+  const { notifications, unreadCount, markAllAsRead } = useNotificationsHook();
 
   const handleDownloadReport = () => {
     const reportContent = `
 BLOOD TEST REPORT
 =================
-Patient: Sample Mother
+Patient: ${motherData?.fullName || 'Sample Mother'}
 Date: October 28, 2024
 
 Results:
@@ -70,30 +76,11 @@ All values within normal range.
                 </div>
               </div>
               <div className="mt-6 md:mt-0 relative">
-                {/* Circular Progress */}
                 <div className="relative w-32 h-32">
                   <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
-                    {/* Background circle */}
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="52"
-                      fill="none"
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth="8"
-                    />
-                    {/* Progress circle */}
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="52"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      strokeDasharray={`${(pregnancyProgress / 100) * 326.73} 326.73`}
-                      className="transition-all duration-1000"
-                    />
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="white" strokeWidth="8" strokeLinecap="round"
+                      strokeDasharray={`${(pregnancyProgress / 100) * 326.73} 326.73`} className="transition-all duration-1000" />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-3xl font-bold">{pregnancyProgress}%</span>
@@ -244,10 +231,11 @@ All values within normal range.
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold text-gray-900">Alerts & Tips</h3>
-                <button className="text-xs font-medium text-pink-600 hover:underline">MARK ALL READ</button>
+                <button onClick={markAllAsRead} className="text-xs font-medium text-pink-600 hover:underline">
+                  MARK ALL READ {unreadCount > 0 && `(${unreadCount})`}
+                </button>
               </div>
               <div className="space-y-6">
-                
                 <div className="flex">
                   <div className="mr-4 mt-1">
                     <div className="h-8 w-8 rounded-full bg-pink-50 flex items-center justify-center text-pink-600">
@@ -260,7 +248,6 @@ All values within normal range.
                     <p className="text-xs text-gray-400 mt-2">2 hours ago</p>
                   </div>
                 </div>
-
                 <div className="flex">
                   <div className="mr-4 mt-1">
                     <div className="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center text-green-600">
@@ -273,7 +260,6 @@ All values within normal range.
                     <p className="text-xs text-gray-400 mt-2">Yesterday</p>
                   </div>
                 </div>
-
                 <div className="flex">
                   <div className="mr-4 mt-1">
                     <div className="h-8 w-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
@@ -286,7 +272,6 @@ All values within normal range.
                     <p className="text-xs text-gray-400 mt-2">2 days ago</p>
                   </div>
                 </div>
-
               </div>
               <button className="w-full mt-6 flex justify-center items-center text-sm font-medium text-gray-500 hover:text-gray-900">
                 View All Notifications <ChevronRight className="h-4 w-4 ml-1" />
