@@ -15,6 +15,14 @@ import UserSystemMgmtPage from './pages/admin/UserSystemMgmtPage';
 import Sidebar from './components/common/Sidebar';
 import AdminSidebar from './components/common/AdminSidebar';
 import Footer from './components/common/Footer';
+import MotherSidebar from './components/common/MotherSidebar';
+import MotherNavbar from './components/common/MotherNavbar';
+import MotherDashboard from './pages/mother/MotherDashboard';
+import EMCHCardPage from './pages/mother/EMCHCardPage';
+import ClinicLocatorPage from './pages/mother/ClinicLocatorPage';
+import MotherProfileSettings from './pages/mother/MotherProfileSettings';
+import NutritionTrackerPage from './pages/mother/NutritionTrackerPage';
+import VaccinationSchedulerPage from './pages/mother/VaccinationSchedulerPage';
 
 function App() {
   return (
@@ -32,6 +40,9 @@ function App() {
           
           {/* Admin Routes with Sidebar Layout */}
           <Route path="/admin/*" element={<AdminLayout />} />
+          
+          {/* Mother Routes with Layout */}
+          <Route path="/mother/*" element={<MotherLayout />} />
         </Routes>
       </div>
     </Router>
@@ -95,3 +106,30 @@ function AdminLayout() {
 }
 
 export default App;
+
+function MotherLayout() {
+  return (
+    <div className="flex flex-col h-screen bg-[#F8F9FA]">
+      <MotherNavbar />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="z-30 h-full">
+          <MotherSidebar />
+        </div>
+        
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto">
+          <Routes>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<MotherDashboard />} />
+            <Route path="health-records" element={<EMCHCardPage />} />
+            <Route path="clinic-locator" element={<ClinicLocatorPage />} />
+            <Route path="vaccinations" element={<VaccinationSchedulerPage />} />
+            <Route path="nutrition" element={<NutritionTrackerPage />} />
+            <Route path="settings" element={<MotherProfileSettings />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+}

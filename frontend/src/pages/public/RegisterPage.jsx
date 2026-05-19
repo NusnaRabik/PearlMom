@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, ChevronDown, User, Briefcase, ShieldCheck } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
@@ -8,6 +9,18 @@ import adminImage from '../../assets/mother.png';
 
 const RegisterPage = () => {
   const [joinAs, setJoinAs] = useState('Mother');
+  const navigate = useNavigate();
+
+  const handleRegister = (e) => {
+    e.preventDefault();
+    if (joinAs === 'Mother') {
+      navigate('/mother/dashboard');
+    } else if (joinAs === 'Provider') {
+      navigate('/provider/dashboard');
+    } else if (joinAs === 'Admin') {
+      navigate('/admin/dashboard');
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-[#fbfbfd]">
@@ -74,7 +87,7 @@ const RegisterPage = () => {
               </div>
 
               {/* Form Content */}
-              <form className="space-y-10">
+              <form className="space-y-10" onSubmit={handleRegister}>
                 
                 {/* Account Information */}
                 <div>

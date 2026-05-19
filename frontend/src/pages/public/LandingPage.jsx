@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { 
@@ -61,7 +62,7 @@ const LandingPage = () => {
         </section>
 
         {/* Community Impact Section */}
-        <section className="bg-white py-20">
+        <section id="impact" className="bg-white py-20">
           <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
             <h2 className="text-3xl font-bold text-slate-900 mb-4">Community Impact</h2>
             <div className="w-16 h-1 bg-primary-500 mx-auto mb-4"></div>
@@ -110,7 +111,7 @@ const LandingPage = () => {
         </section>
 
         {/* Role Selection Section */}
-        <section className="bg-slate-50 py-24 mx-4 md:mx-12 rounded-[3rem] mb-20">
+        <section id="providers" className="bg-slate-50 py-24 mx-4 md:mx-12 rounded-[3rem] mb-20">
           <div className="max-w-5xl mx-auto px-6 md:px-12 text-center">
             <h2 className="text-3xl font-bold text-slate-900 mb-4">Who are you joining as?</h2>
             <p className="text-slate-500 mb-12">
@@ -127,9 +128,9 @@ const LandingPage = () => {
                 <p className="text-slate-500 text-center mb-8 text-sm">
                   Access clinics, track growth, and receive reminders for your wellness journey.
                 </p>
-                <a href="#" className="text-primary-600 font-medium flex items-center hover:text-primary-700 transition-colors">
+                <Link to="/login" className="text-primary-600 font-medium flex items-center hover:text-primary-700 transition-colors">
                   Select Profile <ArrowRight className="ml-2 w-4 h-4" />
-                </a>
+                </Link>
               </div>
 
               {/* Provider Card */}
@@ -141,16 +142,16 @@ const LandingPage = () => {
                 <p className="text-slate-500 text-center mb-8 text-sm">
                   Midwives and doctors can manage clinics, patient records, and vitals securely.
                 </p>
-                <a href="#" className="text-green-600 font-medium flex items-center hover:text-green-700 transition-colors">
+                <Link to="/provider/dashboard" className="text-green-600 font-medium flex items-center hover:text-green-700 transition-colors">
                   Select Profile <ArrowRight className="ml-2 w-4 h-4" />
-                </a>
+                </Link>
               </div>
             </div>
           </div>
         </section>
 
         {/* Empowering Section */}
-        <section className="bg-white py-20 overflow-hidden mb-12">
+        <section id="how-it-works" className="bg-white py-20 overflow-hidden mb-12">
           <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center">
             {/* Images */}
             <div className="md:w-1/2 relative mb-12 md:mb-0 h-[400px]">
@@ -190,7 +191,7 @@ const LandingPage = () => {
         </section>
 
         {/* Benefits Section */}
-        <section className="bg-slate-50 py-20">
+        <section id="benefits" className="bg-slate-50 py-20">
           <div className="max-w-7xl mx-auto px-6 md:px-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Core Ecosystem Benefits</h2>
             <div className="w-16 h-1 bg-primary-500 mb-10"></div>
