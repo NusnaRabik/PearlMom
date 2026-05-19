@@ -5,12 +5,12 @@ import { Badge } from '../../components/ui/Badge';
 import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Droplet, Apple, Download } from 'lucide-react';
 import { useMother } from '../../hooks/useMother';
 import { useNotificationsHook } from '../../hooks/useNotifications';
+import { formatDate, getRelativeTime } from '../../utils/formatDate';
 
 const MotherDashboard = () => {
   const navigate = useNavigate();
   const pregnancyProgress = 70;
 
-  // Use hooks
   const { motherData, appointments, vaccinations, loading: motherLoading } = useMother('MTH-2024-001');
   const { notifications, unreadCount, markAllAsRead } = useNotificationsHook();
 
@@ -19,7 +19,7 @@ const MotherDashboard = () => {
 BLOOD TEST REPORT
 =================
 Patient: ${motherData?.fullName || 'Sample Mother'}
-Date: October 28, 2024
+Date: ${formatDate(new Date())}
 
 Results:
 - Hemoglobin: 12.2 g/dL (Normal: 11-15)
@@ -35,7 +35,7 @@ All values within normal range.
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'Blood_Report_October_2024.txt';
+    link.download = `Blood_Report_${formatDate(new Date(), 'short').replace(/, /g, '_')}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -46,10 +46,8 @@ All values within normal range.
     <div className="p-6 space-y-6 min-h-screen pb-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Main Left Column (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Hero Widget - Pink Theme */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500 text-white p-8 shadow-lg">
             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full border-4 border-white/10 opacity-30"></div>
             <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full border-4 border-white/10 opacity-20"></div>
@@ -71,7 +69,7 @@ All values within normal range.
                   </div>
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">EDD</p>
-                    <p className="font-semibold">Feb 14, 2025</p>
+                    <p className="font-semibold">{formatDate('2025-02-14', 'long')}</p>
                   </div>
                 </div>
               </div>
@@ -92,7 +90,6 @@ All values within normal range.
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="hover:border-pink-300 cursor-pointer transition-all">
               <Link to="/mother/emch-card">
@@ -122,7 +119,6 @@ All values within normal range.
             </Card>
           </div>
 
-          {/* Timely Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-6">
@@ -133,7 +129,7 @@ All values within normal range.
                    <Badge variant="success">CONFIRMED</Badge>
                  </div>
                  <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mb-1">NEXT APPOINTMENT</p>
-                 <h4 className="text-xl font-bold text-gray-900 mb-1">Nov 24, 10:30 AM</h4>
+                 <h4 className="text-xl font-bold text-gray-900 mb-1">{formatDate('2024-11-24', 'long')}, 10:30 AM</h4>
                  <p className="text-sm text-gray-600">Consultation with <span className="font-medium text-pink-600">Dr. Perera</span></p>
               </CardContent>
             </Card>
@@ -152,13 +148,12 @@ All values within normal range.
             </Card>
           </div>
 
-          {/* More Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h4 className="font-semibold text-xs tracking-wider uppercase text-gray-500">LAST CLINIC VISIT</h4>
-                  <span className="text-xs text-gray-400">Oct 28</span>
+                  <span className="text-xs text-gray-400">{formatDate('2024-10-28', 'short')}</span>
                 </div>
                 <p className="text-gray-700 text-sm leading-relaxed mb-6 italic">
                   "Patient shows normal weight gain. Fetal heartbeat stable at 145 bpm. Iron supplements continued."
@@ -201,10 +196,8 @@ All values within normal range.
 
         </div>
 
-        {/* Right Sidebar Column */}
         <div className="space-y-6">
           
-          {/* Find Hospital */}
           <div>
             <h3 className="text-lg font-bold text-pink-600 flex items-center mb-4">
               <span className="text-xl mr-2">📍</span> Quick Actions
@@ -226,7 +219,6 @@ All values within normal range.
             </div>
           </div>
 
-          {/* Alerts & Tips */}
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
@@ -245,7 +237,7 @@ All values within normal range.
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Clinic Schedule Update</p>
                     <p className="text-sm text-gray-600 mt-1 leading-snug">The Friday clinic will now start at 8:00 AM instead of 9:00 AM.</p>
-                    <p className="text-xs text-gray-400 mt-2">2 hours ago</p>
+                    <p className="text-xs text-gray-400 mt-2">{getRelativeTime(new Date(Date.now() - 7200000))}</p>
                   </div>
                 </div>
                 <div className="flex">
@@ -257,7 +249,7 @@ All values within normal range.
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Maternal Wellness Tip</p>
                     <p className="text-sm text-gray-600 mt-1 leading-snug">Stay hydrated! Drinking 2.5L of water daily helps maintain amniotic fluid levels.</p>
-                    <p className="text-xs text-gray-400 mt-2">Yesterday</p>
+                    <p className="text-xs text-gray-400 mt-2">{getRelativeTime(new Date(Date.now() - 86400000))}</p>
                   </div>
                 </div>
                 <div className="flex">
@@ -269,7 +261,7 @@ All values within normal range.
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Nutrition Guide</p>
                     <p className="text-sm text-gray-600 mt-1 leading-snug">Add more leafy greens to your dinner for a natural folic acid boost.</p>
-                    <p className="text-xs text-gray-400 mt-2">2 days ago</p>
+                    <p className="text-xs text-gray-400 mt-2">{getRelativeTime(new Date(Date.now() - 172800000))}</p>
                   </div>
                 </div>
               </div>
@@ -279,7 +271,6 @@ All values within normal range.
             </CardContent>
           </Card>
 
-          {/* Video Guide widget */}
           <div className="rounded-2xl overflow-hidden relative group cursor-pointer h-48 bg-gradient-to-br from-pink-600 to-rose-700">
             <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1555252117-426bf85fc585?auto=format&fit=crop&q=80')" }}></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>

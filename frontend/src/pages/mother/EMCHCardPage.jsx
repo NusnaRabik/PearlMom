@@ -3,53 +3,23 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Download, FileText, Syringe, ChevronRight, Phone, X } from 'lucide-react';
+import { Download, FileText, Syringe, ChevronRight, Phone, X, Calendar, Droplet } from 'lucide-react';
+import { formatDate, formatTime } from '../../utils/formatDate';
 
 const EMCHCardPage = () => {
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
   const emergencyContacts = [
-    {
-      name: 'Dr. Sarah Perera',
-      role: 'Primary Obstetrician',
-      phone: '+94 77 123 4567',
-      available: '24/7',
-      type: 'doctor'
-    },
-    {
-      name: 'Green Valley Maternity Clinic',
-      role: 'Main Clinic',
-      phone: '+94 11 234 5678',
-      available: '8 AM - 6 PM',
-      type: 'clinic'
-    },
-    {
-      name: 'Nurse Priya Fernando',
-      role: 'Assigned Midwife',
-      phone: '+94 71 987 6543',
-      available: '24/7',
-      type: 'midwife'
-    },
-    {
-      name: 'Emergency Ambulance',
-      role: 'Suwa Seriya',
-      phone: '1990',
-      available: '24/7',
-      type: 'emergency'
-    },
-    {
-      name: 'National Hospital',
-      role: 'Maternity Ward',
-      phone: '+94 11 269 1111',
-      available: '24/7',
-      type: 'hospital'
-    }
+    { name: 'Dr. Sarah Perera', role: 'Primary Obstetrician', phone: '+94 77 123 4567', available: '24/7', type: 'doctor' },
+    { name: 'Green Valley Maternity Clinic', role: 'Main Clinic', phone: '+94 11 234 5678', available: '8 AM - 6 PM', type: 'clinic' },
+    { name: 'Nurse Priya Fernando', role: 'Assigned Midwife', phone: '+94 71 987 6543', available: '24/7', type: 'midwife' },
+    { name: 'Emergency Ambulance', role: 'Suwa Seriya', phone: '1990', available: '24/7', type: 'emergency' },
+    { name: 'National Hospital', role: 'Maternity Ward', phone: '+94 11 269 1111', available: '24/7', type: 'hospital' }
   ];
 
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
       
-      {/* Header Profile */}
       <Card className="overflow-hidden border-none shadow-sm">
         <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
           <div className="flex items-center space-x-6">
@@ -69,12 +39,11 @@ const EMCHCardPage = () => {
           </div>
           <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100 flex-shrink-0">
              <p className="text-xs tracking-wider uppercase text-green-700 font-semibold mb-1">Expected Delivery Date</p>
-             <p className="text-2xl text-green-800 font-bold">Feb 14, 2025</p>
+             <p className="text-2xl text-green-800 font-bold">{formatDate('2025-02-14', 'long')}</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Vitals Row */}
       <div>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Vital Signs & Trends</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -126,7 +95,6 @@ const EMCHCardPage = () => {
         </div>
       </div>
 
-      {/* Next Appointment - Full Width */}
       <div className="bg-pink-50 rounded-xl p-5 border border-pink-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -134,7 +102,7 @@ const EMCHCardPage = () => {
             <div>
               <h4 className="font-semibold text-pink-900">Next Appointment</h4>
               <p className="text-sm text-pink-800">
-                Your 28-week routine check-up is scheduled for <strong>Nov 10, 2024 at 10:00 AM</strong>.
+                Your 28-week routine check-up is scheduled for <strong>{formatDate('2024-11-10', 'long')} at 10:00 AM</strong>.
               </p>
             </div>
           </div>
@@ -144,23 +112,20 @@ const EMCHCardPage = () => {
         </div>
       </div>
 
-      {/* Antenatal Timeline - Full Width */}
       <div>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Antenatal Visit Timeline</h3>
         <Card className="bg-white">
           <CardContent className="p-6">
              <div className="relative border-l border-gray-200 ml-3 space-y-10 py-2">
                
-               {/* Visit 3 */}
                <div className="relative pl-8">
                  <div className="absolute left-[-5px] top-1 h-3 w-3 rounded-full bg-[#0369a1] border-2 border-white ring-2 ring-[#0369a1]"></div>
                  <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 shadow-sm">
                     <div className="flex justify-between items-start mb-3">
                       <p className="text-xs font-semibold text-[#0369a1] tracking-wider uppercase">Visit #3 - 24 Weeks</p>
-                      <span className="text-sm text-gray-500">Oct 12, 2024</span>
+                      <span className="text-sm text-gray-500">{formatDate('2024-10-12', 'short')}</span>
                     </div>
                     <h4 className="text-lg font-bold text-gray-900 mb-4">Routine Second Trimester Check</h4>
-                    
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       <div className="bg-white p-3 rounded-lg border border-gray-100 text-center">
                         <p className="text-xs text-gray-500 mb-1">BP</p>
@@ -179,7 +144,6 @@ const EMCHCardPage = () => {
                         <p className="font-semibold">24 cm</p>
                       </div>
                     </div>
-
                     <div className="border-t border-gray-200 pt-3 mt-3">
                        <div className="flex items-center text-sm font-medium text-gray-700 mb-1">
                          <FileText className="h-4 w-4 mr-2 text-gray-400" /> Health Education Summary
@@ -189,13 +153,12 @@ const EMCHCardPage = () => {
                  </div>
                </div>
 
-               {/* Visit 2 */}
                <div className="relative pl-8">
                  <div className="absolute left-[-5px] top-1 h-3 w-3 rounded-full bg-gray-300 border-2 border-white"></div>
                  <div className="bg-white rounded-xl p-0">
                     <div className="flex justify-between items-start mb-1">
                       <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Visit #2 - 20 Weeks</p>
-                      <span className="text-sm text-gray-400">Sep 14, 2024</span>
+                      <span className="text-sm text-gray-400">{formatDate('2024-09-14', 'short')}</span>
                     </div>
                     <h4 className="text-lg font-bold text-gray-800 mb-3">Anomaly Scan Review</h4>
                     <div className="flex flex-wrap gap-4">
@@ -206,13 +169,12 @@ const EMCHCardPage = () => {
                  </div>
                </div>
 
-               {/* Visit 1 */}
                <div className="relative pl-8">
                  <div className="absolute left-[-5px] top-1 h-3 w-3 rounded-full bg-gray-300 border-2 border-white"></div>
                  <div className="bg-white rounded-xl p-0">
                     <div className="flex justify-between items-start mb-1">
                       <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase">Visit #1 - 12 Weeks</p>
-                      <span className="text-sm text-gray-400">Aug 10, 2024</span>
+                      <span className="text-sm text-gray-400">{formatDate('2024-08-10', 'short')}</span>
                     </div>
                     <h4 className="text-lg font-bold text-gray-800 mb-3">Initial Booking Visit</h4>
                     <div className="flex flex-wrap gap-4">
@@ -228,7 +190,6 @@ const EMCHCardPage = () => {
         </Card>
       </div>
 
-      {/* Laboratory Reports - Full Width */}
       <div>
         <div className="mb-4 flex items-center">
            <div className="h-8 w-8 rounded bg-pink-100 text-pink-600 flex items-center justify-center mr-3">
@@ -242,9 +203,9 @@ const EMCHCardPage = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            { name: "Full Blood Count (FBC)", date: "Oct 05, 2024", id: "#77821", status: "NORMAL" },
-            { name: "Glucose Tolerance Test (GTT)", date: "Sep 20, 2024", id: "#76994", status: "PENDING REVIEW" },
-            { name: "Anatomy Ultrasound Scan (PDF)", date: "Sep 14, 2024", id: "#RAD-401", status: "COMPLETE" }
+            { name: "Full Blood Count (FBC)", date: "2024-10-05", id: "#77821", status: "NORMAL" },
+            { name: "Glucose Tolerance Test (GTT)", date: "2024-09-20", id: "#76994", status: "PENDING REVIEW" },
+            { name: "Anatomy Ultrasound Scan (PDF)", date: "2024-09-14", id: "#RAD-401", status: "COMPLETE" }
           ].map((report, i) => (
             <Card key={i} className="hover:border-pink-200 transition-colors h-full">
               <CardContent className="p-5 flex flex-col h-full">
@@ -254,11 +215,10 @@ const EMCHCardPage = () => {
                    </div>
                    <div className="flex-1 min-w-0">
                      <h4 className="font-medium text-gray-900 truncate">{report.name}</h4>
-                     <p className="text-xs text-gray-500 mt-0.5">Completed: {report.date}</p>
+                     <p className="text-xs text-gray-500 mt-0.5">Completed: {formatDate(report.date, 'short')}</p>
                      <p className="text-xs text-gray-400">Lab ID: {report.id}</p>
                    </div>
                  </div>
-                 
                  <div className="mt-auto">
                    <div className="mb-3">
                      <Badge variant={report.status === 'NORMAL' || report.status === 'COMPLETE' ? 'success' : 'warning'}>
@@ -278,14 +238,10 @@ const EMCHCardPage = () => {
         </div>
       </div>
 
-      {/* Quick Links - Full Width */}
       <div>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Links</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link 
-            to="/mother/vaccination"
-            className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between"
-          >
+          <Link to="/mother/vaccination" className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center">
                 <Syringe className="h-5 w-5" />
@@ -297,11 +253,7 @@ const EMCHCardPage = () => {
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500" />
           </Link>
-
-          <Link 
-            to="/mother/nutrition"
-            className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between"
-          >
+          <Link to="/mother/nutrition" className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
                 <FileText className="h-5 w-5" />
@@ -313,11 +265,7 @@ const EMCHCardPage = () => {
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500" />
           </Link>
-
-          <button 
-            onClick={() => setShowEmergencyModal(true)}
-            className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between text-left"
-          >
+          <button onClick={() => setShowEmergencyModal(true)} className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between text-left">
             <div className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
                 <Phone className="h-5 w-5" />
@@ -332,71 +280,42 @@ const EMCHCardPage = () => {
         </div>
       </div>
 
-      {/* Emergency Contacts Modal */}
       {showEmergencyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <Phone className="h-5 w-5 text-red-600" />
-                </div>
+                <div className="p-2 bg-red-100 rounded-lg"><Phone className="h-5 w-5 text-red-600" /></div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Emergency Contacts</h2>
                   <p className="text-xs text-gray-500">Important numbers for your care</p>
                 </div>
               </div>
-              <button
-                onClick={() => setShowEmergencyModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
+              <button onClick={() => setShowEmergencyModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <X size={20} className="text-gray-500" />
               </button>
             </div>
-
             <div className="p-6 space-y-4">
               {emergencyContacts.map((contact, index) => (
-                <div 
-                  key={index}
-                  className={`p-4 rounded-xl border ${
-                    contact.type === 'emergency' 
-                      ? 'bg-red-50 border-red-200' 
-                      : 'bg-gray-50 border-gray-200'
-                  }`}
-                >
+                <div key={index} className={`p-4 rounded-xl border ${contact.type === 'emergency' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-900 text-sm">
                         {contact.name}
-                        {contact.type === 'emergency' && (
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Emergency
-                          </span>
-                        )}
+                        {contact.type === 'emergency' && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Emergency</span>}
                       </h4>
                       <p className="text-xs text-gray-500 mt-0.5">{contact.role}</p>
                       <p className="text-xs text-gray-400 mt-1">{contact.available}</p>
                     </div>
-                    <a 
-                      href={`tel:${contact.phone}`}
-                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center space-x-1 ${
-                        contact.type === 'emergency'
-                          ? 'bg-red-600 text-white hover:bg-red-700'
-                          : 'bg-pink-600 text-white hover:bg-pink-700'
-                      }`}
-                    >
-                      <Phone className="h-4 w-4" />
-                      <span>{contact.phone}</span>
+                    <a href={`tel:${contact.phone}`} className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center space-x-1 ${contact.type === 'emergency' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-pink-600 text-white hover:bg-pink-700'}`}>
+                      <Phone className="h-4 w-4" /><span>{contact.phone}</span>
                     </a>
                   </div>
                 </div>
               ))}
             </div>
-
             <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <p className="text-xs text-gray-500 text-center">
-                In case of life-threatening emergency, call <strong className="text-red-600">1990</strong> immediately
-              </p>
+              <p className="text-xs text-gray-500 text-center">In case of life-threatening emergency, call <strong className="text-red-600">1990</strong> immediately</p>
             </div>
           </div>
         </div>
