@@ -33,7 +33,6 @@ const RegisterPage = () => {
     e.preventDefault();
     setFormError('');
 
-    // Validation
     if (!formData.fullName || !formData.mobile || !formData.email || !formData.password || !formData.confirmPassword) {
       setFormError('Please fill in all fields');
       return;
@@ -69,10 +68,13 @@ const RegisterPage = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      // SET NEW REGISTRATION FLAG for mother role only
+      // SET NEW REGISTRATION FLAG based on role
       if (joinAs.toLowerCase() === 'mother') {
         localStorage.setItem('pearlmom_new_registration', 'true');
         localStorage.removeItem('pearlmom_mother_profile_complete');
+      } else if (joinAs.toLowerCase() === 'provider') {
+        localStorage.setItem('pearlmom_provider_new_registration', 'true');
+        localStorage.removeItem('pearlmom_provider_profile_complete');
       }
       
       setSubmitSuccess(true);
@@ -157,9 +159,7 @@ const RegisterPage = () => {
                   </div>
 
                   {formError && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-                      {formError}
-                    </div>
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{formError}</div>
                   )}
 
                   <form onSubmit={handleSubmit} className="space-y-10">
@@ -195,9 +195,7 @@ const RegisterPage = () => {
                                   <div key={level} className={`h-1 flex-1 rounded-full ${passwordStrength.width >= level ? passwordStrength.color : 'bg-slate-100'}`}></div>
                                 ))}
                               </div>
-                              <p className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${passwordStrength.textColor}`}>
-                                Strength: {passwordStrength.label}
-                              </p>
+                              <p className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${passwordStrength.textColor}`}>Strength: {passwordStrength.label}</p>
                             </>
                           )}
                         </div>
