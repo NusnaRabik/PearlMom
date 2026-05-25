@@ -1,5 +1,5 @@
-// frontend/src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -20,18 +20,50 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  const checkAuthStatus = () => {
+  const checkAuthStatus = async () => {
     try {
-      const storedUser = localStorage.getItem('pearlmom_user');
       const storedToken = localStorage.getItem('pearlmom_token');
       
-      if (storedUser && storedToken) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
+      if (storedToken) {
+        try {
+          const result = await authService.getCurrentUser();
+          
+          if (result.success && result.data?.user) {
+            const backendUser = result.data.user;
+            const mappedUser = {
+              id: backendUser.user_id,
+              fullName: backendUser.name,
+              email: backendUser.email,
+              mobile: backendUser.phone_no,
+              role: backendUser.role,
+              avatar: backendUser.profile_picture_url || null,
+              profile_completed: backendUser.profile_completed,
+              mother_id: backendUser.mother_profile?.mother_id,
+              mother_code: backendUser.mother_profile?.mother_code,
+              midwife_id: backendUser.midwife_profile?.midwife_id,
+              employee_id: backendUser.midwife_profile?.employee_id
+            };
+            
+            setUser(mappedUser);
+            setIsAuthenticated(true);
+            localStorage.setItem('pearlmom_user', JSON.stringify(mappedUser));
+
+            // Set popup flag based on profile status
+            if (mappedUser.role === 'mother' && !mappedUser.profile_completed) {
+              localStorage.setItem('pearlmom_new_registration', 'true');
+            } else {
+              localStorage.removeItem('pearlmom_new_registration');
+            }
+          } else {
+            logout();
+          }
+        } catch (err) {
+          console.error('Token validation failed');
+          logout();
+        }
       }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
+    } catch (err) {
+      console.error('Auth check failed');
       logout();
     } finally {
       setLoading(false);
@@ -41,31 +73,74 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     setLoading(true);
     try {
-      const response = await mockLoginAPI(credentials);
-      
-      if (response.success) {
-        const userData = {
-          id: response.user.id,
-          fullName: response.user.fullName,
-          email: response.user.email,
-          mobile: response.user.mobile,
-          role: response.user.role,
-          avatar: response.user.avatar || null
-        };
-        
-        localStorage.setItem('pearlmom_user', JSON.stringify(userData));
-        localStorage.setItem('pearlmom_token', response.token);
-        
-        setUser(userData);
-        setIsAuthenticated(true);
-        
-        return { success: true, role: userData.role };
+      // Check if logging in with fullName or email
+      let result;
+      if (credentials.fullName) {
+        // Use login-by-name endpoint for mother login
+        result = await authService.loginByName(
+          credentials.fullName,
+          credentials.password,
+          credentials.role
+        );
       } else {
-        return { success: false, message: response.message || 'Login failed' };
+        // Use regular login for email
+        result = await authService.login(
+          credentials.email,
+          credentials.password,
+          credentials.role
+        );
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, message: 'An error occurred during login' };
+
+      console.log('Login result:', result);
+
+      if (result.success && result.data) {
+        const backendUser = result.data.user;
+        const token = result.data.accessToken || result.data.token;
+
+        // FIX: Handle both data structures (root level or nested in mother_profile)
+        const mappedUser = {
+          id: backendUser.user_id,
+          fullName: backendUser.name || backendUser.full_name,
+          email: backendUser.email,
+          mobile: backendUser.phone_no,
+          role: backendUser.role,
+          avatar: backendUser.profile_picture_url || null,
+          profile_completed: backendUser.profile_completed || false,
+          // Check both root level and mother_profile for mother data
+          mother_id: backendUser.mother_id || backendUser.mother_profile?.mother_id,
+          mother_code: backendUser.mother_code || backendUser.mother_profile?.mother_code,
+          pregnancy_status: backendUser.pregnancy_status || backendUser.mother_profile?.pregnancy_status,
+          expected_delivery_date: backendUser.expected_delivery_date || backendUser.mother_profile?.expected_delivery_date,
+          blood_group: backendUser.blood_group || backendUser.mother_profile?.blood_group,
+          // For midwife data
+          midwife_id: backendUser.midwife_id || backendUser.midwife_profile?.midwife_id,
+          employee_id: backendUser.employee_id || backendUser.midwife_profile?.employee_id,
+          assigned_area: backendUser.assigned_area || backendUser.midwife_profile?.assigned_area
+        };
+
+        localStorage.setItem('pearlmom_token', token);
+        localStorage.setItem('pearlmom_user', JSON.stringify(mappedUser));
+
+        // Set popup flag based on profile status
+        if (mappedUser.role === 'mother' && !mappedUser.profile_completed) {
+          localStorage.setItem('pearlmom_new_registration', 'true');
+        } else {
+          localStorage.removeItem('pearlmom_new_registration');
+        }
+
+        setUser(mappedUser);
+        setIsAuthenticated(true);
+
+        return { success: true, role: mappedUser.role };
+      } else {
+        return { success: false, message: result.message || 'Login failed' };
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      return {
+        success: false,
+        message: err.response?.data?.message || 'An error occurred during login'
+      };
     } finally {
       setLoading(false);
     }
@@ -74,43 +149,72 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     setLoading(true);
     try {
-      const response = await mockRegisterAPI(userData);
+      // Prepare registration data
+      const registrationData = {
+        fullName: userData.fullName,
+        mobile: userData.mobile,
+        email: userData.email,
+        password: userData.password,
+        role: userData.role || 'mother'
+      };
 
-      if (response.success) {
-        // Auto-login after successful registration
-        const role = userData.role || userData.joinAs?.toLowerCase() || 'mother';
-        const userToStore = {
-          id: response.userId || `MTH-${Date.now()}`,
-          fullName: userData.fullName || 'New User',
-          email: userData.email || '',
-          mobile: userData.mobile || userData.phone || '',
-          role: role,
-          avatar: null
+      console.log('Registering with data:', registrationData);
+      const result = await authService.register(registrationData);
+      console.log('Registration result:', result);
+
+      if (result.success && result.data) {
+        const backendUser = result.data.user;
+        const token = result.data.accessToken || result.data.token;
+
+        const mappedUser = {
+          id: backendUser.user_id || backendUser.id,
+          fullName: backendUser.name || backendUser.fullName,
+          email: backendUser.email,
+          mobile: backendUser.phone_no || backendUser.mobile,
+          role: backendUser.role,
+          avatar: null,
+          profile_completed: backendUser.profile_completed || false
         };
 
-        const token = 'mock-jwt-token-' + Date.now();
+        if (token) {
+          localStorage.setItem('pearlmom_token', token);
+        }
+        localStorage.setItem('pearlmom_user', JSON.stringify(mappedUser));
 
-        localStorage.setItem('pearlmom_user', JSON.stringify(userToStore));
-        localStorage.setItem('pearlmom_token', token);
+        // Always set popup flag for new mother registrations
+        if (mappedUser.role === 'mother') {
+          localStorage.setItem('pearlmom_new_registration', 'true');
+        } else if (mappedUser.role === 'midwife' || mappedUser.role === 'doctor') {
+          localStorage.setItem('pearlmom_provider_new_registration', 'true');
+        }
 
-        setUser(userToStore);
+        setUser(mappedUser);
         setIsAuthenticated(true);
 
-        return { success: true, role: userToStore.role };
+        return { success: true, role: mappedUser.role };
       } else {
-        return { success: false, message: response.message || 'Registration failed' };
+        return { 
+          success: false, 
+          message: result.message || result.error || 'Registration failed' 
+        };
       }
-    } catch (error) {
-      console.error('Registration error:', error);
-      return { success: false, message: 'An error occurred during registration' };
+    } catch (err) {
+      console.error('Registration error details:', err.response?.data);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error ||
+                          err.message || 
+                          'An error occurred during registration';
+      return {
+        success: false,
+        message: errorMessage
+      };
     } finally {
       setLoading(false);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('pearlmom_user');
-    localStorage.removeItem('pearlmom_token');
+    authService.logout();
     setUser(null);
     setIsAuthenticated(false);
   };
@@ -129,7 +233,8 @@ export const AuthProvider = ({ children }) => {
     if (!user) return '/';
     switch (user.role) {
       case 'mother': return '/mother/dashboard';
-      case 'provider': return '/provider/dashboard';
+      case 'midwife':
+      case 'doctor': return '/provider/dashboard';
       case 'admin': return '/admin/dashboard';
       default: return '/';
     }
@@ -153,33 +258,6 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-// Mock API
-const mockLoginAPI = (credentials) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const demoUsers = {
-        'mother@example.com': { id: 'MTH-2024-001', fullName: 'Elena Richardson', email: 'mother@example.com', mobile: '+94 77 123 4567', role: 'mother', avatar: null },
-        'provider@example.com': { id: 'PM-9942-MED', fullName: 'Dr. Sarah Jenkins', email: 'provider@example.com', mobile: '+1 (555) 012-3456', role: 'provider', avatar: null },
-        'admin@example.com': { id: 'PM-ADMIN-8829', fullName: 'Dr. Sarah Jenkins', email: 'admin@example.com', mobile: '+1 (555) 234-8901', role: 'admin', avatar: null }
-      };
-      const user = demoUsers[credentials.email];
-      if (user && credentials.password === 'password') {
-        resolve({ success: true, user: user, token: 'mock-jwt-token-' + Date.now() });
-      } else {
-        resolve({ success: false, message: 'Invalid email or password' });
-      }
-    }, 1000);
-  });
-};
-
-const mockRegisterAPI = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: 'Registration successful', userId: 'MTH-' + Date.now() });
-    }, 1500);
-  });
 };
 
 export default AuthContext;

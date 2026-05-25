@@ -26,6 +26,8 @@ const addVaccination = async (req, res) => {
       where: { user_id: req.user.user_id }
     });
 
+    if (!mother) return error(res, 'Mother profile not found', 404);
+
     const vaccination = await Vaccination.create({
       mother_id: mother.mother_id,
       ...req.body

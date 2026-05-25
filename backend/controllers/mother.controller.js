@@ -9,11 +9,13 @@ const getDashboard = async (req, res) => {
       include: [
         {
           model: Appointment,
+          as: 'appointments',
           limit: 5,
           order: [['appointment_date', 'DESC']]
         },
         {
           model: Vaccination,
+          as: 'vaccinations',
           limit: 5,
           order: [['due_date', 'ASC']]
         }
@@ -24,6 +26,7 @@ const getDashboard = async (req, res) => {
 
     return success(res, { mother });
   } catch (err) {
+    console.error('Dashboard error:', err);
     return error(res, 'Error fetching dashboard');
   }
 };
@@ -75,8 +78,10 @@ const updateProfile = async (req, res) => {
 const getAllMothers = async (req, res) => {
   try {
     const mothers = await Mother.findAll({
+      where: { is_deleted: false },
       include: [{
         model: User,
+        as: 'user',
         attributes: ['name', 'email', 'phone_no']
       }]
     });

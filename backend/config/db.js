@@ -1,7 +1,6 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-// Create Sequelize instance
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'pearl_mom_db',
   process.env.DB_USER || 'root',
@@ -10,7 +9,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
-    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    logging: false,  // ✅ HERE - Turn off SQL query logs
     pool: {
       max: 10,
       min: 0,
@@ -19,35 +18,23 @@ const sequelize = new Sequelize(
     },
     define: {
       timestamps: true,
-      underscored: false,
-      freezeTableName: true,
-      charset: 'utf8mb4',
-      collate: 'utf8mb4_unicode_ci'
+      freezeTableName: true
     },
-    dialectOptions: {
-      dateStrings: true,
-      typeCast: true
-    },
-    timezone: '+05:30' // Sri Lanka timezone
+    timezone: '+05:30'
   }
 );
 
-// Connect to database function
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ MySQL Database connected successfully.');
     
-    // Sync models in development mode
     if (process.env.NODE_ENV === 'development') {
-      // Use { force: true } to drop and recreate tables
-      // Use { alter: true } to alter existing tables
       await sequelize.sync({ alter: true });
       console.log('✅ Database models synchronized.');
     }
   } catch (error) {
-    console.error('❌ Unable to connect to the database:', error.message);
-    process.exit(1);
+    console.error('❌ Database connection failed:', error.message);
   }
 };
 

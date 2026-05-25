@@ -32,9 +32,18 @@ const Vaccination = sequelize.define('Vaccination', {
     type: DataTypes.ENUM('due', 'given', 'missed'),
     defaultValue: 'due'
   },
-  notes: DataTypes.TEXT
+  administered_by: DataTypes.STRING(200),
+  batch_number: DataTypes.STRING(50),
+  notes: DataTypes.TEXT,
+  is_deleted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  }
 }, {
-  tableName: 'vaccinations'
+  tableName: 'vaccinations',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Vaccination;

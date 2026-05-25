@@ -1,0 +1,5 @@
+- [x] Inspect backend/models/index.js and confirm missing model modules
+- [x] Add missing Sequelize model files: backend/models/ThriposhaEligibility.js and backend/models/LabReport.js
+- [ ] Ensure models match fields referenced by controllers/routes
+- [ ] Restart backend and verify npm run dev no longer fails with MODULE_NOT_FOUND
+- [ ] (Optional) Run a quick endpoint smoke test / verify no new missing-module errors

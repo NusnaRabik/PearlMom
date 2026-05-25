@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Info, User, Briefcase, UserCog } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Info, User, Briefcase, UserCog, UserCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthHook } from '../../hooks/useAuth';
 import babyHandImage from '../../assets/baby_hand.png';
@@ -8,10 +8,10 @@ import babyHandImage from '../../assets/baby_hand.png';
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { handleLogin, checkPasswordStrength, validateEmail } = useAuthHook();
+  const { handleLogin, checkPasswordStrength } = useAuthHook();
   const [showPassword, setShowPassword] = useState(false);
   const [loginAs, setLoginAs] = useState('mother');
-  const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false });
+  const [formData, setFormData] = useState({ fullName: '', password: '', rememberMe: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,37 +26,53 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
-    if (!formData.email || !formData.password) {
+    if (!formData.fullName || !formData.password) {
       setError('Please fill in all fields');
       setLoading(false);
       return;
     }
 
-    // Validate email
-    if (!validateEmail(formData.email)) {
-      setError('Please enter a valid email address');
+    try {
+      console.log('Attempting login with:', { fullName: formData.fullName, role: loginAs });
+      
+      const result = await handleLogin(
+        { fullName: formData.fullName, password: formData.password, role: loginAs },
+        login
+      );
+
+      console.log('Login result in component:', result);
+
+      if (result.success) {
+        console.log('Login successful, role:', result.role);
+        // Navigation is handled in useAuth.js handleLogin
+        // No need to navigate here as it's already done in the hook
+      } else {
+        setError(result.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An error occurred during login');
+    } finally {
       setLoading(false);
-      return;
-    }
-
-    const result = await handleLogin(
-      { email: formData.email, password: formData.password, role: loginAs },
-      login
-    );
-
-    setLoading(false);
-    if (!result.success) {
-      setError(result.message || 'Login failed');
     }
   };
 
   const handleDemoLogin = async (role) => {
     setLoading(true);
-    const demoEmails = { mother: 'mother@example.com', provider: 'provider@example.com', admin: 'admin@example.com' };
-    await handleLogin(
-      { email: demoEmails[role], password: 'password', role: role },
+    const demoFullNames = { 
+      mother: 'Elena Richardson', 
+      provider: 'Dr. Sarah Perera', 
+      admin: 'Admin User' 
+    };
+    
+    console.log('Demo login with:', { fullName: demoFullNames[role], role: role });
+    
+    const result = await handleLogin(
+      { fullName: demoFullNames[role], password: 'password', role: role },
       login
     );
+    
+    console.log('Demo login result:', result);
     setLoading(false);
   };
 
@@ -117,12 +133,12 @@ const LoginPage = () => {
 
             <form onSubmit={handleLoginSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Email Address</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Name</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                  <input type="email" name="email" value={formData.email} onChange={handleInputChange}
+                  <UserCircle className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                  <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange}
                     className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-900 placeholder-slate-400 outline-none"
-                    placeholder="Enter your email" />
+                    placeholder="Enter your full name" />
                 </div>
               </div>
               <div>

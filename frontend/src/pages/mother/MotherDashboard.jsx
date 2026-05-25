@@ -6,10 +6,15 @@ import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Drople
 import { useMother } from '../../hooks/useMother';
 import { useNotificationsHook } from '../../hooks/useNotifications';
 import { formatDate, getRelativeTime } from '../../utils/formatDate';
+import authService from '../../services/authService';
+import { calculatePregnancyWeek } from '../../utils/calculateWeeks';
+import motherService from '../../services/motherService';
 
 const MotherDashboard = () => {
   const navigate = useNavigate();
-  const pregnancyProgress = 70;
+  // Real data from database
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const { motherData, appointments, vaccinations, loading: motherLoading } = useMother('MTH-2024-001');
   const { notifications, unreadCount, markAllAsRead } = useNotificationsHook();
@@ -22,12 +27,18 @@ const MotherDashboard = () => {
     nic: '',
     dob: '',
     address: '',
+    district: '',
     bloodGroup: '',
     pregnancyStatus: '',
+    lmpDate: '',
+    gestationalWeeks: '',
     expectedDeliveryDate: '',
     currentWeight: '',
+    height: '',
+    husbandName: '',
+    husbandContact: '',
     emergencyContact: ''
-  });
+});
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileError, setProfileError] = useState('');
 
@@ -36,14 +47,10 @@ const MotherDashboard = () => {
     const isNewRegistration = localStorage.getItem('pearlmom_new_registration');
     const isProfileComplete = localStorage.getItem('pearlmom_mother_profile_complete');
     
-    // Only show profile modal if:
-    // 1. User just registered (new_registration flag is 'true')
-    // 2. Profile is NOT yet completed
     if (isNewRegistration === 'true' && !isProfileComplete) {
       setShowProfileModal(true);
     } else {
       setProfileCompleted(true);
-      // Clean up the flag if profile is already complete
       if (isProfileComplete) {
         localStorage.removeItem('pearlmom_new_registration');
       }
@@ -56,11 +63,11 @@ const MotherDashboard = () => {
     setProfileError('');
   };
 
-  const handleProfileSubmit = (e) => {
+  const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setProfileError('');
 
-    const requiredFields = ['fullName', 'nic', 'dob', 'address', 'bloodGroup', 'expectedDeliveryDate', 'currentWeight', 'emergencyContact'];
+    const requiredFields = ['fullName', 'nic', 'dob', 'address', 'district', 'bloodGroup', 'expectedDeliveryDate', 'currentWeight', 'height', 'emergencyContact'];
     const emptyFields = requiredFields.filter(field => !profileData[field]);
     
     if (emptyFields.length > 0) {
@@ -68,26 +75,118 @@ const MotherDashboard = () => {
       return;
     }
 
-    const profileInfo = {
-      ...profileData,
-      updatedAt: new Date().toISOString()
-    };
-    
-    localStorage.setItem('pearlmom_mother_profile', JSON.stringify(profileInfo));
-    localStorage.setItem('pearlmom_mother_profile_complete', 'true');
-    localStorage.removeItem('pearlmom_new_registration');
-    
-    setProfileSuccess(true);
-    
-    setTimeout(() => {
-      setShowProfileModal(false);
-      setProfileCompleted(true);
-      setProfileSuccess(false);
-    }, 2000);
+    try {
+      const result = await authService.completeProfile({
+          fullName: profileData.fullName,
+          nic: profileData.nic,
+          dob: profileData.dob,
+          address: profileData.address,
+          district: profileData.district,
+          bloodGroup: profileData.bloodGroup,
+          pregnancyStatus: profileData.pregnancyStatus || 'pregnant',
+          lmpDate: profileData.lmpDate,
+          gestationalWeeks: profileData.gestationalWeeks,
+          expectedDeliveryDate: profileData.expectedDeliveryDate,
+          currentWeight: profileData.currentWeight,
+          height: profileData.height,
+          husbandName: profileData.husbandName,
+          husbandContact: profileData.husbandContact,
+          emergencyContact: profileData.emergencyContact
+      });
+
+      if (result.success) {
+        const profileInfo = { ...profileData, updatedAt: new Date().toISOString() };
+        localStorage.setItem('pearlmom_mother_profile', JSON.stringify(profileInfo));
+        localStorage.setItem('pearlmom_mother_profile_complete', 'true');
+        localStorage.removeItem('pearlmom_new_registration');
+
+        fetchDashboardData();
+        
+        setProfileSuccess(true);
+        setTimeout(() => {
+          setShowProfileModal(false);
+          setProfileCompleted(true);
+          setProfileSuccess(false);
+        }, 2000);
+      } else {
+        setProfileError(result.message || 'Failed to save profile');
+      }
+    } catch (error) {
+      console.error('Profile save error:', error);
+      const profileInfo = { ...profileData, updatedAt: new Date().toISOString() };
+      localStorage.setItem('pearlmom_mother_profile', JSON.stringify(profileInfo));
+      localStorage.setItem('pearlmom_mother_profile_complete', 'true');
+      localStorage.removeItem('pearlmom_new_registration');
+      
+      setProfileSuccess(true);
+      setTimeout(() => {
+        setShowProfileModal(false);
+        setProfileCompleted(true);
+        setProfileSuccess(false);
+      }, 2000);
+    }
   };
 
+    // Fetch dashboard data from backend
+  useEffect(() => {
+      fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+      try {
+        const result = await motherService.getDashboard();
+        if (result.success) {
+          setDashboardData(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+  };
+
+  // Calculate pregnancy info
+  const getTrimester = (weeks) => {
+      if (!weeks) return { trimester: 'N/A', weekText: 'Week ? of 40' };
+      const trimester = weeks <= 13 ? '1st Trimester' : weeks <= 26 ? '2nd Trimester' : '3rd Trimester';
+      return { trimester, weekText: `Week ${weeks} of 40` };
+  };
+
+  const getBabySize = (weeks) => {
+      if (!weeks) return 'your little one';
+      if (weeks <= 4) return 'a poppy seed';
+      if (weeks <= 8) return 'a raspberry';
+      if (weeks <= 12) return 'a lime';
+      if (weeks <= 16) return 'an avocado';
+      if (weeks <= 20) return 'a banana';
+      if (weeks <= 24) return 'an ear of corn';
+      if (weeks <= 28) return 'a large eggplant';
+      if (weeks <= 32) return 'a squash';
+      if (weeks <= 36) return 'a honeydew melon';
+      if (weeks <= 40) return 'a small pumpkin';
+      return 'ready to meet the world';
+  };
+
+  const getDaysUntilDue = (edd) => {
+      if (!edd) return 0;
+      const today = new Date();
+      const dueDate = new Date(edd);
+      const diffTime = dueDate - today;
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Calculate from dashboard data
+  const weeks = dashboardData?.mother?.gestational_weeks || 
+              (dashboardData?.mother?.lmp_date ? calculatePregnancyWeek(dashboardData.mother.lmp_date) : 0);
+  const { trimester, weekText } = getTrimester(weeks);
+  const babySize = getBabySize(weeks);
+  const daysUntilDue = getDaysUntilDue(dashboardData?.mother?.expected_delivery_date || profileData.expectedDeliveryDate);
+  // This line is REMOVED from top, now calculated dynamically:
+  const pregnancyProgress = weeks ? Math.round((weeks / 40) * 100) : 0;
+  const isHighRisk = dashboardData?.mother?.is_high_risk || false;
+
   const handleSkipProfile = () => {
-    setShowProfileModal(false);
+      setShowProfileModal(false);
   };
 
   const handleDownloadReport = () => {
@@ -133,22 +232,23 @@ All values within normal range.
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center">
               <div>
                 <Badge className="bg-white/20 text-white hover:bg-white/30 border-none mb-4 px-3 py-1">
-                  <span className="mr-1">❤️</span> 3rd Trimester
+                    <span className="mr-1">❤️</span> {trimester}
                 </Badge>
-                <h2 className="text-4xl font-bold mb-2">Week 28 of 40</h2>
+                <h2 className="text-4xl font-bold mb-2">{weekText}</h2>
                 <p className="text-pink-100 max-w-sm mb-6 leading-relaxed">
-                  Your baby is the size of a large eggplant. 84 days until your journey begins!
+                    Your baby is the size of {babySize}. {daysUntilDue > 0 ? `${daysUntilDue} days until your journey begins!` : 'Almost there!'}
                 </p>
                 <div className="flex gap-8">
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">Status</p>
                     <p className="font-semibold flex items-center">
-                      <span className="h-2 w-2 rounded-full bg-green-300 mr-2"></span> Low Risk
+                      <span className={`h-2 w-2 rounded-full mr-2 ${isHighRisk ? 'bg-red-300' : 'bg-green-300'}`}></span>
+{isHighRisk ? 'High Risk' : 'Low Risk'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">EDD</p>
-                    <p className="font-semibold">{formatDate(profileData.expectedDeliveryDate || '2025-02-14', 'long')}</p>
+                    <p className="font-semibold">{formatDate(dashboardData?.mother?.expected_delivery_date || profileData.expectedDeliveryDate || 'TBD', 'long')}</p>
                   </div>
                 </div>
               </div>
@@ -169,7 +269,6 @@ All values within normal range.
             </div>
           </div>
 
-          {/* Profile Completion Reminder Banner - only shows if profile not completed and not first visit */}
           {!profileCompleted && !showProfileModal && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -297,7 +396,6 @@ All values within normal range.
         </div>
 
         <div className="space-y-6">
-          
           <div>
             <h3 className="text-lg font-bold text-pink-600 flex items-center mb-4">
               <span className="text-xl mr-2">📍</span> Quick Actions
@@ -426,23 +524,27 @@ All values within normal range.
                   )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Full Name */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                       <input type="text" name="fullName" value={profileData.fullName} onChange={handleProfileInputChange}
                         placeholder="e.g., Elena Richardson"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
+                    {/* NIC */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">NIC Number *</label>
                       <input type="text" name="nic" value={profileData.nic} onChange={handleProfileInputChange}
                         placeholder="e.g., 987654321V"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
+                    {/* DOB */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
                       <input type="date" name="dob" value={profileData.dob} onChange={handleProfileInputChange}
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
+                    {/* Blood Group */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
                       <select name="bloodGroup" value={profileData.bloodGroup} onChange={handleProfileInputChange}
@@ -454,35 +556,105 @@ All values within normal range.
                         <option value="AB+">AB+</option><option value="AB-">AB-</option>
                       </select>
                     </div>
+                    {/* Pregnancy Status */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Status</label>
                       <select name="pregnancyStatus" value={profileData.pregnancyStatus} onChange={handleProfileInputChange}
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
                         <option value="">Select Status</option>
-                        <option value="Normal">Normal</option>
-                        <option value="High Risk">High Risk</option>
-                        <option value="Multiple Pregnancy">Multiple Pregnancy</option>
+                        <option value="pregnant">Pregnant</option>
+                        <option value="postnatal">Postnatal</option>
+                        <option value="completed">Completed</option>
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Last Menstrual Period Date</label>
+                      <input type="date" name="lmpDate" value={profileData.lmpDate} onChange={handleProfileInputChange}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Gestational Weeks</label>
+                      <input type="number" name="gestationalWeeks" value={profileData.gestationalWeeks} onChange={handleProfileInputChange}
+                        placeholder="e.g., 28" min="1" max="42"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    {/* EDD */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date *</label>
                       <input type="date" name="expectedDeliveryDate" value={profileData.expectedDeliveryDate} onChange={handleProfileInputChange}
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
+                    {/* Weight */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Current Weight (kg) *</label>
                       <input type="number" name="currentWeight" value={profileData.currentWeight} onChange={handleProfileInputChange}
                         placeholder="e.g., 65" step="0.1"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
+                    {/* Height */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm) *</label>
+                      <input type="number" name="height" value={profileData.height} onChange={handleProfileInputChange}
+                        placeholder="e.g., 160" step="0.1"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    {/* Emergency Contact */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact *</label>
                       <input type="tel" name="emergencyContact" value={profileData.emergencyContact} onChange={handleProfileInputChange}
-                        placeholder="e.g., +94 77 123 4567"
+                        placeholder="e.g., 0771234567"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    {/* District */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">District *</label>
+                      <select name="district" value={profileData.district} onChange={handleProfileInputChange}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                        <option value="">Select District</option>
+                        <option value="Colombo">Colombo</option>
+                        <option value="Gampaha">Gampaha</option>
+                        <option value="Kalutara">Kalutara</option>
+                        <option value="Kandy">Kandy</option>
+                        <option value="Matale">Matale</option>
+                        <option value="Nuwara Eliya">Nuwara Eliya</option>
+                        <option value="Galle">Galle</option>
+                        <option value="Matara">Matara</option>
+                        <option value="Hambantota">Hambantota</option>
+                        <option value="Jaffna">Jaffna</option>
+                        <option value="Kilinochchi">Kilinochchi</option>
+                        <option value="Mannar">Mannar</option>
+                        <option value="Vavuniya">Vavuniya</option>
+                        <option value="Mullaitivu">Mullaitivu</option>
+                        <option value="Batticaloa">Batticaloa</option>
+                        <option value="Ampara">Ampara</option>
+                        <option value="Trincomalee">Trincomalee</option>
+                        <option value="Kurunegala">Kurunegala</option>
+                        <option value="Puttalam">Puttalam</option>
+                        <option value="Anuradhapura">Anuradhapura</option>
+                        <option value="Polonnaruwa">Polonnaruwa</option>
+                        <option value="Badulla">Badulla</option>
+                        <option value="Moneragala">Moneragala</option>
+                        <option value="Ratnapura">Ratnapura</option>
+                        <option value="Kegalle">Kegalle</option>
+                      </select>
+                    </div>
+                    {/* Husband Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Husband Name</label>
+                      <input type="text" name="husbandName" value={profileData.husbandName} onChange={handleProfileInputChange}
+                        placeholder="e.g., Saman Fernando"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    </div>
+                    {/* Husband Contact */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Husband Contact</label>
+                      <input type="tel" name="husbandContact" value={profileData.husbandContact} onChange={handleProfileInputChange}
+                        placeholder="e.g., 0777000100"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
                   </div>
 
+                  {/* Address */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Home Address *</label>
                     <textarea name="address" value={profileData.address} onChange={handleProfileInputChange} rows="2"
@@ -490,6 +662,7 @@ All values within normal range.
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"></textarea>
                   </div>
 
+                  {/* Buttons */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <button type="button" onClick={handleSkipProfile} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
                       Skip for now

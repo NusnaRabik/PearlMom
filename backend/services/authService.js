@@ -2,31 +2,24 @@ import api from './api';
 
 const authService = {
   register: async (userData) => {
-    console.log('Sending registration data:', userData);
-    
     const response = await api.post('/auth/register', {
       fullName: userData.fullName,
-      name: userData.fullName,
       mobile: userData.mobile,
-      phone_no: userData.mobile,
       email: userData.email,
       password: userData.password,
-      role: userData.role,
-      profile_completed: false
+      role: userData.role
     });
-    
-    console.log('Registration response:', response.data);
     return response.data;
   },
+
+  // Add this to your authService.js
+    loginByName: async (fullName, password, role) => {
+    const response = await api.post('/auth/login-by-name', { fullName, password, role });
+    return response.data;
+    },
 
   login: async (email, password, role) => {
     const response = await api.post('/auth/login', { email, password, role });
-    return response.data;
-  },
-
-  // Add this new method for login by full name
-  loginByName: async (fullName, password, role) => {
-    const response = await api.post('/auth/login-by-name', { fullName, password, role });
     return response.data;
   },
 
@@ -49,7 +42,6 @@ const authService = {
     localStorage.removeItem('pearlmom_token');
     localStorage.removeItem('pearlmom_user');
     localStorage.removeItem('pearlmom_new_registration');
-    localStorage.removeItem('pearlmom_provider_new_registration');
   }
 };
 

@@ -31,7 +31,10 @@ const Midwife = sequelize.define('Midwife', {
     defaultValue: false
   }
 }, {
-  tableName: 'midwives'
+  tableName: 'midwives',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Midwife;

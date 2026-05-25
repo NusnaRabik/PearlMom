@@ -60,15 +60,22 @@ const RegisterPage = () => {
 
     setIsSubmitting(true);
 
-    const result = await handleRegister(
-      { ...formData, role: joinAs.toLowerCase() },
-      register
-    );
+    // Prepare the registration data
+    const registrationData = {
+      fullName: formData.fullName.trim(),
+      mobile: formData.mobile.trim(),
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+      role: joinAs.toLowerCase()
+    };
+
+    console.log('Submitting registration:', registrationData);
+    const result = await handleRegister(registrationData, register);
 
     setIsSubmitting(false);
 
     if (result.success) {
-      // SET NEW REGISTRATION FLAG based on role
+      // Set registration flags based on role
       if (joinAs.toLowerCase() === 'mother') {
         localStorage.setItem('pearlmom_new_registration', 'true');
         localStorage.removeItem('pearlmom_mother_profile_complete');
@@ -81,14 +88,16 @@ const RegisterPage = () => {
       setTimeout(() => {
         if (result.role === 'mother') {
           navigate('/mother/dashboard');
-        } else if (result.role === 'provider') {
+        } else if (result.role === 'midwife' || result.role === 'doctor') {
           navigate('/provider/dashboard');
         } else if (result.role === 'admin') {
           navigate('/admin/dashboard');
+        } else {
+          navigate('/login');
         }
       }, 1500);
     } else {
-      setFormError(result.message || 'Registration failed');
+      setFormError(result.message || 'Registration failed. Please try again.');
     }
   };
 
@@ -159,7 +168,9 @@ const RegisterPage = () => {
                   </div>
 
                   {formError && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{formError}</div>
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                      {formError}
+                    </div>
                   )}
 
                   <form onSubmit={handleSubmit} className="space-y-10">
@@ -192,7 +203,7 @@ const RegisterPage = () => {
                             <>
                               <div className="flex gap-1 mt-3 mb-1.5 px-1">
                                 {[1, 2, 3, 4, 5].map((level) => (
-                                  <div key={level} className={`h-1 flex-1 rounded-full ${passwordStrength.width >= level ? passwordStrength.color : 'bg-slate-100'}`}></div>
+                                  <div key={level} className={`h-1 flex-1 rounded-full ${level <= parseInt(passwordStrength.width.split('-')[1]) ? passwordStrength.color : 'bg-slate-100'}`}></div>
                                 ))}
                               </div>
                               <p className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${passwordStrength.textColor}`}>Strength: {passwordStrength.label}</p>

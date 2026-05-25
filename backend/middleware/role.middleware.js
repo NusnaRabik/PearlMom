@@ -2,7 +2,7 @@
  * Role-Based Access Control (RBAC) Middleware
  * Checks if the authenticated user has the required role(s)
  * 
- * @param {...string} roles - Allowed roles
+ * @param {...string} roles - Allowed roles (e.g., 'admin', 'midwife', 'mother')
  */
 const authorize = (...roles) => {
   return (req, res, next) => {

@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Import configurations
-const { connectDB, sequelize } = require('./config/db');
+const { connectDB } = require('./config/db');
 const corsOptions = require('./config/corsConfig');
 
 // Import middleware
@@ -54,14 +54,13 @@ app.use('/api/providers', providerRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Health check route
+// ✅ Health check route - PUT THIS HERE
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Pearl MOM API is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    database: sequelize.authenticate() ? 'connected' : 'disconnected'
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -80,21 +79,20 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
+process.on('unhandledRejection', (err) => {
   console.error(`❌ Unhandled Rejection: ${err.message}`);
-  // Close server & exit process
-  server.close(() => process.exit(1));
+  console.error(err.stack);
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   console.error(`❌ Uncaught Exception: ${err.message}`);
-  server.close(() => process.exit(1));
+  console.error(err.stack);
 });
 
 module.exports = app;

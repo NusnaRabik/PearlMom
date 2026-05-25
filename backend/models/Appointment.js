@@ -30,9 +30,17 @@ const Appointment = sequelize.define('Appointment', {
   reminder_sent: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  reminder_sent_at: DataTypes.DATE,
+  is_deleted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
-  tableName: 'appointments'
+  tableName: 'appointments',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Appointment;

@@ -22,6 +22,7 @@ const Mother = sequelize.define('Mother', {
   dob: DataTypes.DATEONLY,
   address: DataTypes.TEXT,
   district: DataTypes.STRING(100),
+  gs_division: DataTypes.STRING(100),
   blood_group: DataTypes.STRING(5),
   pregnancy_status: {
     type: DataTypes.ENUM('pregnant', 'postnatal', 'completed'),
@@ -31,6 +32,14 @@ const Mother = sequelize.define('Mother', {
   expected_delivery_date: DataTypes.DATEONLY,
   current_weight: DataTypes.DECIMAL(5,2),
   height: DataTypes.DECIMAL(5,2),
+  gravida: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1
+  },
+  para: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
   allergies: DataTypes.TEXT,
   chronic_diseases: DataTypes.TEXT,
   emergency_contact_name: DataTypes.STRING(100),
@@ -49,7 +58,10 @@ const Mother = sequelize.define('Mother', {
     defaultValue: false
   }
 }, {
-  tableName: 'mothers'
+  tableName: 'mothers',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Mother;
