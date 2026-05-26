@@ -40,11 +40,8 @@ const Mother = sequelize.define('Mother', {
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
-  allergies: DataTypes.TEXT,
-  chronic_diseases: DataTypes.TEXT,
   emergency_contact_name: DataTypes.STRING(100),
   emergency_contact_phone: DataTypes.STRING(15),
-  emergency_relationship: DataTypes.STRING(50),
   husband_name: DataTypes.STRING(100),
   husband_contact: DataTypes.STRING(15),
   assigned_midwife_id: DataTypes.INTEGER,

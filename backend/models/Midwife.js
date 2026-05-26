@@ -10,18 +10,45 @@ const Midwife = sequelize.define('Midwife', {
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    unique: true
+    unique: true,
+    references: {
+      model: 'users',
+      key: 'user_id'
+    }
   },
   employee_id: {
     type: DataTypes.STRING(20),
     allowNull: false,
     unique: true
   },
-  contact_number: DataTypes.STRING(15),
-  assigned_area: DataTypes.STRING(100),
-  district: DataTypes.STRING(100),
-  qualification: DataTypes.STRING(200),
-  years_of_experience: DataTypes.INTEGER,
+  full_name: {
+    type: DataTypes.STRING(200),
+    allowNull: false
+  },
+  contact_number: {
+    type: DataTypes.STRING(15),
+    allowNull: true
+  },
+  assigned_area: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  district: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  qualification: {
+    type: DataTypes.STRING(200),
+    allowNull: true
+  },
+  years_of_experience: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  profile_completed: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

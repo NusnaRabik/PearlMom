@@ -1,6 +1,8 @@
 const { Sequelize } = require('sequelize');
+const mysql2 = require('mysql2');
 require('dotenv').config();
 
+// Create Sequelize instance
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'pearl_mom_db',
   process.env.DB_USER || 'root',
@@ -9,7 +11,8 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
-    logging: false,  // ✅ HERE - Turn off SQL query logs
+    dialectModule: mysql2,
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
     pool: {
       max: 10,
       min: 0,
@@ -17,25 +20,35 @@ const sequelize = new Sequelize(
       idle: 10000
     },
     define: {
+      freezeTableName: true,
       timestamps: true,
-      freezeTableName: true
-    },
-    timezone: '+05:30'
+      underscored: true
+    }
   }
 );
 
+// Database connection and sync - FIXED VERSION
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log('✅ MySQL Database connected successfully.');
+    console.log('✅ MySQL Database connected successfully');
     
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('✅ Database models synchronized.');
-    }
+    // ✅ SAFE SYNC - NO { alter: true }
+    // This only creates tables if they don't exist
+    // It will NOT create duplicate indexes
+    await sequelize.sync();
+    console.log('✅ Database schema synchronized');
+    
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
+    // Don't exit the process in production
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   }
 };
 
-module.exports = { sequelize, connectDB };
+module.exports = {
+  sequelize,
+  connectDB
+};

@@ -4,10 +4,20 @@ const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
 const providerController = require('../controllers/provider.controller');
 
-router.get('/dashboard', protect, authorize('midwife', 'doctor'), providerController.getDashboard);
-router.get('/profile', protect, authorize('midwife', 'doctor'), providerController.getMyProfile);
-router.put('/profile', protect, authorize('midwife', 'doctor'), providerController.updateProfile);
-router.get('/mothers', protect, authorize('midwife', 'doctor'), providerController.getMyMothers);
-router.post('/clinic-visit', protect, authorize('midwife', 'doctor'), providerController.recordClinicVisit);
+// All routes are protected and require midwife/doctor role
+router.use(protect);
+router.use(authorize('midwife', 'doctor'));
+
+// Dashboard and profile routes
+router.get('/dashboard', providerController.getDashboard);
+router.get('/profile', providerController.getMyProfile);
+router.put('/profile', providerController.updateProfile);
+
+// Mother management routes
+router.get('/mothers', providerController.getMyMothers);
+router.get('/mothers/:motherId', providerController.getMotherDetails);
+
+// Clinical routes
+router.post('/clinic-visit', providerController.recordClinicVisit);
 
 module.exports = router;

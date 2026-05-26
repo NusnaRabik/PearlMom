@@ -6,6 +6,7 @@ const generateMotherID = require('../utils/generateMotherID');
 const { success, error } = require('../utils/response');
 const { sequelize } = require('../config/db');
 const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
 
 // Generate Access Token
 const generateAccessToken = (user_id, role) => {
@@ -32,7 +33,7 @@ const generateRefreshToken = async (user_id) => {
   return refreshToken;
 };
 
-// Register - FIXED with transaction and proper error handling
+// Register
 const register = async (req, res) => {
   const transaction = await sequelize.transaction();
   
@@ -66,19 +67,22 @@ const register = async (req, res) => {
       });
     }
 
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Create user
     const user = await User.create({
       phone_no: mobile,
       email,
       name: fullName,
-      password_hash: password,
+      password_hash: hashedPassword,
       role: backendRole,
-      profile_completed: false
+      profile_completed: false,
+      is_active: true
     }, { transaction });
 
     // Create role-specific profile
     if (backendRole === 'mother') {
-      // Generate unique mother code with retry
       let motherCode;
       let retries = 3;
       let created = false;
@@ -103,27 +107,32 @@ const register = async (req, res) => {
     }
 
     if (backendRole === 'midwife') {
+      // Generate a unique employee_id
+      const timestamp = Date.now().toString().slice(-6);
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      const employeeId = `PHM-${timestamp}${random}`;
+      
       await Midwife.create({
         user_id: user.user_id,
-        employee_id: `PHM-TEMP-${user.user_id}`,
-        contact_number: mobile
+        employee_id: employeeId,
+        full_name: fullName,
+        contact_number: mobile,
+        is_active: true,
+        is_deleted: false,
+        profile_completed: false
       }, { transaction });
     }
 
-    // Commit transaction
     await transaction.commit();
 
-    // Generate tokens
     const accessToken = generateAccessToken(user.user_id, backendRole);
     const refreshToken = await generateRefreshToken(user.user_id);
 
-    // Update last login
     await User.update(
       { last_login: new Date() },
       { where: { user_id: user.user_id } }
     );
 
-    // Prepare response
     const responseData = {
       accessToken,
       refreshToken,
@@ -137,14 +146,19 @@ const register = async (req, res) => {
       }
     };
 
-    // Add mother code to response if applicable
     if (backendRole === 'mother') {
-      const mother = await Mother.findOne({ 
-        where: { user_id: user.user_id } 
-      });
+      const mother = await Mother.findOne({ where: { user_id: user.user_id } });
       if (mother) {
         responseData.user.mother_code = mother.mother_code;
         responseData.user.mother_id = mother.mother_id;
+      }
+    }
+
+    if (backendRole === 'midwife') {
+      const midwife = await Midwife.findOne({ where: { user_id: user.user_id } });
+      if (midwife) {
+        responseData.user.midwife_id = midwife.midwife_id;
+        responseData.user.employee_id = midwife.employee_id;
       }
     }
 
@@ -156,38 +170,78 @@ const register = async (req, res) => {
 
   } catch (error) {
     await transaction.rollback();
-    console.error('Registration error details:', error);
-    
-    // Handle duplicate key error specifically
-    if (error.name === 'SequelizeUniqueConstraintError' || error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({
-        success: false,
-        message: 'Registration failed due to duplicate entry. Please try again.'
-      });
-    }
+    console.error('Registration error:', error);
     
     return res.status(500).json({
       success: false,
-      message: 'Registration failed. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Registration failed. Please try again.'
     });
   }
 };
 
-// Login with email
-const login = async (req, res) => {
+// Login by Full Name (for mother AND provider)
+const loginByName = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { fullName, password, role } = req.body;
+    
+    console.log('Login attempt:', { fullName, role, password: '***' });
 
-    const user = await User.findOne({ where: { email } });
+    let user = null;
+    let foundIn = null;
+    
+    // FIRST: Try to find by full name in mothers table
+    const mother = await Mother.findOne({ 
+      where: { full_name: fullName }
+    });
+    
+    if (mother) {
+      console.log('Found in mothers table:', mother.mother_id);
+      user = await User.findOne({ where: { user_id: mother.user_id } });
+      foundIn = 'mothers';
+    }
+    
+    // SECOND: Try to find by full name in midwives table
+    if (!user) {
+      const midwife = await Midwife.findOne({ 
+        where: { full_name: fullName }
+      });
+      
+      if (midwife) {
+        console.log('Found in midwives table:', midwife.midwife_id);
+        user = await User.findOne({ where: { user_id: midwife.user_id } });
+        foundIn = 'midwives';
+      }
+    }
+    
+    // THIRD: Try users table by name
+    if (!user) {
+      user = await User.findOne({ where: { name: fullName } });
+      if (user) {
+        console.log('Found in users table by name');
+        foundIn = 'users';
+      }
+    }
+    
+    // FOURTH: Try by email
+    if (!user) {
+      user = await User.findOne({ where: { email: fullName } });
+      if (user) {
+        console.log('Found in users table by email');
+        foundIn = 'users_email';
+      }
+    }
 
     if (!user) {
+      console.log('User not found for:', fullName);
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid full name or password'
       });
     }
 
+    console.log('User found:', { user_id: user.user_id, role: user.role, foundIn });
+
+    // Check if user is active
     if (!user.is_active) {
       return res.status(401).json({
         success: false,
@@ -199,6 +253,112 @@ const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Account not found'
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    console.log('Password valid:', isPasswordValid);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid full name or password'
+      });
+    }
+
+    // Check role match if role was specified
+    if (role && role !== 'provider' && user.role !== role) {
+      return res.status(403).json({
+        success: false,
+        message: `This account is not registered as a ${role}`
+      });
+    }
+
+    const accessToken = generateAccessToken(user.user_id, user.role);
+    const refreshToken = await generateRefreshToken(user.user_id);
+
+    await User.update(
+      { last_login: new Date() },
+      { where: { user_id: user.user_id } }
+    );
+
+    const userData = {
+      user_id: user.user_id,
+      phone_no: user.phone_no,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      profile_completed: user.profile_completed,
+      profile_picture_url: user.profile_picture_url
+    };
+
+    // Add mother data if role is mother
+    if (user.role === 'mother') {
+      const mother = await Mother.findOne({ where: { user_id: user.user_id } });
+      if (mother) {
+        userData.mother_id = mother.mother_id;
+        userData.mother_code = mother.mother_code;
+        userData.pregnancy_status = mother.pregnancy_status;
+        userData.is_high_risk = mother.is_high_risk;
+        userData.expected_delivery_date = mother.expected_delivery_date;
+        userData.full_name = mother.full_name;
+        userData.blood_group = mother.blood_group;
+        userData.dob = mother.dob;
+        userData.address = mother.address;
+        userData.district = mother.district;
+        userData.current_weight = mother.current_weight;
+        userData.height = mother.height;
+      }
+    }
+
+    // Add midwife data if role is midwife
+    if (user.role === 'midwife') {
+      const midwife = await Midwife.findOne({ where: { user_id: user.user_id } });
+      if (midwife) {
+        userData.midwife_id = midwife.midwife_id;
+        userData.employee_id = midwife.employee_id;
+        userData.assigned_area = midwife.assigned_area;
+        userData.full_name = midwife.full_name;
+        userData.contact_number = midwife.contact_number;
+        userData.district = midwife.district;
+        userData.qualification = midwife.qualification;
+        userData.years_of_experience = midwife.years_of_experience;
+      }
+    }
+
+    console.log('Login successful for:', userData.name);
+
+    return res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        accessToken,
+        refreshToken,
+        user: userData
+      }
+    });
+
+  } catch (error) {
+    console.error('Login by name error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Login failed. Please try again.'
+    });
+  }
+};
+
+// Login with email (for backward compatibility)
+const login = async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
+
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
       });
     }
 
@@ -241,7 +401,6 @@ const login = async (req, res) => {
         userData.mother_id = mother.mother_id;
         userData.mother_code = mother.mother_code;
         userData.pregnancy_status = mother.pregnancy_status;
-        userData.is_high_risk = mother.is_high_risk;
       }
     }
 
@@ -266,131 +425,6 @@ const login = async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Login failed. Please try again.'
-    });
-  }
-};
-
-// Login by Full Name (for mother login)
-const loginByName = async (req, res) => {
-  try {
-    const { fullName, password, role } = req.body;
-
-    let user = null;
-    
-    // If role is mother, first try to find by full name in mothers table
-    if (role === 'mother') {
-      const mother = await Mother.findOne({ 
-        where: { full_name: fullName }
-      });
-      
-      if (mother) {
-        user = await User.findOne({ where: { user_id: mother.user_id } });
-      }
-    } 
-    
-    // If not found in mothers or role is not mother, try users table by name
-    if (!user) {
-      user = await User.findOne({ where: { name: fullName } });
-    }
-    
-    // If still not found, try by email (backward compatibility)
-    if (!user) {
-      user = await User.findOne({ where: { email: fullName } });
-    }
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid full name or password'
-      });
-    }
-
-    if (!user.is_active) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated.'
-      });
-    }
-
-    if (user.is_deleted) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account not found'
-      });
-    }
-
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid full name or password'
-      });
-    }
-
-    if (role && user.role !== role) {
-      return res.status(403).json({
-        success: false,
-        message: `This account is not registered as a ${role}`
-      });
-    }
-
-    const accessToken = generateAccessToken(user.user_id, user.role);
-    const refreshToken = await generateRefreshToken(user.user_id);
-
-    await User.update(
-      { last_login: new Date() },
-      { where: { user_id: user.user_id } }
-    );
-
-    const userData = {
-      user_id: user.user_id,
-      phone_no: user.phone_no,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      profile_completed: user.profile_completed,
-      profile_picture_url: user.profile_picture_url
-    };
-
-    if (user.role === 'mother') {
-      const mother = await Mother.findOne({ where: { user_id: user.user_id } });
-      if (mother) {
-        userData.mother_id = mother.mother_id;
-        userData.mother_code = mother.mother_code;
-        userData.pregnancy_status = mother.pregnancy_status;
-        userData.is_high_risk = mother.is_high_risk;
-        userData.expected_delivery_date = mother.expected_delivery_date;
-        userData.full_name = mother.full_name;
-        userData.blood_group = mother.blood_group;
-      } else {
-        console.warn(`User ${user.user_id} has role 'mother' but no mother profile found`);
-      }
-    }
-
-    if (user.role === 'midwife') {
-      const midwife = await Midwife.findOne({ where: { user_id: user.user_id } });
-      if (midwife) {
-        userData.midwife_id = midwife.midwife_id;
-        userData.employee_id = midwife.employee_id;
-        userData.assigned_area = midwife.assigned_area;
-      }
-    }
-
-    return res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        accessToken,
-        refreshToken,
-        user: userData
-      }
-    });
-
-  } catch (error) {
-    console.error('Login by name error:', error);
     return res.status(500).json({
       success: false,
       message: 'Login failed. Please try again.'
@@ -616,10 +650,9 @@ const completeProfile = async (req, res) => {
     }
 
     if (req.user.role === 'midwife') {
-      const { employee_id, qualification, years_of_experience, assigned_area, district } = req.body;
+      const { qualification, years_of_experience, assigned_area, district } = req.body;
       
       const updateData = {};
-      if (employee_id) updateData.employee_id = employee_id;
       if (qualification) updateData.qualification = qualification;
       if (years_of_experience) updateData.years_of_experience = parseInt(years_of_experience);
       if (assigned_area) updateData.assigned_area = assigned_area;
@@ -683,7 +716,7 @@ const logout = async (req, res) => {
 module.exports = {
   register,
   login,
-  loginByName, // Added this new function
+  loginByName,
   refreshAccessToken,
   getMe,
   checkProfileStatus,

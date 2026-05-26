@@ -2,21 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Droplet, Apple, Download, X, CheckCircle2, User, Heart } from 'lucide-react';
-import { useMother } from '../../hooks/useMother';
+import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Droplet, Apple, Download, X, CheckCircle2, User, Heart, AlertCircle } from 'lucide-react';
 import { useNotificationsHook } from '../../hooks/useNotifications';
 import { formatDate, getRelativeTime } from '../../utils/formatDate';
 import authService from '../../services/authService';
-import { calculatePregnancyWeek } from '../../utils/calculateWeeks';
+import { calculateWeeksFromEDD, calculateWeeksFromLMP } from '../../utils/calculateWeeks';
 import motherService from '../../services/motherService';
+import { useAuth } from '../../context/AuthContext';
 
 const MotherDashboard = () => {
   const navigate = useNavigate();
-  // Real data from database
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const { motherData, appointments, vaccinations, loading: motherLoading } = useMother('MTH-2024-001');
+  const [error, setError] = useState(null);
+  const [weeks, setWeeks] = useState(0);
+  const [pregnancyProgress, setPregnancyProgress] = useState(0);
   const { notifications, unreadCount, markAllAsRead } = useNotificationsHook();
 
   // Profile completion modal state
@@ -38,11 +39,11 @@ const MotherDashboard = () => {
     husbandName: '',
     husbandContact: '',
     emergencyContact: ''
-});
+  });
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileError, setProfileError] = useState('');
 
-  // Check if profile needs to be completed - ONLY for new registrations
+  // Check if profile needs to be completed
   useEffect(() => {
     const isNewRegistration = localStorage.getItem('pearlmom_new_registration');
     const isProfileComplete = localStorage.getItem('pearlmom_mother_profile_complete');
@@ -56,6 +57,55 @@ const MotherDashboard = () => {
       }
     }
   }, []);
+
+  // Fetch dashboard data from backend
+  useEffect(() => {
+    if (user && user.role === 'mother') {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Fetching dashboard data...');
+      const result = await motherService.getDashboard();
+      console.log('Dashboard API response:', result);
+      
+      if (result.success) {
+        setDashboardData(result.data);
+        
+        // Extract mother data from response
+        const mother = result.data?.mother || result.data;
+        
+        // Calculate weeks from database data
+        let calculatedWeeks = 0;
+        
+        if (mother?.weeks) {
+          calculatedWeeks = mother.weeks;
+        } else if (mother?.gestational_weeks) {
+          calculatedWeeks = parseInt(mother.gestational_weeks);
+        } else if (mother?.lmp_date) {
+          calculatedWeeks = calculateWeeksFromLMP(mother.lmp_date);
+        } else if (mother?.expected_delivery_date) {
+          calculatedWeeks = calculateWeeksFromEDD(mother.expected_delivery_date);
+        }
+        
+        console.log('Calculated weeks:', calculatedWeeks);
+        setWeeks(calculatedWeeks);
+        setPregnancyProgress(calculatedWeeks ? Math.round((calculatedWeeks / 40) * 100) : 0);
+      } else {
+        setError(result.message || 'Failed to load dashboard data');
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+      setError(error.response?.data?.message || 'Could not load dashboard. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleProfileInputChange = (e) => {
     const { name, value } = e.target;
@@ -77,21 +127,21 @@ const MotherDashboard = () => {
 
     try {
       const result = await authService.completeProfile({
-          fullName: profileData.fullName,
-          nic: profileData.nic,
-          dob: profileData.dob,
-          address: profileData.address,
-          district: profileData.district,
-          bloodGroup: profileData.bloodGroup,
-          pregnancyStatus: profileData.pregnancyStatus || 'pregnant',
-          lmpDate: profileData.lmpDate,
-          gestationalWeeks: profileData.gestationalWeeks,
-          expectedDeliveryDate: profileData.expectedDeliveryDate,
-          currentWeight: profileData.currentWeight,
-          height: profileData.height,
-          husbandName: profileData.husbandName,
-          husbandContact: profileData.husbandContact,
-          emergencyContact: profileData.emergencyContact
+        fullName: profileData.fullName,
+        nic: profileData.nic,
+        dob: profileData.dob,
+        address: profileData.address,
+        district: profileData.district,
+        bloodGroup: profileData.bloodGroup,
+        pregnancyStatus: profileData.pregnancyStatus || 'pregnant',
+        lmpDate: profileData.lmpDate,
+        gestationalWeeks: profileData.gestationalWeeks,
+        expectedDeliveryDate: profileData.expectedDeliveryDate,
+        currentWeight: profileData.currentWeight,
+        height: profileData.height,
+        husbandName: profileData.husbandName,
+        husbandContact: profileData.husbandContact,
+        emergencyContact: profileData.emergencyContact
       });
 
       if (result.success) {
@@ -100,7 +150,7 @@ const MotherDashboard = () => {
         localStorage.setItem('pearlmom_mother_profile_complete', 'true');
         localStorage.removeItem('pearlmom_new_registration');
 
-        fetchDashboardData();
+        await fetchDashboardData();
         
         setProfileSuccess(true);
         setTimeout(() => {
@@ -113,80 +163,42 @@ const MotherDashboard = () => {
       }
     } catch (error) {
       console.error('Profile save error:', error);
-      const profileInfo = { ...profileData, updatedAt: new Date().toISOString() };
-      localStorage.setItem('pearlmom_mother_profile', JSON.stringify(profileInfo));
-      localStorage.setItem('pearlmom_mother_profile_complete', 'true');
-      localStorage.removeItem('pearlmom_new_registration');
-      
-      setProfileSuccess(true);
-      setTimeout(() => {
-        setShowProfileModal(false);
-        setProfileCompleted(true);
-        setProfileSuccess(false);
-      }, 2000);
+      setProfileError('An error occurred while saving your profile');
     }
   };
 
-    // Fetch dashboard data from backend
-  useEffect(() => {
-      fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-      try {
-        const result = await motherService.getDashboard();
-        if (result.success) {
-          setDashboardData(result.data);
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-  };
-
   // Calculate pregnancy info
-  const getTrimester = (weeks) => {
-      if (!weeks) return { trimester: 'N/A', weekText: 'Week ? of 40' };
-      const trimester = weeks <= 13 ? '1st Trimester' : weeks <= 26 ? '2nd Trimester' : '3rd Trimester';
-      return { trimester, weekText: `Week ${weeks} of 40` };
+  const getTrimester = (weeksValue) => {
+    if (!weeksValue || weeksValue === 0) return { trimester: 'N/A', weekText: 'Week ? of 40' };
+    const trimester = weeksValue <= 13 ? '1st Trimester' : weeksValue <= 26 ? '2nd Trimester' : '3rd Trimester';
+    return { trimester, weekText: `Week ${weeksValue} of 40` };
   };
 
-  const getBabySize = (weeks) => {
-      if (!weeks) return 'your little one';
-      if (weeks <= 4) return 'a poppy seed';
-      if (weeks <= 8) return 'a raspberry';
-      if (weeks <= 12) return 'a lime';
-      if (weeks <= 16) return 'an avocado';
-      if (weeks <= 20) return 'a banana';
-      if (weeks <= 24) return 'an ear of corn';
-      if (weeks <= 28) return 'a large eggplant';
-      if (weeks <= 32) return 'a squash';
-      if (weeks <= 36) return 'a honeydew melon';
-      if (weeks <= 40) return 'a small pumpkin';
-      return 'ready to meet the world';
+  const getBabySize = (weeksValue) => {
+    if (!weeksValue || weeksValue === 0) return 'your little one';
+    if (weeksValue <= 4) return 'a poppy seed';
+    if (weeksValue <= 8) return 'a raspberry';
+    if (weeksValue <= 12) return 'a lime';
+    if (weeksValue <= 16) return 'an avocado';
+    if (weeksValue <= 20) return 'a banana';
+    if (weeksValue <= 24) return 'an ear of corn';
+    if (weeksValue <= 28) return 'a large eggplant';
+    if (weeksValue <= 32) return 'a squash';
+    if (weeksValue <= 36) return 'a honeydew melon';
+    if (weeksValue <= 40) return 'a small pumpkin';
+    return 'ready to meet the world';
   };
 
   const getDaysUntilDue = (edd) => {
-      if (!edd) return 0;
-      const today = new Date();
-      const dueDate = new Date(edd);
-      const diffTime = dueDate - today;
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (!edd) return 0;
+    const today = new Date();
+    const dueDate = new Date(edd);
+    const diffTime = dueDate - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // Calculate from dashboard data
-  const weeks = dashboardData?.mother?.gestational_weeks || 
-              (dashboardData?.mother?.lmp_date ? calculatePregnancyWeek(dashboardData.mother.lmp_date) : 0);
-  const { trimester, weekText } = getTrimester(weeks);
-  const babySize = getBabySize(weeks);
-  const daysUntilDue = getDaysUntilDue(dashboardData?.mother?.expected_delivery_date || profileData.expectedDeliveryDate);
-  // This line is REMOVED from top, now calculated dynamically:
-  const pregnancyProgress = weeks ? Math.round((weeks / 40) * 100) : 0;
-  const isHighRisk = dashboardData?.mother?.is_high_risk || false;
-
   const handleSkipProfile = () => {
-      setShowProfileModal(false);
+    setShowProfileModal(false);
   };
 
   const handleDownloadReport = () => {
@@ -196,7 +208,7 @@ const MotherDashboard = () => {
     const reportContent = `
 BLOOD TEST REPORT
 =================
-Patient: ${profile.fullName || motherData?.fullName || 'Sample Mother'}
+Patient: ${profile.fullName || 'Mother'}
 Date: ${formatDate(new Date())}
 
 Results:
@@ -220,35 +232,74 @@ All values within normal range.
     window.URL.revokeObjectURL(url);
   };
 
+  const mother = dashboardData?.mother || dashboardData;
+  const { trimester, weekText } = getTrimester(weeks);
+  const babySize = getBabySize(weeks);
+  const daysUntilDue = getDaysUntilDue(mother?.expected_delivery_date);
+  const isHighRisk = mother?.is_high_risk || false;
+
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-md mx-auto">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-3">{error}</p>
+          <button 
+            onClick={fetchDashboardData}
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <div className="lg:col-span-2 space-y-6">
           
+          {/* Hero Section */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500 text-white p-8 shadow-lg">
             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full border-4 border-white/10 opacity-30"></div>
             <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full border-4 border-white/10 opacity-20"></div>
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center">
               <div>
                 <Badge className="bg-white/20 text-white hover:bg-white/30 border-none mb-4 px-3 py-1">
-                    <span className="mr-1">❤️</span> {trimester}
+                  <span className="mr-1">❤️</span> {trimester}
                 </Badge>
                 <h2 className="text-4xl font-bold mb-2">{weekText}</h2>
                 <p className="text-pink-100 max-w-sm mb-6 leading-relaxed">
-                    Your baby is the size of {babySize}. {daysUntilDue > 0 ? `${daysUntilDue} days until your journey begins!` : 'Almost there!'}
+                  Your baby is the size of {babySize}. {daysUntilDue > 0 ? `${daysUntilDue} days until your due date!` : 'Almost there!'}
                 </p>
                 <div className="flex gap-8">
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">Status</p>
                     <p className="font-semibold flex items-center">
                       <span className={`h-2 w-2 rounded-full mr-2 ${isHighRisk ? 'bg-red-300' : 'bg-green-300'}`}></span>
-{isHighRisk ? 'High Risk' : 'Low Risk'}
+                      {isHighRisk ? 'High Risk' : 'Low Risk'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">EDD</p>
-                    <p className="font-semibold">{formatDate(dashboardData?.mother?.expected_delivery_date || profileData.expectedDeliveryDate || 'TBD', 'long')}</p>
+                    <p className="font-semibold">{mother?.expected_delivery_date ? formatDate(mother.expected_delivery_date, 'long') : 'Not set'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">Gestational Weeks</p>
+                    <p className="font-semibold">{weeks > 0 ? `${weeks} weeks` : 'Not calculated'}</p>
                   </div>
                 </div>
               </div>
@@ -524,27 +575,23 @@ All values within normal range.
                   )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Full Name */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                       <input type="text" name="fullName" value={profileData.fullName} onChange={handleProfileInputChange}
                         placeholder="e.g., Elena Richardson"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* NIC */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">NIC Number *</label>
                       <input type="text" name="nic" value={profileData.nic} onChange={handleProfileInputChange}
                         placeholder="e.g., 987654321V"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* DOB */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
                       <input type="date" name="dob" value={profileData.dob} onChange={handleProfileInputChange}
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* Blood Group */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
                       <select name="bloodGroup" value={profileData.bloodGroup} onChange={handleProfileInputChange}
@@ -556,7 +603,6 @@ All values within normal range.
                         <option value="AB+">AB+</option><option value="AB-">AB-</option>
                       </select>
                     </div>
-                    {/* Pregnancy Status */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Status</label>
                       <select name="pregnancyStatus" value={profileData.pregnancyStatus} onChange={handleProfileInputChange}
@@ -578,34 +624,29 @@ All values within normal range.
                         placeholder="e.g., 28" min="1" max="42"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* EDD */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date *</label>
                       <input type="date" name="expectedDeliveryDate" value={profileData.expectedDeliveryDate} onChange={handleProfileInputChange}
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* Weight */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Current Weight (kg) *</label>
                       <input type="number" name="currentWeight" value={profileData.currentWeight} onChange={handleProfileInputChange}
                         placeholder="e.g., 65" step="0.1"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* Height */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm) *</label>
                       <input type="number" name="height" value={profileData.height} onChange={handleProfileInputChange}
                         placeholder="e.g., 160" step="0.1"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* Emergency Contact */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact *</label>
                       <input type="tel" name="emergencyContact" value={profileData.emergencyContact} onChange={handleProfileInputChange}
                         placeholder="e.g., 0771234567"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* District */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">District *</label>
                       <select name="district" value={profileData.district} onChange={handleProfileInputChange}
@@ -638,14 +679,12 @@ All values within normal range.
                         <option value="Kegalle">Kegalle</option>
                       </select>
                     </div>
-                    {/* Husband Name */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Husband Name</label>
                       <input type="text" name="husbandName" value={profileData.husbandName} onChange={handleProfileInputChange}
                         placeholder="e.g., Saman Fernando"
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
                     </div>
-                    {/* Husband Contact */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Husband Contact</label>
                       <input type="tel" name="husbandContact" value={profileData.husbandContact} onChange={handleProfileInputChange}
@@ -654,7 +693,6 @@ All values within normal range.
                     </div>
                   </div>
 
-                  {/* Address */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Home Address *</label>
                     <textarea name="address" value={profileData.address} onChange={handleProfileInputChange} rows="2"
@@ -662,7 +700,6 @@ All values within normal range.
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"></textarea>
                   </div>
 
-                  {/* Buttons */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <button type="button" onClick={handleSkipProfile} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
                       Skip for now

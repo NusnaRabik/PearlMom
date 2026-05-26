@@ -8,6 +8,20 @@ import api from './api';
 
 const motherService = {
   /**
+   * Get mother dashboard data
+   * @returns {Promise} Dashboard data
+   */
+  getDashboard: async () => {
+    try {
+      const response = await api.get('/mothers/dashboard');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+      throw error.response?.data || { message: 'Failed to fetch dashboard data' };
+    }
+  },
+
+  /**
    * Get mother profile by ID
    * @param {string} motherId - Mother ID
    * @returns {Promise} Mother data
@@ -22,13 +36,26 @@ const motherService = {
   },
 
   /**
+   * Get current mother's profile
+   * @returns {Promise} Mother profile data
+   */
+  getProfile: async () => {
+    try {
+      const response = await api.get('/mothers/profile');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch profile' };
+    }
+  },
+
+  /**
    * Get all mothers (for provider/admin)
    * @param {Object} params - Query parameters (page, limit, search, status)
    * @returns {Promise} Paginated mothers list
    */
   getAllMothers: async (params = {}) => {
     try {
-      const response = await api.get('/mothers', { params });
+      const response = await api.get('/mothers/all', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch mothers' };
@@ -47,6 +74,20 @@ const motherService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to update mother' };
+    }
+  },
+
+  /**
+   * Update current mother's profile
+   * @param {Object} data - Updated data
+   * @returns {Promise} Updated mother data
+   */
+  updateProfile: async (data) => {
+    try {
+      const response = await api.put('/mothers/profile', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update profile' };
     }
   },
 
@@ -115,7 +156,9 @@ const motherService = {
    */
   uploadLabReport: async (motherId, formData) => {
     try {
-      const response = await api.upload(`/mothers/${motherId}/lab-reports`, formData);
+      const response = await api.post(`/mothers/${motherId}/lab-reports`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to upload report' };
@@ -161,6 +204,75 @@ const motherService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch visit history' };
+    }
+  },
+
+  /**
+   * Change password
+   * @param {Object} passwordData - Old and new password
+   * @returns {Promise} Response data
+   */
+  changePassword: async (passwordData) => {
+    try {
+      const response = await api.put('/mothers/change-password', passwordData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to change password' };
+    }
+  },
+
+  /**
+   * Deactivate account
+   * @returns {Promise} Response data
+   */
+  deactivateAccount: async () => {
+    try {
+      const response = await api.delete('/mothers/deactivate');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to deactivate account' };
+    }
+  },
+
+  /**
+   * Upload profile picture
+   * @param {Object} pictureData - Profile picture data
+   * @returns {Promise} Response data
+   */
+  uploadProfilePicture: async (pictureData) => {
+    try {
+      const response = await api.put('/mothers/upload-profile-picture', pictureData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to upload profile picture' };
+    }
+  },
+
+  /**
+   * Update medical details
+   * @param {Object} medicalData - Medical details
+   * @returns {Promise} Updated mother data
+   */
+  updateMedicalDetails: async (medicalData) => {
+    try {
+      const response = await api.put('/mothers/medical-details', medicalData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update medical details' };
+    }
+  },
+
+  /**
+   * Create or update mother profile (for registration completion)
+   * @param {Object} profileData - Profile data
+   * @returns {Promise} Updated mother data
+   */
+  createOrUpdateProfile: async (profileData) => {
+    try {
+      const response = await api.post('/mothers/create-or-update', profileData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to save profile' };
     }
   }
 };

@@ -29,7 +29,7 @@ const adminRoutes = require('./routes/admin.routes');
 // Initialize express app
 const app = express();
 
-// Connect to database
+// Connect to database (without sync)
 connectDB();
 
 // Middleware
@@ -54,7 +54,7 @@ app.use('/api/providers', providerRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminRoutes);
 
-// ✅ Health check route - PUT THIS HERE
+// ✅ Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,

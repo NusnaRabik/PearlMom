@@ -26,6 +26,43 @@ export const calculatePregnancyWeek = (edd) => {
 };
 
 /**
+ * Calculate current pregnancy week based on LMP (Last Menstrual Period)
+ * @param {string|Date} lmp - Last Menstrual Period date
+ * @returns {number} Current pregnancy week
+ */
+export const calculateWeeksFromLMP = (lmp) => {
+  if (!lmp) return 0;
+  
+  const lmpDate = new Date(lmp);
+  const today = new Date();
+  const diffTime = today - lmpDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const weeks = Math.floor(diffDays / 7);
+  
+  return Math.max(0, Math.min(42, weeks));
+};
+
+/**
+ * Calculate current pregnancy week based on EDD (Expected Due Date)
+ * @param {string|Date} edd - Expected Due Date
+ * @returns {number} Current pregnancy week
+ */
+export const calculateWeeksFromEDD = (edd) => {
+  if (!edd) return 0;
+  
+  const eddDate = new Date(edd);
+  const today = new Date();
+  
+  // Pregnancy is 40 weeks, calculate how many weeks have passed
+  const totalDays = 280; // 40 weeks
+  const daysUntilEDD = Math.ceil((eddDate - today) / (1000 * 60 * 60 * 24));
+  const daysPassed = totalDays - daysUntilEDD;
+  const weeks = Math.floor(daysPassed / 7);
+  
+  return Math.max(0, Math.min(40, weeks));
+};
+
+/**
  * Calculate days remaining until EDD
  * @param {string|Date} edd - Expected Due Date
  * @returns {number} Days remaining
