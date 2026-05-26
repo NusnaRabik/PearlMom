@@ -1,146 +1,168 @@
 // frontend/src/pages/provider/ClinicVisitPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Heart, FlaskConical, BookOpen, Calendar, ChevronDown, 
-  Search, User, Clock, ArrowRight, AlertCircle, CheckCircle2, Users
+  Search, User, Clock, ArrowRight, AlertCircle, CheckCircle2, Users,
+  Loader, Save, FileText, Phone, MapPin, Droplet, Activity, Edit3, Eye
 } from 'lucide-react';
-import VisitForm from '../../components/provider/VisitForm';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const ClinicVisitPage = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [assignedMothers, setAssignedMothers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [patientDetails, setPatientDetails] = useState(null);
+  const [draftVisit, setDraftVisit] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showNewVisitForm, setShowNewVisitForm] = useState(false);
+  const [previousVisits, setPreviousVisits] = useState([]);
+  const [selectedPreviousVisit, setSelectedPreviousVisit] = useState(null);
+  const [stats, setStats] = useState({
+    todayVisits: 0,
+    pending: 0,
+    overdue: 0,
+    thisWeek: 0
+  });
 
-  // Sample patients database with last visit and next schedule
-  const patients = [
-    {
-      id: '#PM-8829',
-      name: 'Elena Rodriguez',
-      weeks: 24,
-      bloodType: 'A Pos',
-      edd: 'Oct 12, 2024',
-      lastVisit: 'June 04, 2024',
-      nextSchedule: 'July 04, 2024',
-      visitStatus: 'upcoming',
-      vitals: {
-        bp: '120/80',
-        weight: '68.5',
-        fetalHeartRate: '145'
-      },
-      labTests: {
-        hbLevel: '12.4',
-        hbRange: '11-15',
-        urineProtein: 'Normal',
-        urineSugar: 'Normal'
-      },
-      healthEducation: [
-        { id: 1, title: 'Nutrition & Supplements', completed: true },
-        { id: 2, title: 'Breastfeeding Preparation', completed: false },
-        { id: 3, title: 'Signs of Labor', completed: true },
-        { id: 4, title: 'Warning Signs (PIH/Eclampsia)', completed: true }
-      ],
-      visitHistory: [
-        {
-          date: 'June 04, 2024',
-          bp: '118/78',
-          weight: '67kg',
-          fhr: '142',
-          notes: 'Patient reporting mild fatigue. Supplements adjusted. Heart rate stable.'
-        },
-        {
-          date: 'May 07, 2024',
-          bp: '110/75',
-          weight: '65kg',
-          fhr: '148',
-          notes: 'Initial second trimester screen. Normal ultrasound results.'
-        }
-      ]
-    },
-    {
-      id: '#PM-9045',
-      name: 'Sarah Mitchell',
-      weeks: 28,
-      bloodType: 'O Neg',
-      edd: 'Nov 03, 2024',
-      lastVisit: 'July 10, 2024',
-      nextSchedule: 'July 24, 2024',
-      visitStatus: 'upcoming',
-      vitals: {
-        bp: '118/75',
-        weight: '72.3',
-        fetalHeartRate: '152'
-      },
-      labTests: {
-        hbLevel: '11.8',
-        hbRange: '11-15',
-        urineProtein: 'Normal',
-        urineSugar: 'Normal'
-      },
-      healthEducation: [
-        { id: 1, title: 'Nutrition & Supplements', completed: true },
-        { id: 2, title: 'Breastfeeding Preparation', completed: true },
-        { id: 3, title: 'Signs of Labor', completed: false },
-        { id: 4, title: 'Warning Signs (PIH/Eclampsia)', completed: true }
-      ],
-      visitHistory: [
-        {
-          date: 'July 10, 2024',
-          bp: '116/72',
-          weight: '71kg',
-          fhr: '150',
-          notes: 'Routine third trimester check. All parameters normal.'
-        }
-      ]
-    },
-    {
-      id: '#PM-9089',
-      name: 'Amara Okafor',
-      weeks: 4,
-      bloodType: 'B Pos',
-      edd: '—',
-      lastVisit: 'Yesterday',
-      nextSchedule: 'Next Week',
-      visitStatus: 'recent',
-      vitals: {
-        bp: '122/82',
-        weight: '65.0',
-        fetalHeartRate: '—'
-      },
-      labTests: {
-        hbLevel: '13.1',
-        hbRange: '11-15',
-        urineProtein: 'Normal',
-        urineSugar: 'Normal'
-      },
-      healthEducation: [
-        { id: 1, title: 'Postpartum Nutrition', completed: true },
-        { id: 2, title: 'Breastfeeding Support', completed: true },
-        { id: 3, title: 'Postpartum Exercise', completed: false },
-        { id: 4, title: 'Mental Health Check', completed: true }
-      ],
-      visitHistory: [
-        {
-          date: 'Yesterday',
-          bp: '124/84',
-          weight: '65.5kg',
-          fhr: '—',
-          notes: 'Postpartum check. Recovery progressing well.'
-        }
-      ]
+  // Form state for new visit
+  const [visitForm, setVisitForm] = useState({
+    visit_date: new Date().toISOString().split('T')[0],
+    visit_time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    gestational_weeks: '',
+    blood_pressure_systolic: '',
+    blood_pressure_diastolic: '',
+    weight_kg: '',
+    fetal_heart_rate: '',
+    fundal_height_cm: '',
+    edema: 'none',
+    fetal_movement: 'normal',
+    hemoglobin_level: '',
+    urine_albumin: 'Normal',
+    urine_sugar: 'Normal',
+    patient_complaints: '',
+    clinical_notes: '',
+    referrals: '',
+    next_visit_date: '',
+    health_education_checklist: []
+  });
+
+  // Fetch assigned mothers on load
+  useEffect(() => {
+    if (user && (user.role === 'midwife' || user.role === 'doctor')) {
+      fetchAssignedMothers();
     }
-  ];
+  }, [user]);
 
-  const handleSearch = () => {
+  const fetchAssignedMothers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/clinic-visits/assigned-mothers');
+      if (response.data.success) {
+        setAssignedMothers(response.data.data.mothers || []);
+        calculateStats(response.data.data.mothers || []);
+      }
+    } catch (error) {
+      console.error('Error fetching assigned mothers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateStats = (mothers) => {
+    const today = new Date().toISOString().split('T')[0];
+    const thisWeek = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const todayVisits = mothers.filter(m => m.nextSchedule === today).length;
+    const thisWeekCount = mothers.filter(m => {
+      const scheduleDate = new Date(m.nextSchedule);
+      return scheduleDate >= thisWeek && scheduleDate <= nextWeek;
+    }).length;
+
+    setStats({
+      todayVisits,
+      pending: mothers.filter(m => m.visitStatus === 'upcoming').length,
+      overdue: mothers.filter(m => m.nextSchedule && new Date(m.nextSchedule) < new Date()).length,
+      thisWeek: thisWeekCount
+    });
+  };
+
+  const fetchMotherDetails = async (motherId) => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/clinic-visits/mother/${motherId}`);
+      if (response.data.success) {
+        const data = response.data.data;
+        setPatientDetails(data);
+        setPreviousVisits(data.visitHistory || []);
+        
+        // Check if there are previous visits
+        if (!data.visitHistory || data.visitHistory.length === 0) {
+          setSelectedPreviousVisit(null);
+        } else {
+          // Set the most recent visit as selected for viewing
+          setSelectedPreviousVisit(data.visitHistory[0]);
+        }
+        
+        // Reset new visit form
+        setShowNewVisitForm(false);
+        setVisitForm({
+          visit_date: new Date().toISOString().split('T')[0],
+          visit_time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          gestational_weeks: data.mother?.weeks || '',
+          blood_pressure_systolic: '',
+          blood_pressure_diastolic: '',
+          weight_kg: data.vitals?.weight !== '--' ? data.vitals.weight : '',
+          fetal_heart_rate: '',
+          fundal_height_cm: '',
+          edema: 'none',
+          fetal_movement: 'normal',
+          hemoglobin_level: '',
+          urine_albumin: 'Normal',
+          urine_sugar: 'Normal',
+          patient_complaints: '',
+          clinical_notes: '',
+          referrals: '',
+          next_visit_date: '',
+          health_education_checklist: data.healthEducation || []
+        });
+        
+        // Load draft if exists
+        if (data.draftVisit) {
+          setDraftVisit(data.draftVisit);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching mother details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
     setHasSearched(true);
     if (searchTerm.trim()) {
-      const found = patients.find(
-        p => 
-          p.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.name.toLowerCase().includes(searchTerm.toLowerCase())
+      const found = assignedMothers.find(
+        p => p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             p.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setSelectedPatient(found || null);
+      if (found) {
+        setSelectedPatient(found);
+        await fetchMotherDetails(found.id);
+      } else {
+        setSelectedPatient(null);
+        setPatientDetails(null);
+        setPreviousVisits([]);
+      }
     } else {
       setSelectedPatient(null);
+      setPatientDetails(null);
+      setPreviousVisits([]);
     }
   };
 
@@ -153,14 +175,83 @@ const ClinicVisitPage = () => {
   const handleClearSearch = () => {
     setSearchTerm('');
     setSelectedPatient(null);
+    setPatientDetails(null);
+    setPreviousVisits([]);
     setHasSearched(false);
+    setShowNewVisitForm(false);
+    setSelectedPreviousVisit(null);
   };
 
-  const handlePatientSelect = (patient) => {
+  const handlePatientSelect = async (patient) => {
     setSelectedPatient(patient);
     setSearchTerm(patient.name);
     setHasSearched(true);
+    await fetchMotherDetails(patient.id);
   };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setVisitForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleHealthEducationToggle = (id) => {
+    setVisitForm(prev => ({
+      ...prev,
+      health_education_checklist: prev.health_education_checklist.map(item =>
+        item.id === id ? { ...item, completed: !item.completed } : item
+      )
+    }));
+  };
+
+  const handleSaveDraft = async () => {
+    if (!selectedPatient) return;
+    setIsSaving(true);
+    
+    try {
+      const response = await api.post(`/clinic-visits/draft/${selectedPatient.id}`, visitForm);
+      if (response.data.success) {
+        alert('Draft saved successfully!');
+        setDraftVisit(response.data.data.draft);
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      alert('Failed to save draft');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCompleteVisit = async () => {
+    if (!selectedPatient) return;
+    setIsSaving(true);
+    
+    try {
+      const response = await api.post(`/clinic-visits/complete/${selectedPatient.id}`, visitForm);
+      if (response.data.success) {
+        alert('Visit completed successfully!');
+        setShowNewVisitForm(false);
+        await fetchMotherDetails(selectedPatient.id);
+        await fetchAssignedMothers();
+      }
+    } catch (error) {
+      console.error('Error completing visit:', error);
+      alert('Failed to complete visit');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleViewPreviousVisit = (visit) => {
+    setSelectedPreviousVisit(visit);
+  };
+
+  if (loading && assignedMothers.length === 0) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin text-pink-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
@@ -172,7 +263,7 @@ const ClinicVisitPage = () => {
         </div>
       </div>
 
-      {/* Search Bar - Always Visible */}
+      {/* Search Bar */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="max-w-3xl mx-auto">
           <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -188,7 +279,7 @@ const ClinicVisitPage = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter Patient ID (e.g., #PM-8829) or Name"
+                placeholder="Enter Patient ID (e.g., MOM-26-0009) or Name"
                 className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm 
                          focus:ring-2 focus:ring-pink-500 focus:border-pink-500
                          placeholder-gray-400"
@@ -223,7 +314,7 @@ const ClinicVisitPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-medium">Today's Visits</p>
-                  <p className="text-2xl font-bold text-gray-900">3</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.todayVisits}</p>
                 </div>
                 <CheckCircle2 className="text-green-500" size={24} />
               </div>
@@ -232,7 +323,7 @@ const ClinicVisitPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-medium">Pending</p>
-                  <p className="text-2xl font-bold text-gray-900">5</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
                 </div>
                 <Clock className="text-yellow-500" size={24} />
               </div>
@@ -241,7 +332,7 @@ const ClinicVisitPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-medium">Overdue</p>
-                  <p className="text-2xl font-bold text-gray-900">1</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.overdue}</p>
                 </div>
                 <AlertCircle className="text-red-500" size={24} />
               </div>
@@ -250,14 +341,14 @@ const ClinicVisitPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-medium">This Week</p>
-                  <p className="text-2xl font-bold text-gray-900">8</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.thisWeek}</p>
                 </div>
                 <Calendar className="text-blue-500" size={24} />
               </div>
             </div>
           </div>
 
-          {/* All Mothers Overview Table */}
+          {/* All Assigned Mothers Overview Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -278,13 +369,13 @@ const ClinicVisitPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {patients.map((patient) => (
+                  {assignedMothers.map((patient) => (
                     <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <span className="text-xs font-semibold text-pink-600">
-                              {patient.name.split(' ').map(n => n[0]).join('')}
+                              {patient.name?.split(' ').map(n => n[0]).join('')}
                             </span>
                           </div>
                           <div>
@@ -336,13 +427,13 @@ const ClinicVisitPage = () => {
             </div>
           </div>
 
-          {/* Recent Patients Quick Access */}
+          {/* Quick Access Recent Patients */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
               Quick Access - Recent Patients
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {patients.slice(0, 3).map((patient) => (
+              {assignedMothers.slice(0, 3).map((patient) => (
                 <button
                   key={patient.id}
                   onClick={() => handlePatientSelect(patient)}
@@ -351,7 +442,7 @@ const ClinicVisitPage = () => {
                 >
                   <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-pink-200 transition-colors">
                     <span className="text-sm font-semibold text-pink-600">
-                      {patient.name.split(' ').map(n => n[0]).join('')}
+                      {patient.name?.split(' ').map(n => n[0]).join('')}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -385,7 +476,7 @@ const ClinicVisitPage = () => {
       )}
 
       {/* Patient Found - Show Details */}
-      {selectedPatient && (
+      {selectedPatient && patientDetails && (
         <>
           {/* Patient Info Card */}
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -393,24 +484,24 @@ const ClinicVisitPage = () => {
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-lg font-semibold text-pink-600">
-                    {selectedPatient.name.split(' ').map(n => n[0]).join('')}
+                    {selectedPatient.name?.split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">{selectedPatient.name}</h2>
                   <p className="text-sm text-gray-500">
-                    ID: {selectedPatient.id} | {selectedPatient.weeks} Weeks Pregnant
+                    ID: {selectedPatient.id} | {patientDetails.mother?.weeks || selectedPatient.weeks} Weeks Pregnant
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-6">
                 <div className="text-center">
                   <p className="text-xs text-gray-500 uppercase tracking-wider">Blood Type</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedPatient.bloodType}</p>
+                  <p className="text-sm font-semibold text-gray-900">{patientDetails.mother?.bloodType || 'Not specified'}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-500 uppercase tracking-wider">EDD</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedPatient.edd}</p>
+                  <p className="text-sm font-semibold text-gray-900">{patientDetails.mother?.edd ? new Date(patientDetails.mother.edd).toLocaleDateString() : 'Not set'}</p>
                 </div>
                 <button
                   onClick={handleClearSearch}
@@ -422,156 +513,363 @@ const ClinicVisitPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Vitals & Labs */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Vitals */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <Heart className="mr-2 text-pink-500" size={20} />
-                  Vitals
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">BP (mmHg)</p>
-                    <p className="text-2xl font-bold text-gray-900">{selectedPatient.vitals.bp}</p>
-                    <p className="text-xs text-gray-400 mt-1">Normal: 120/80</p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">Weight (kg)</p>
-                    <p className="text-2xl font-bold text-gray-900">{selectedPatient.vitals.weight}</p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">Fetal HR (bpm)</p>
-                    <p className="text-2xl font-bold text-gray-900">{selectedPatient.vitals.fetalHeartRate}</p>
-                    <p className="text-xs text-gray-400 mt-1">Normal: 120-160</p>
-                  </div>
-                </div>
+          {/* Previous Visits Section */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <FileText className="mr-2 text-blue-500" size={20} />
+              Previous Clinic Visits
+            </h3>
+            
+            {previousVisits.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <AlertCircle size={48} className="mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500">No previous visits found</p>
+                <p className="text-sm text-gray-400 mt-1">This will be the first visit for this patient</p>
               </div>
-
-              {/* Lab Tests */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <FlaskConical className="mr-2 text-purple-500" size={20} />
-                  Lab Tests
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 border border-gray-200 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-2">Hb Level (g/dL)</p>
-                    <div className="flex items-baseline space-x-2">
-                      <p className="text-2xl font-bold text-gray-900">{selectedPatient.labTests.hbLevel}</p>
-                      <p className="text-xs text-gray-400">Range: {selectedPatient.labTests.hbRange}</p>
-                    </div>
-                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full" 
-                        style={{ width: `${(parseFloat(selectedPatient.labTests.hbLevel) / 15) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="p-4 border border-gray-200 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-2">Urine Test</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Protein:</span>
-                        <span className={`text-sm font-medium ${
-                          selectedPatient.labTests.urineProtein === 'Normal' ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {selectedPatient.labTests.urineProtein}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Sugar:</span>
-                        <span className={`text-sm font-medium ${
-                          selectedPatient.labTests.urineSugar === 'Normal' ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {selectedPatient.labTests.urineSugar}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Visit Form */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4">Current Visit Notes</h3>
-                <VisitForm patientId={selectedPatient.id} />
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-6">
-              {/* Health Education */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <BookOpen className="mr-2 text-blue-500" size={20} />
-                  Health Education
-                </h3>
-                <div className="space-y-3">
-                  {selectedPatient.healthEducation.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-700">{item.title}</span>
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        item.completed 
-                          ? 'bg-green-500 border-green-500' 
-                          : 'border-gray-300'
-                      }`}>
-                        {item.completed && (
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
+            ) : (
+              <>
+                <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+                  {previousVisits.map((visit, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleViewPreviousVisit(visit)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                        selectedPreviousVisit === visit
+                          ? 'bg-pink-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {visit.date}
+                    </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Next Visit */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <Calendar className="mr-2 text-green-500" size={20} />
-                  Next Scheduled Visit
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Date & Time</label>
-                    <input
-                      type="datetime-local"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                    />
+                
+                {selectedPreviousVisit && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-gray-900">Visit Date: {selectedPreviousVisit.date}</h4>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <Eye size={12} className="mr-1" /> View Only
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <p className="text-xs text-gray-500">BP</p>
+                        <p className="text-sm font-semibold">{selectedPreviousVisit.bp}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Weight</p>
+                        <p className="text-sm font-semibold">{selectedPreviousVisit.weight}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">FHR</p>
+                        <p className="text-sm font-semibold">{selectedPreviousVisit.fhr}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Notes</p>
+                        <p className="text-sm text-gray-600 italic">{selectedPreviousVisit.notes || 'No notes'}</p>
+                      </div>
+                    </div>
                   </div>
-                  <button className="w-full px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
-                    Schedule Visit
-                  </button>
-                </div>
-              </div>
+                )}
+              </>
+            )}
+          </div>
 
-              {/* Visit History */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4">Visit History</h3>
-                <div className="space-y-4">
-                  {selectedPatient.visitHistory.map((visit, index) => (
-                    <div key={index} className="border-l-2 border-pink-200 pl-4">
-                      <p className="text-sm font-semibold text-gray-900">{visit.date}</p>
-                      <div className="mt-2 text-xs text-gray-500 space-y-1">
-                        <div className="flex space-x-3">
-                          <span>BP: {visit.bp}</span>
-                          <span>W: {visit.weight}</span>
-                          <span>FHR: {visit.fhr}</span>
+          {/* New Visit Section */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div 
+              className="px-6 py-4 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => setShowNewVisitForm(!showNewVisitForm)}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <Edit3 className="mr-2 text-pink-500" size={20} />
+                  New Clinic Visit
+                </h3>
+                <ChevronDown className={`transform transition-transform ${showNewVisitForm ? 'rotate-180' : ''}`} size={20} />
+              </div>
+            </div>
+            
+            {showNewVisitForm && (
+              <div className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Vitals */}
+                    <div>
+                      <h4 className="text-md font-semibold mb-3 flex items-center">
+                        <Heart className="mr-2 text-pink-500" size={18} />
+                        Vitals
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">BP (mmHg)</p>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              name="blood_pressure_systolic"
+                              value={visitForm.blood_pressure_systolic}
+                              onChange={handleFormChange}
+                              placeholder="SYS"
+                              className="w-1/2 px-2 py-1 border rounded"
+                            />
+                            <span className="flex items-center">/</span>
+                            <input
+                              type="number"
+                              name="blood_pressure_diastolic"
+                              value={visitForm.blood_pressure_diastolic}
+                              onChange={handleFormChange}
+                              placeholder="DIA"
+                              className="w-1/2 px-2 py-1 border rounded"
+                            />
+                          </div>
                         </div>
-                        <p className="text-gray-600 italic mt-1">"{visit.notes}"</p>
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">Weight (kg)</p>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="weight_kg"
+                            value={visitForm.weight_kg}
+                            onChange={handleFormChange}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </div>
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">Fetal HR (bpm)</p>
+                          <input
+                            type="number"
+                            name="fetal_heart_rate"
+                            value={visitForm.fetal_heart_rate}
+                            onChange={handleFormChange}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">Fundal Height (cm)</p>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="fundal_height_cm"
+                            value={visitForm.fundal_height_cm}
+                            onChange={handleFormChange}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </div>
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">Gestational Weeks</p>
+                          <input
+                            type="number"
+                            name="gestational_weeks"
+                            value={visitForm.gestational_weeks}
+                            onChange={handleFormChange}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </div>
                       </div>
                     </div>
-                  ))}
+
+                    {/* Lab Tests */}
+                    <div>
+                      <h4 className="text-md font-semibold mb-3 flex items-center">
+                        <FlaskConical className="mr-2 text-purple-500" size={18} />
+                        Lab Tests
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <p className="text-sm text-gray-500 mb-2">Hb Level (g/dL)</p>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="hemoglobin_level"
+                            value={visitForm.hemoglobin_level}
+                            onChange={handleFormChange}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <p className="text-sm text-gray-500 mb-2">Urine Test</p>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Protein:</span>
+                              <select
+                                name="urine_albumin"
+                                value={visitForm.urine_albumin}
+                                onChange={handleFormChange}
+                                className="px-2 py-1 border rounded text-sm"
+                              >
+                                <option value="Normal">Normal</option>
+                                <option value="Trace">Trace</option>
+                                <option value="1+">1+</option>
+                                <option value="2+">2+</option>
+                                <option value="3+">3+</option>
+                              </select>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Sugar:</span>
+                              <select
+                                name="urine_sugar"
+                                value={visitForm.urine_sugar}
+                                onChange={handleFormChange}
+                                className="px-2 py-1 border rounded text-sm"
+                              >
+                                <option value="Normal">Normal</option>
+                                <option value="Trace">Trace</option>
+                                <option value="1+">1+</option>
+                                <option value="2+">2+</option>
+                                <option value="3+">3+</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Visit Notes */}
+                    <div>
+                      <h4 className="text-md font-semibold mb-3">Visit Notes</h4>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Edema</label>
+                          <select
+                            name="edema"
+                            value={visitForm.edema}
+                            onChange={handleFormChange}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          >
+                            <option value="none">None</option>
+                            <option value="mild">Mild</option>
+                            <option value="moderate">Moderate</option>
+                            <option value="severe">Severe</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Fetal Movement</label>
+                          <select
+                            name="fetal_movement"
+                            value={visitForm.fetal_movement}
+                            onChange={handleFormChange}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          >
+                            <option value="normal">Normal</option>
+                            <option value="decreased">Decreased</option>
+                            <option value="increased">Increased</option>
+                            <option value="absent">Absent</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Patient Complaints</label>
+                        <textarea
+                          name="patient_complaints"
+                          value={visitForm.patient_complaints}
+                          onChange={handleFormChange}
+                          rows="2"
+                          className="w-full px-3 py-2 border rounded-lg resize-none"
+                          placeholder="Document any complaints or symptoms reported by the patient..."
+                        ></textarea>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Clinical Notes</label>
+                        <textarea
+                          name="clinical_notes"
+                          value={visitForm.clinical_notes}
+                          onChange={handleFormChange}
+                          rows="3"
+                          className="w-full px-3 py-2 border rounded-lg resize-none"
+                          placeholder="Enter clinical observations, findings, and recommendations..."
+                        ></textarea>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Referrals (if any)</label>
+                        <textarea
+                          name="referrals"
+                          value={visitForm.referrals}
+                          onChange={handleFormChange}
+                          rows="2"
+                          className="w-full px-3 py-2 border rounded-lg resize-none"
+                          placeholder="e.g., Specialist consultation, Ultrasound, Lab tests"
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Health Education */}
+                    <div>
+                      <h4 className="text-md font-semibold mb-3 flex items-center">
+                        <BookOpen className="mr-2 text-blue-500" size={18} />
+                        Health Education
+                      </h4>
+                      <div className="space-y-3">
+                        {visitForm.health_education_checklist?.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm text-gray-700">{item.title}</span>
+                            <button
+                              onClick={() => handleHealthEducationToggle(item.id)}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                item.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                              }`}
+                            >
+                              {item.completed && (
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Next Scheduled Visit */}
+                    <div>
+                      <h4 className="text-md font-semibold mb-3 flex items-center">
+                        <Calendar className="mr-2 text-green-500" size={18} />
+                        Next Scheduled Visit
+                      </h4>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Date</label>
+                        <input
+                          type="date"
+                          name="next_visit_date"
+                          value={visitForm.next_visit_date}
+                          onChange={handleFormChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        onClick={handleSaveDraft}
+                        disabled={isSaving}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Save size={16} />
+                        {isSaving ? 'Saving...' : 'Save as Draft'}
+                      </button>
+                      <button
+                        onClick={handleCompleteVisit}
+                        disabled={isSaving}
+                        className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 size={16} />
+                        Complete Visit
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <button className="mt-4 text-sm text-pink-600 hover:text-pink-700 font-medium flex items-center">
-                  View Full Medical History
-                  <ChevronDown size={16} className="ml-1" />
-                </button>
               </div>
-            </div>
+            )}
           </div>
         </>
       )}

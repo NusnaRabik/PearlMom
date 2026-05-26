@@ -9,6 +9,8 @@ const Notification = require('./Notification');
 const MaternalRecord = require('./MaternalRecord');
 const ThriposhaEligibility = require('./ThriposhaEligibility');
 const NutritionSupplement = require('./NutritionSupplement');
+const ClinicVisit = require('./ClinicVisit');
+const HealthEducationChecklist = require('./HealthEducationChecklist');
 
 // Associations
 User.hasOne(Mother, { foreignKey: 'user_id' });
@@ -45,6 +47,20 @@ NutritionSupplement.belongsTo(User, { foreignKey: 'distributed_by', as: 'distrib
 User.hasMany(ThriposhaEligibility, { foreignKey: 'assessed_by', as: 'assessments' });
 ThriposhaEligibility.belongsTo(User, { foreignKey: 'assessed_by', as: 'assessor' });
 
+// Clinic Visit associations
+Mother.hasMany(ClinicVisit, { foreignKey: 'mother_id', as: 'clinic_visits' });
+ClinicVisit.belongsTo(Mother, { foreignKey: 'mother_id', as: 'mother' });
+
+User.hasMany(ClinicVisit, { foreignKey: 'recorded_by', as: 'recorded_visits' });
+ClinicVisit.belongsTo(User, { foreignKey: 'recorded_by', as: 'recorder' });
+
+// Health Education Checklist associations
+Mother.hasMany(HealthEducationChecklist, { foreignKey: 'mother_id', as: 'health_education' });
+HealthEducationChecklist.belongsTo(Mother, { foreignKey: 'mother_id', as: 'mother' });
+
+ClinicVisit.hasMany(HealthEducationChecklist, { foreignKey: 'visit_id', as: 'education_checklist' });
+HealthEducationChecklist.belongsTo(ClinicVisit, { foreignKey: 'visit_id', as: 'visit' });
+
 Midwife.hasMany(Appointment, { foreignKey: 'midwife_id' });
 Appointment.belongsTo(Midwife, { foreignKey: 'midwife_id' });
 
@@ -68,5 +84,7 @@ module.exports = {
   Notification,
   MaternalRecord,
   ThriposhaEligibility,
-  NutritionSupplement
+  NutritionSupplement,
+  ClinicVisit,
+  HealthEducationChecklist
 };

@@ -25,6 +25,8 @@ const notificationRoutes = require('./routes/notification.routes');
 const providerRoutes = require('./routes/provider.routes');
 const profileRoutes = require('./routes/profile.routes');
 const adminRoutes = require('./routes/admin.routes');
+const clinicVisitRoutes = require('./routes/clinicVisit.routes');
+
 
 // Initialize express app
 const app = express();
@@ -53,6 +55,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/clinic-visits', clinicVisitRoutes);
 
 // ✅ Health check route
 app.get('/api/health', (req, res) => {
