@@ -15,23 +15,24 @@ const getDashboard = async (req, res) => {
       return errorResponse(res, 'Provider profile not found', 404);
     }
 
-    // Safely get counts with error handling
+    // Get GLOBAL counts (all mothers in the system, not filtered by midwife)
     let totalMothers = 0;
     let activePregnancies = 0;
     let highRiskMothers = 0;
     
     try {
+      // Count ALL mothers (no midwife filter)
       totalMothers = await Mother.count({
-        where: { assigned_midwife_id: midwife.midwife_id, is_deleted: false }
+        where: { is_deleted: false }
       });
     } catch (err) {
       console.error('Error counting total mothers:', err);
     }
     
     try {
+      // Count ALL active pregnancies
       activePregnancies = await Mother.count({
         where: { 
-          assigned_midwife_id: midwife.midwife_id, 
           pregnancy_status: 'pregnant',
           is_deleted: false 
         }
@@ -41,9 +42,9 @@ const getDashboard = async (req, res) => {
     }
     
     try {
+      // Count ALL high risk mothers
       highRiskMothers = await Mother.count({
         where: { 
-          assigned_midwife_id: midwife.midwife_id, 
           is_high_risk: true, 
           is_deleted: false 
         }
@@ -56,9 +57,9 @@ const getDashboard = async (req, res) => {
 
     let todayAppointments = 0;
     try {
+      // Count ALL appointments for today (no midwife filter)
       todayAppointments = await Appointment.count({
         where: {
-          midwife_id: midwife.midwife_id,
           appointment_date: new Date().toISOString().split('T')[0],
           status: 'scheduled'
         }
@@ -69,8 +70,8 @@ const getDashboard = async (req, res) => {
 
     let pendingVaccinations = 0;
     try {
+      // Count ALL pending vaccinations (no midwife filter)
       pendingVaccinations = await Vaccination.count({
-        include: [{ model: Mother, where: { assigned_midwife_id: midwife.midwife_id }, required: true }],
         where: { status: 'due', due_date: { [Op.lte]: new Date() } }
       });
     } catch (err) {
@@ -79,8 +80,8 @@ const getDashboard = async (req, res) => {
 
     let recentAppointments = [];
     try {
+      // Get ALL recent appointments (no midwife filter)
       recentAppointments = await Appointment.findAll({
-        where: { midwife_id: midwife.midwife_id },
         include: [{ model: Mother, attributes: ['full_name', 'mother_code'] }],
         order: [['appointment_date', 'DESC']],
         limit: 5
@@ -91,9 +92,9 @@ const getDashboard = async (req, res) => {
 
     let weeklyDeliveries = [];
     try {
+      // Get ALL weekly deliveries (no midwife filter)
       weeklyDeliveries = await Mother.findAll({
         where: {
-          assigned_midwife_id: midwife.midwife_id,
           expected_delivery_date: {
             [Op.between]: [new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)]
           },
@@ -107,9 +108,9 @@ const getDashboard = async (req, res) => {
 
     let recentAlerts = [];
     try {
+      // Get ALL recent alerts (no midwife filter)
       recentAlerts = await MaternalRecord.findAll({
         where: { 
-          recorded_by: req.user.user_id,
           created_at: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
         },
         order: [['created_at', 'DESC']],
@@ -270,7 +271,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Get assigned mothers
+// @desc    Get assigned mothers (for provider's own assigned mothers)
 // @route   GET /api/providers/mothers
 const getMyMothers = async (req, res) => {
   try {

@@ -11,7 +11,7 @@ export const useAuthHook = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Login handler
+  // Login handler - DON'T navigate here, just return result
   const handleLogin = useCallback(async (credentials, loginFn) => {
     setLoading(true);
     setError(null);
@@ -20,27 +20,8 @@ export const useAuthHook = () => {
       const result = await loginFn(credentials);
       console.log('HandleLogin result:', result);
       
-      if (result.success) {
-        // Get the role from the result
-        const userRole = result.role;
-        console.log('User role for redirect:', userRole);
-        
-        // Redirect based on role
-        const roleRoutes = {
-          mother: '/mother/dashboard',
-          midwife: '/provider/dashboard',
-          doctor: '/provider/dashboard',
-          admin: '/admin/dashboard'
-        };
-        
-        const route = roleRoutes[userRole] || '/';
-        console.log('Redirecting to:', route);
-        navigate(route);
-        return { success: true, role: userRole };
-      } else {
-        setError(result.message || 'Login failed');
-        return { success: false, message: result.message };
-      }
+      // Just return the result, don't navigate
+      return result;
     } catch (err) {
       console.error('Login error in hook:', err);
       setError('An unexpected error occurred');
@@ -48,46 +29,34 @@ export const useAuthHook = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, []);
 
   // Register handler
-  const handleRegister = useCallback(async (userData, registerFn) => {
-    setLoading(true);
-    setError(null);
+  // frontend/src/hooks/useAuth.js - Update the handleRegister function
+
+const handleRegister = useCallback(async (userData, registerFn) => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    console.log('Register hook received:', userData);
+    const result = await registerFn(userData);
+    console.log('Register hook result:', result);
     
-    try {
-      console.log('Register hook received:', userData);
-      const result = await registerFn(userData);
-      console.log('Register hook result:', result);
-      
-      if (result.success) {
-        const roleRoutes = {
-          mother: '/mother/dashboard',
-          midwife: '/provider/dashboard',
-          doctor: '/provider/dashboard',
-          provider: '/provider/dashboard',
-          admin: '/admin/dashboard'
-        };
-        
-        const route = roleRoutes[result.role] || '/login';
-        setTimeout(() => navigate(route), 1500);
-        return { success: true, role: result.role };
-      } else {
-        setError(result.message || 'Registration failed');
-        return { success: false, message: result.message };
-      }
-    } catch (err) {
-      console.error('Registration error in hook:', err);
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error ||
-                          err.message || 
-                          'An unexpected error occurred';
-      setError(errorMessage);
-      return { success: false, message: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate]);
+    // Just return the result, let RegisterPage handle navigation
+    return result;
+  } catch (err) {
+    console.error('Registration error in hook:', err);
+    const errorMessage = err.response?.data?.message || 
+                        err.response?.data?.error ||
+                        err.message || 
+                        'An unexpected error occurred';
+    setError(errorMessage);
+    return { success: false, message: errorMessage };
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   // Logout handler
   const handleLogout = useCallback((logoutFn) => {

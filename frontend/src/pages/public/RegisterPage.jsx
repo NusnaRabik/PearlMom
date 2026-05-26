@@ -48,12 +48,15 @@ const RegisterPage = () => {
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    const normalizedPassword = formData.password.trim();
+    const normalizedConfirmPassword = formData.confirmPassword.trim();
+
+    if (normalizedPassword !== normalizedConfirmPassword) {
       setFormError('Passwords do not match');
       return;
     }
 
-    if (formData.password.length < 8) {
+    if (normalizedPassword.length < 8) {
       setFormError('Password must be at least 8 characters');
       return;
     }
@@ -65,13 +68,14 @@ const RegisterPage = () => {
       fullName: formData.fullName.trim(),
       mobile: formData.mobile.trim(),
       email: formData.email.trim().toLowerCase(),
-      password: formData.password,
+      password: normalizedPassword,
       role: joinAs.toLowerCase()
     };
 
     console.log('Submitting registration:', registrationData);
     const result = await handleRegister(registrationData, register);
 
+    console.log('Registration result:', result);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -85,6 +89,8 @@ const RegisterPage = () => {
       }
       
       setSubmitSuccess(true);
+      
+      // Navigate after a short delay
       setTimeout(() => {
         if (result.role === 'mother') {
           navigate('/mother/dashboard');

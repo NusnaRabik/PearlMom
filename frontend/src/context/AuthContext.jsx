@@ -51,8 +51,11 @@ export const AuthProvider = ({ children }) => {
             // Set popup flag based on profile status
             if (mappedUser.role === 'mother' && !mappedUser.profile_completed) {
               localStorage.setItem('pearlmom_new_registration', 'true');
+            } else if ((mappedUser.role === 'midwife' || mappedUser.role === 'doctor') && !mappedUser.profile_completed) {
+              localStorage.setItem('pearlmom_provider_new_registration', 'true');
             } else {
               localStorage.removeItem('pearlmom_new_registration');
+              localStorage.removeItem('pearlmom_provider_new_registration');
             }
           } else {
             logout();
@@ -73,17 +76,14 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     setLoading(true);
     try {
-      // Check if logging in with fullName or email
       let result;
       if (credentials.fullName) {
-        // Use login-by-name endpoint for mother login
         result = await authService.loginByName(
           credentials.fullName,
           credentials.password,
           credentials.role
         );
       } else {
-        // Use regular login for email
         result = await authService.login(
           credentials.email,
           credentials.password,
@@ -97,7 +97,6 @@ export const AuthProvider = ({ children }) => {
         const backendUser = result.data.user;
         const token = result.data.accessToken || result.data.token;
 
-        // FIX: Handle both data structures (root level or nested in mother_profile)
         const mappedUser = {
           id: backendUser.user_id,
           fullName: backendUser.name || backendUser.full_name,
@@ -106,13 +105,11 @@ export const AuthProvider = ({ children }) => {
           role: backendUser.role,
           avatar: backendUser.profile_picture_url || null,
           profile_completed: backendUser.profile_completed || false,
-          // Check both root level and mother_profile for mother data
           mother_id: backendUser.mother_id || backendUser.mother_profile?.mother_id,
           mother_code: backendUser.mother_code || backendUser.mother_profile?.mother_code,
           pregnancy_status: backendUser.pregnancy_status || backendUser.mother_profile?.pregnancy_status,
           expected_delivery_date: backendUser.expected_delivery_date || backendUser.mother_profile?.expected_delivery_date,
           blood_group: backendUser.blood_group || backendUser.mother_profile?.blood_group,
-          // For midwife data
           midwife_id: backendUser.midwife_id || backendUser.midwife_profile?.midwife_id,
           employee_id: backendUser.employee_id || backendUser.midwife_profile?.employee_id,
           assigned_area: backendUser.assigned_area || backendUser.midwife_profile?.assigned_area
@@ -124,8 +121,11 @@ export const AuthProvider = ({ children }) => {
         // Set popup flag based on profile status
         if (mappedUser.role === 'mother' && !mappedUser.profile_completed) {
           localStorage.setItem('pearlmom_new_registration', 'true');
+        } else if ((mappedUser.role === 'midwife' || mappedUser.role === 'doctor') && !mappedUser.profile_completed) {
+          localStorage.setItem('pearlmom_provider_new_registration', 'true');
         } else {
           localStorage.removeItem('pearlmom_new_registration');
+          localStorage.removeItem('pearlmom_provider_new_registration');
         }
 
         setUser(mappedUser);
@@ -149,7 +149,6 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     setLoading(true);
     try {
-      // Prepare registration data
       const registrationData = {
         fullName: userData.fullName,
         mobile: userData.mobile,
@@ -181,7 +180,6 @@ export const AuthProvider = ({ children }) => {
         }
         localStorage.setItem('pearlmom_user', JSON.stringify(mappedUser));
 
-        // Always set popup flag for new mother registrations
         if (mappedUser.role === 'mother') {
           localStorage.setItem('pearlmom_new_registration', 'true');
         } else if (mappedUser.role === 'midwife' || mappedUser.role === 'doctor') {

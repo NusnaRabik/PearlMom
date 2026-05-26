@@ -7,6 +7,8 @@ const Vaccination = require('./Vaccination');
 const RefreshToken = require('./RefreshToken');
 const Notification = require('./Notification');
 const MaternalRecord = require('./MaternalRecord');
+const ThriposhaEligibility = require('./ThriposhaEligibility');
+const NutritionSupplement = require('./NutritionSupplement');
 
 // Associations
 User.hasOne(Mother, { foreignKey: 'user_id' });
@@ -30,6 +32,19 @@ Appointment.belongsTo(Mother, { foreignKey: 'mother_id' });
 Mother.hasMany(Vaccination, { foreignKey: 'mother_id' });
 Vaccination.belongsTo(Mother, { foreignKey: 'mother_id' });
 
+// Thriposha associations
+Mother.hasMany(ThriposhaEligibility, { foreignKey: 'mother_id', as: 'thriposha_eligibilities' });
+ThriposhaEligibility.belongsTo(Mother, { foreignKey: 'mother_id', as: 'mother' });
+
+Mother.hasMany(NutritionSupplement, { foreignKey: 'mother_id', as: 'nutrition_supplements' });
+NutritionSupplement.belongsTo(Mother, { foreignKey: 'mother_id', as: 'mother' });
+
+User.hasMany(NutritionSupplement, { foreignKey: 'distributed_by', as: 'distributions' });
+NutritionSupplement.belongsTo(User, { foreignKey: 'distributed_by', as: 'distributor' });
+
+User.hasMany(ThriposhaEligibility, { foreignKey: 'assessed_by', as: 'assessments' });
+ThriposhaEligibility.belongsTo(User, { foreignKey: 'assessed_by', as: 'assessor' });
+
 Midwife.hasMany(Appointment, { foreignKey: 'midwife_id' });
 Appointment.belongsTo(Midwife, { foreignKey: 'midwife_id' });
 
@@ -51,5 +66,7 @@ module.exports = {
   Vaccination,
   RefreshToken,
   Notification,
-  MaternalRecord
+  MaternalRecord,
+  ThriposhaEligibility,
+  NutritionSupplement
 };

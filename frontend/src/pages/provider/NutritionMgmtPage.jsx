@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calculator, Package, FileText, Download, TrendingUp, 
   ChevronRight, CheckCircle, X, User, Calendar, Phone, 
-  MapPin, Activity, Heart, Info, Plus
+  MapPin, Activity, Heart, Info, Plus, Loader
 } from 'lucide-react';
 import ThriposhaCriteria from '../../components/provider/ThriposhaCriteria';
+import api from '../../services/api';
 
 const NutritionMgmtPage = () => {
   const [pregnancyWeek, setPregnancyWeek] = useState('');
@@ -16,6 +17,9 @@ const NutritionMgmtPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [showNewDistribution, setShowNewDistribution] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [eligibleMothers, setEligibleMothers] = useState([]);
 
   // New Distribution Form
   const [newDistribution, setNewDistribution] = useState({
@@ -26,84 +30,56 @@ const NutritionMgmtPage = () => {
   });
   const [distributionSuccess, setDistributionSuccess] = useState(false);
 
-  const [recentLogs, setRecentLogs] = useState([
-    {
-      name: 'Kushani Mendis',
-      id: '#MM-7721',
-      week: '28th Week',
-      packets: 2,
-      date: 'Oct 24, 2024',
-      bmi: '17.8',
-      phone: '+94 77 123 4567',
-      address: '42, Galle Road, Colombo 03',
-      status: 'Active',
-      lastDistribution: 'Oct 24, 2024',
-      nextEligible: 'Nov 24, 2024',
-      notes: 'Patient showing good weight gain. Continue current supplementation.'
-    },
-    {
-      name: 'Nilanthi Perera',
-      id: '#MM-8842',
-      week: '14th Week',
-      packets: 1,
-      date: 'Oct 23, 2024',
-      bmi: '22.5',
-      phone: '+94 77 987 6543',
-      address: '15, Kandy Road, Kandy',
-      status: 'Active',
-      lastDistribution: 'Oct 23, 2024',
-      nextEligible: 'Nov 23, 2024',
-      notes: 'Normal BMI. Maintaining well with 1 packet.'
-    },
-    {
-      name: 'Anura Kumari',
-      id: '#MM-98234',
-      week: '32nd Week',
-      packets: 2,
-      date: 'Oct 22, 2024',
-      bmi: '31.2',
-      phone: '+94 71 456 7890',
-      address: '8, Main Street, Jaffna',
-      status: 'High Risk',
-      lastDistribution: 'Oct 22, 2024',
-      nextEligible: 'Nov 22, 2024',
-      notes: 'High BMI case. Monitoring for gestational diabetes. 2 packets recommended.'
-    }
-  ]);
+  // Fetch recent distributions and eligible mothers on load
+  useEffect(() => {
+    fetchRecentDistributions();
+    fetchEligibleMothers();
+  }, []);
 
-  const calculateEligibility = () => {
-    if (pregnancyWeek && bmi && motherName && motherId) {
-      setIsCalculating(true);
-      
-      setTimeout(() => {
-        if (parseFloat(bmi) < 18.5 || parseFloat(bmi) > 30) {
-          setEligibilityResult({
-            eligible: true,
-            packets: 2,
-            message: 'Based on current parameters, this mother qualifies for 2 packets per distribution cycle.',
-            icon: 'success',
-            color: 'green'
-          });
-        } else if (parseFloat(bmi) >= 18.5 && parseFloat(bmi) <= 24.9) {
-          setEligibilityResult({
-            eligible: true,
-            packets: 1,
-            message: 'Based on current parameters, this mother qualifies for 1 packet per distribution cycle.',
-            icon: 'success',
-            color: 'green'
-          });
-        } else {
-          setEligibilityResult({
-            eligible: true,
-            packets: 1,
-            message: 'Based on current parameters, this mother qualifies for 1 packet per distribution cycle.',
-            icon: 'success',
-            color: 'green'
-          });
-        }
-        setIsCalculating(false);
-      }, 1500);
-    } else {
+  const fetchRecentDistributions = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/thriposha/distributions');
+      if (response.data.success) {
+        const data = response.data.data;
+        
+        const formattedLogs = (data.recent_distributions || []).map(dist => ({
+          id: dist.id,
+          name: dist.name,
+          motherId: dist.motherId,
+          week: dist.week,
+          packets: dist.packets,
+          date: dist.date,
+          bmi: dist.bmi,
+          phone: dist.phone,
+          address: dist.address,
+          status: dist.status,
+          lastDistribution: dist.lastDistribution,
+          notes: dist.notes
+        }));
+        setRecentLogs(formattedLogs);
+      }
+    } catch (error) {
+      console.error('Error fetching distributions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEligibleMothers = async () => {
+  try {
+    const response = await api.get('/thriposha/eligible-mothers');
+    console.log('Eligible mothers response:', response.data);
+    if (response.data.success) {
+      setEligibleMothers(response.data.data.eligible_mothers || []);
+    }
+  } catch (error) {
+    console.error('Error fetching eligible mothers:', error);
+  }
+};
+
+  const calculateEligibility = async () => {
+    if (!motherName || !motherId || !pregnancyWeek || !bmi) {
       setEligibilityResult({
         eligible: false,
         packets: 0,
@@ -111,6 +87,61 @@ const NutritionMgmtPage = () => {
         icon: 'warning',
         color: 'yellow'
       });
+      return;
+    }
+
+    setIsCalculating(true);
+    
+    try {
+      // First find the mother by ID or name
+      const response = await api.post('/thriposha/assess', {
+        mother_id: motherId,
+        gestational_week: parseInt(pregnancyWeek),
+        mother_weight_kg: null, // Will be calculated from BMI if needed
+        notes: `BMI: ${bmi}, Week: ${pregnancyWeek}`
+      });
+
+      if (response.data.success) {
+        const result = response.data.data;
+        let packets = 1;
+        let message = '';
+        
+        if (parseFloat(bmi) < 18.5) {
+          packets = 2;
+          message = 'Based on current parameters (Underweight), this mother qualifies for 2 packets per distribution cycle.';
+        } else if (parseFloat(bmi) >= 30) {
+          packets = 2;
+          message = 'Based on current parameters (Obese), this mother qualifies for 2 packets per distribution cycle.';
+        } else if (parseFloat(bmi) >= 18.5 && parseFloat(bmi) <= 24.9) {
+          packets = 1;
+          message = 'Based on current parameters (Normal BMI), this mother qualifies for 1 packet per distribution cycle.';
+        } else {
+          packets = 1;
+          message = 'Based on current parameters, this mother qualifies for 1 packet per distribution cycle.';
+        }
+
+        setEligibilityResult({
+          eligible: result.is_eligible,
+          packets: packets,
+          message: message,
+          icon: 'success',
+          color: 'green'
+        });
+        
+        // Refresh eligible mothers list
+        await fetchEligibleMothers();
+      }
+    } catch (error) {
+      console.error('Error calculating eligibility:', error);
+      setEligibilityResult({
+        eligible: false,
+        packets: 0,
+        message: error.response?.data?.message || 'Error calculating eligibility. Please try again.',
+        icon: 'warning',
+        color: 'yellow'
+      });
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -124,49 +155,101 @@ const NutritionMgmtPage = () => {
     setSelectedLog(null);
   };
 
-  const handleDistribute = () => {
-    if (eligibilityResult && eligibilityResult.eligible) {
-      alert(`Successfully distributed ${eligibilityResult.packets} packet(s) to ${motherName}`);
-      setMotherName('');
-      setMotherId('');
-      setPregnancyWeek('');
-      setBmi('');
-      setEligibilityResult(null);
+  const handleDistribute = async () => {
+    if (!eligibilityResult?.eligible) return;
+    
+    try {
+      const response = await api.post('/thriposha/distribute', {
+        mother_id: motherId,
+        packets: eligibilityResult.packets,
+        distribution_date: new Date().toISOString().split('T')[0],
+        notes: `Thriposha distribution - ${eligibilityResult.packets} packet(s)`
+      });
+
+      if (response.data.success) {
+        alert(`Successfully distributed ${eligibilityResult.packets} packet(s) to ${motherName}`);
+        
+        // Reset form
+        setMotherName('');
+        setMotherId('');
+        setPregnancyWeek('');
+        setBmi('');
+        setEligibilityResult(null);
+        
+        // Refresh the list
+        await fetchRecentDistributions();
+      }
+    } catch (error) {
+      console.error('Distribution error:', error);
+      alert(error.response?.data?.message || 'Failed to distribute');
     }
   };
 
-  const handleAddDistribution = () => {
-    // Add new distribution to logs
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    const newLog = {
-      name: newDistribution.recipientName,
-      id: newDistribution.recipientId,
-      week: 'N/A',
-      packets: parseInt(newDistribution.packets),
-      date: newDistribution.dateOfIssue || today,
-      bmi: 'N/A',
-      phone: 'N/A',
-      address: 'N/A',
-      status: 'Active',
-      lastDistribution: newDistribution.dateOfIssue || today,
-      nextEligible: 'N/A',
-      notes: 'New distribution recorded.'
-    };
-    
-    setRecentLogs([newLog, ...recentLogs]);
-    setDistributionSuccess(true);
-    
-    setTimeout(() => {
-      setShowNewDistribution(false);
-      setDistributionSuccess(false);
-      setNewDistribution({
-        recipientName: '',
-        recipientId: '',
-        dateOfIssue: '',
-        packets: '1'
+  const handleAddDistribution = async () => {
+    if (!newDistribution.recipientName || !newDistribution.recipientId) {
+      alert('Please fill in recipient name and ID');
+      return;
+    }
+
+    try {
+      const response = await api.post('/thriposha/distribute', {
+        mother_id: newDistribution.recipientId,
+        packets: parseInt(newDistribution.packets),
+        distribution_date: newDistribution.dateOfIssue || new Date().toISOString().split('T')[0],
+        notes: `Thriposha distribution - ${newDistribution.packets} packet(s)`
       });
-    }, 1500);
+
+      if (response.data.success) {
+        setDistributionSuccess(true);
+        await fetchRecentDistributions();
+        
+        setTimeout(() => {
+          setShowNewDistribution(false);
+          setDistributionSuccess(false);
+          setNewDistribution({
+            recipientName: '',
+            recipientId: '',
+            dateOfIssue: '',
+            packets: '1'
+          });
+        }, 1500);
+      } else {
+        alert(response.data.message || 'Failed to record distribution');
+      }
+    } catch (error) {
+      console.error('Distribution error:', error);
+      alert(error.response?.data?.message || 'Failed to record distribution');
+    }
   };
+
+  const handleDownloadReport = async () => {
+    try {
+      const response = await api.get('/thriposha/report/export', {
+        params: { format: 'pdf' },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Thriposha_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      alert('Failed to download report');
+    }
+  };
+
+  if (loading && recentLogs.length === 0) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin text-pink-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
@@ -205,17 +288,17 @@ const NutritionMgmtPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">MOTHER'S FULL NAME</label>
                 <input
                   type="text"
-                  placeholder="e.g., Kushani Mendis"
+                  placeholder="e.g., Nadeesha Lakmali Silva"
                   value={motherName}
                   onChange={(e) => setMotherName(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">MOTHER'S ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">MOTHER'S ID (Mother Code)</label>
                 <input
                   type="text"
-                  placeholder="e.g., #MM-7721"
+                  placeholder="e.g., MOM-26-0009"
                   value={motherId}
                   onChange={(e) => setMotherId(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
@@ -236,7 +319,7 @@ const NutritionMgmtPage = () => {
                 <input
                   type="number"
                   step="0.1"
-                  placeholder="e.g., 18.5"
+                  placeholder="e.g., 22.8"
                   value={bmi}
                   onChange={(e) => setBmi(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
@@ -254,10 +337,7 @@ const NutritionMgmtPage = () => {
               >
                 {isCalculating ? (
                   <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <Loader className="animate-spin h-5 w-5 mr-2" />
                     Calculating...
                   </span>
                 ) : (
@@ -329,22 +409,26 @@ const NutritionMgmtPage = () => {
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recipient Name/ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date of Issue</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assessment Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">BMI</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Packets</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {recentLogs.map((log, index) => (
+                  {eligibleMothers.slice(0, 10).map((log, index) => (
                     <tr key={index} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div>
                           <p className="text-sm font-medium text-gray-900">{log.name}</p>
-                          <p className="text-xs text-gray-500">{log.id} - {log.week}</p>
+                          <p className="text-xs text-gray-500">{log.motherId} • {log.week}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-gray-500">{log.date}</span>
+                        <span className="text-sm text-gray-500">{log.assessedDate}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-gray-700">{log.bmi}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -367,10 +451,10 @@ const NutritionMgmtPage = () => {
               </table>
             </div>
 
-            {recentLogs.length === 0 && (
+            {eligibleMothers.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <Package size={48} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-sm">No distribution logs yet</p>
+                <p className="text-sm">No eligible mothers found yet</p>
               </div>
             )}
           </div>
@@ -384,12 +468,15 @@ const NutritionMgmtPage = () => {
             <p className="text-sm text-gray-500 mb-4">Generate compliant documentation for ministry review.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <button className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-pink-300 transition-all">
+              <button 
+                onClick={handleDownloadReport}
+                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-pink-300 transition-all"
+              >
                 <div className="flex items-center space-x-3">
                   <FileText size={20} className="text-pink-400" />
                   <div className="text-left">
                     <p className="text-sm font-medium text-gray-900">Monthly Distribution Report</p>
-                    <p className="text-xs text-gray-500">October 2024 - Download PDF</p>
+                    <p className="text-xs text-gray-500">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} - Download PDF</p>
                   </div>
                 </div>
                 <Download size={16} className="text-pink-500" />
@@ -401,7 +488,7 @@ const NutritionMgmtPage = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4">Recent Logs</h2>
             <div className="space-y-3">
-              {recentLogs.map((log, index) => (
+              {recentLogs.slice(0, 5).map((log, index) => (
                 <div 
                   key={index} 
                   className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
@@ -413,7 +500,7 @@ const NutritionMgmtPage = () => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">{log.name}</p>
-                      <p className="text-xs text-gray-500">{log.id} - {log.week}</p>
+                      <p className="text-xs text-gray-500">{log.motherId} - {log.week}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
@@ -466,17 +553,17 @@ const NutritionMgmtPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Recipient Name</label>
                     <input
                       type="text"
-                      placeholder="e.g., Kushani Mendis"
+                      placeholder="e.g., Nadeesha Lakmali Silva"
                       value={newDistribution.recipientName}
                       onChange={(e) => setNewDistribution({...newDistribution, recipientName: e.target.value})}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Recipient ID</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Recipient ID (Mother Code)</label>
                     <input
                       type="text"
-                      placeholder="e.g., #MM-7721"
+                      placeholder="e.g., MOM-26-0009"
                       value={newDistribution.recipientId}
                       onChange={(e) => setNewDistribution({...newDistribution, recipientId: e.target.value})}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
@@ -549,12 +636,12 @@ const NutritionMgmtPage = () => {
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
                   <span className="text-2xl font-semibold text-pink-600">
-                    {selectedLog.name.split(' ').map(n => n[0]).join('')}
+                    {selectedLog.name?.split(' ').map(n => n[0]).join('') || 'M'}
                   </span>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{selectedLog.name}</h3>
-                  <p className="text-sm text-gray-500">{selectedLog.id}</p>
+                  <p className="text-sm text-gray-500">{selectedLog.motherId}</p>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
                     selectedLog.status === 'High Risk' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                   }`}>

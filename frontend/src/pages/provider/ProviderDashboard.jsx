@@ -52,18 +52,17 @@ const ProviderDashboard = () => {
 
   // Check if profile needs to be completed
   useEffect(() => {
-    const isNewRegistration = localStorage.getItem('pearlmom_provider_new_registration');
-    const isProfileComplete = localStorage.getItem('pearlmom_provider_profile_complete');
-    
-    if (isNewRegistration === 'true' && !isProfileComplete) {
-      setShowProfileModal(true);
-    } else {
-      setProfileCompleted(true);
-      if (isProfileComplete) {
-        localStorage.removeItem('pearlmom_provider_new_registration');
+    // Use backend profile_completed flag from user context
+    if (user && user.role && (user.role === 'midwife' || user.role === 'doctor')) {
+      if (user.profile_completed === false) {
+        setShowProfileModal(true);
+        setProfileCompleted(false);
+      } else {
+        setProfileCompleted(true);
+        setShowProfileModal(false);
       }
     }
-  }, []);
+  }, [user]);
 
   const fetchProviderData = async () => {
     try {
@@ -71,12 +70,13 @@ const ProviderDashboard = () => {
       console.log('Provider profile response:', response.data);
       
       if (response.data.success) {
-        const { user: userData, provider } = response.data.data;
+        const payload = response.data.data || response.data;
+        const { user: userData, provider } = payload;
         
         // Set provider info for header display
         setProviderInfo({
           full_name: userData.name || provider.full_name || '',
-          employee_id: provider.employee_id || '',
+          employee_id: provider.employee_id || userData.employee_id || 'Not assigned',
           email: userData.email || '',
           phone_number: userData.phone_no || provider.contact_number || '',
           assigned_area: provider.assigned_area || '',
@@ -87,7 +87,7 @@ const ProviderDashboard = () => {
         // Set profile data for the form
         setProfileData({
           full_name: userData.name || provider.full_name || '',
-          employee_id: provider.employee_id || '',
+          employee_id: provider.employee_id || userData.employee_id || 'Not assigned',
           email: userData.email || '',
           role_type: provider.qualification || '',
           phone_number: userData.phone_no || provider.contact_number || '',
@@ -112,11 +112,13 @@ const ProviderDashboard = () => {
       console.log('Dashboard response:', response.data);
       
       if (response.data.success) {
-        setDashboardData(response.data.data);
+        setDashboardData(response.data.data || response.data);
+      } else {
+        setError(response.data?.message || 'Failed to load dashboard data');
       }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
-      setError('Failed to load dashboard data');
+      setError(error.response?.data?.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -192,12 +194,17 @@ const ProviderDashboard = () => {
     setShowProfileModal(false);
   };
 
-  // Calculate stats from real data
+  // Calculate stats from real data - FIXED to use dashboardData
+  const totalMothers = dashboardData?.stats?.totalMothers || 0;
+  const activePregnancies = dashboardData?.stats?.activePregnancies || 0;
+  const highRiskMothers = dashboardData?.stats?.highRiskMothers || 0;
+  const vaccinationRate = dashboardData?.stats?.vaccinationRate || 94;
+
   const stats = [
-    { title: 'Total Mothers', value: dashboardData?.stats?.totalMothers?.toLocaleString() || '0', change: '+12%', icon: Users, color: 'blue' },
-    { title: 'Active Pregnancies', value: dashboardData?.stats?.activePregnancies?.toLocaleString() || '0', change: '+8%', icon: Activity, color: 'green' },
-    { title: 'High-Risk Cases', value: dashboardData?.stats?.highRiskMothers?.toLocaleString() || '0', change: '-5%', icon: AlertTriangle, color: 'red' },
-    { title: 'Vaccination Rate', value: `${dashboardData?.stats?.vaccinationRate || 94}%`, change: '+3%', icon: Shield, color: 'purple' }
+    { title: 'Total Mothers', value: totalMothers.toLocaleString(), change: '+12%', icon: Users, color: 'blue' },
+    { title: 'Active Pregnancies', value: activePregnancies.toLocaleString(), change: '+8%', icon: Activity, color: 'green' },
+    { title: 'High-Risk Cases', value: highRiskMothers.toLocaleString(), change: '-5%', icon: AlertTriangle, color: 'red' },
+    { title: 'Vaccination Rate', value: `${vaccinationRate}%`, change: '+3%', icon: Shield, color: 'purple' }
   ];
 
   const recentAlerts = dashboardData?.recentAlerts?.slice(0, 3).map(alert => ({
@@ -272,10 +279,10 @@ Employee ID: ${providerInfo.employee_id || 'N/A'}
 
 SYSTEM OVERVIEW
 ---------------
-Total Mothers Registered: ${dashboardData?.stats?.totalMothers || 0}
-Active Pregnancy Count: ${dashboardData?.stats?.activePregnancies || 0}
-Urgent High-Risk Cases: ${dashboardData?.stats?.highRiskMothers || 0}
-Population Vaccination Coverage: ${dashboardData?.stats?.vaccinationRate || 94}%
+Total Mothers Registered: ${totalMothers}
+Active Pregnancy Count: ${activePregnancies}
+Urgent High-Risk Cases: ${highRiskMothers}
+Population Vaccination Coverage: ${vaccinationRate}%
 
 MATERNAL RISK DISTRIBUTION
 --------------------------
@@ -312,6 +319,22 @@ Report generated on ${formatDate(new Date(), 'full')}
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-6 min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={() => fetchDashboardData()}
+            className="mt-2 px-4 py-2 bg-pink-600 text-white rounded-lg text-sm hover:bg-pink-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
       {/* Header */}
@@ -320,7 +343,7 @@ Report generated on ${formatDate(new Date(), 'full')}
           <h1 className="text-2xl font-bold text-gray-900">Provider Dashboard</h1>
           <p className="text-gray-500 mt-1">
             Welcome back, {providerInfo.full_name || user?.fullName || 'Provider'}. 
-            Employee ID: <span className="font-semibold text-pink-600">{providerInfo.employee_id || 'Not set'}</span> | 
+            Employee ID: <span className="font-semibold text-pink-600">{providerInfo.employee_id || 'Not assigned'}</span> | 
             Here's your real-time health overview for {formatDate(new Date(), 'long')}.
           </p>
         </div>

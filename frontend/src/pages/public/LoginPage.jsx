@@ -22,40 +22,57 @@ const LoginPage = () => {
   };
 
   const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    if (!formData.fullName || !formData.password) {
-      setError('Please fill in all fields');
-      setLoading(false);
-      return;
-    }
+  if (!formData.fullName || !formData.password) {
+    setError('Please fill in all fields');
+    setLoading(false);
+    return;
+  }
 
-    try {
-      console.log('Attempting login with:', { fullName: formData.fullName, role: loginAs });
+  try {
+    const normalizedFullName = formData.fullName.trim();
+    console.log('Attempting login with:', { fullName: normalizedFullName, role: loginAs });
+    
+    const result = await handleLogin(
+      { fullName: normalizedFullName, password: formData.password, role: loginAs },
+      login
+    );
+
+    console.log('Login result in component:', result);
+
+    if (result.success) {
+      console.log('Login successful, role:', result.role);
       
-      const result = await handleLogin(
-        { fullName: formData.fullName, password: formData.password, role: loginAs },
-        login
-      );
-
-      console.log('Login result in component:', result);
-
-      if (result.success) {
-        console.log('Login successful, role:', result.role);
-        // Navigation is handled in useAuth.js handleLogin
-        // No need to navigate here as it's already done in the hook
+      // Get user from localStorage to verify role
+      const storedUser = localStorage.getItem('pearlmom_user');
+      const userData = storedUser ? JSON.parse(storedUser) : null;
+      const userRole = result.role || userData?.role;
+      
+      console.log('Navigating with role:', userRole);
+      
+      // Navigate based on role - DO THIS HERE, not in hook
+      if (userRole === 'mother') {
+        navigate('/mother/dashboard');
+      } else if (userRole === 'midwife' || userRole === 'doctor') {
+        navigate('/provider/dashboard');
+      } else if (userRole === 'admin') {
+        navigate('/admin/dashboard');
       } else {
-        setError(result.message || 'Login failed');
+        navigate('/');
       }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('An error occurred during login');
-    } finally {
-      setLoading(false);
+    } else {
+      setError(result.message || 'Login failed');
     }
-  };
+  } catch (err) {
+    console.error('Login error:', err);
+    setError('An error occurred during login');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDemoLogin = async (role) => {
     setLoading(true);
