@@ -1,8 +1,9 @@
-const { Mother, User, Midwife, Appointment, Vaccination, RefreshToken } = require('../models');
+const { Mother, User, Midwife, Appointment, Vaccination, RefreshToken, ClinicVisit, LabReport, Clinic, HealthEducationChecklist } = require('../models');
 const { success, error, successResponse, errorResponse } = require('../utils/response');
 const { sequelize } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const generateMotherID = require('../utils/generateMotherID');
+const { Op } = require('sequelize');
 
 // Get mother dashboard - FIXED alias case
 const getDashboard = async (req, res) => {
@@ -132,6 +133,84 @@ const updateProfile = async (req, res) => {
     await transaction.rollback();
     console.error('Update profile error:', err);
     return error(res, 'Error updating profile: ' + err.message);
+  }
+};
+
+// Get EMCH Card Data (for mother dashboard)
+// Get EMCH Card Data (for mother dashboard)
+const getEMCHCardData = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+    
+    // Get mother profile
+    const mother = await Mother.findOne({
+      where: { user_id: user_id, is_deleted: false }
+    });
+    
+    if (!mother) {
+      return error(res, 'Mother profile not found', 404);
+    }
+    
+    // Get latest vital signs from clinic_visits
+    const latestVisit = await ClinicVisit.findOne({
+      where: { mother_id: mother.mother_id, status: 'completed', is_deleted: false },
+      order: [['visit_date', 'DESC']],
+      limit: 1
+    });
+    
+    // Get all clinic visits for timeline
+    const clinicVisits = await ClinicVisit.findAll({
+      where: { mother_id: mother.mother_id, status: 'completed', is_deleted: false },
+      order: [['visit_date', 'DESC']]
+    });
+    
+    // Get next appointment - simplified to avoid alias issues
+    const nextAppointment = await Appointment.findOne({
+      where: { 
+        mother_id: mother.mother_id, 
+        status: 'scheduled',
+        appointment_date: { [Op.gte]: new Date() },
+        is_deleted: false
+      },
+      order: [['appointment_date', 'ASC']]
+    });
+    
+    // If we need clinic details, fetch separately - FIXED: use 'name' instead of 'clinic_name'
+    let clinicDetails = null;
+    if (nextAppointment && nextAppointment.clinic_id) {
+      clinicDetails = await Clinic.findOne({
+        where: { clinic_id: nextAppointment.clinic_id },
+        attributes: [['name', 'clinic_name'], 'address', 'contact_number', 'district'] // Use alias to map 'name' to 'clinic_name'
+      });
+    }
+    
+    // Get lab reports
+    const labReports = await LabReport.findAll({
+      where: { mother_id: mother.mother_id },
+      order: [['collected_date', 'DESC']]
+    });
+    
+    // Combine appointment with clinic details
+    const appointmentWithDetails = nextAppointment ? {
+      ...nextAppointment.toJSON(),
+      Clinic: clinicDetails ? {
+        clinic_name: clinicDetails.dataValues.clinic_name,
+        address: clinicDetails.address,
+        contact_number: clinicDetails.contact_number
+      } : null
+    } : null;
+    
+    return success(res, {
+      mother,
+      vitalSigns: latestVisit,
+      clinicVisits,
+      nextAppointment: appointmentWithDetails,
+      labReports
+    });
+    
+  } catch (err) {
+    console.error('EMCH card data error:', err);
+    return error(res, 'Error fetching EMCH card data: ' + err.message);
   }
 };
 
@@ -396,6 +475,7 @@ module.exports = {
   getDashboard,
   getProfile,
   updateProfile,
+  getEMCHCardData,
   addMother,
   changePassword,
   deactivateAccount,

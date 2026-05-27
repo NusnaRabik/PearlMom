@@ -27,7 +27,11 @@ const Clinic = sequelize.define('Clinic', {
     defaultValue: true
   }
 }, {
-  tableName: 'clinics'
+  tableName: 'clinics',
+  timestamps: true,
+  createdAt: 'createdAt',  // Use exactly as in your database (capital A)
+  updatedAt: 'updatedAt',  // Use exactly as in your database (capital A)
+  underscored: false       // Don't convert to snake_case
 });
 
 module.exports = Clinic;

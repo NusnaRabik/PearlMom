@@ -14,6 +14,7 @@ router.put('/change-password', motherController.changePassword);
 router.delete('/deactivate', motherController.deactivateAccount);
 router.put('/upload-profile-picture', motherController.uploadProfilePicture);
 router.get('/dashboard', motherController.getDashboard);
+router.get('/emch-card-data', motherController.getEMCHCardData); // Add this line
 
 // Provider routes
 router.get('/all', authorize('midwife', 'doctor'), motherController.getAllMothers);

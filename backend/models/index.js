@@ -11,6 +11,7 @@ const ThriposhaEligibility = require('./ThriposhaEligibility');
 const NutritionSupplement = require('./NutritionSupplement');
 const ClinicVisit = require('./ClinicVisit');
 const HealthEducationChecklist = require('./HealthEducationChecklist');
+const LabReport = require('./LabReport');
 
 // Associations
 User.hasOne(Mother, { foreignKey: 'user_id' });
@@ -33,6 +34,10 @@ Appointment.belongsTo(Mother, { foreignKey: 'mother_id' });
 
 Mother.hasMany(Vaccination, { foreignKey: 'mother_id' });
 Vaccination.belongsTo(Mother, { foreignKey: 'mother_id' });
+
+// Lab Report associations
+Mother.hasMany(LabReport, { foreignKey: 'mother_id' });
+LabReport.belongsTo(Mother, { foreignKey: 'mother_id' });
 
 // Thriposha associations
 Mother.hasMany(ThriposhaEligibility, { foreignKey: 'mother_id', as: 'thriposha_eligibilities' });
@@ -86,5 +91,6 @@ module.exports = {
   ThriposhaEligibility,
   NutritionSupplement,
   ClinicVisit,
-  HealthEducationChecklist
+  HealthEducationChecklist,
+  LabReport
 };
