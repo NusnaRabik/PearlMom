@@ -1,9 +1,9 @@
-const { Mother, User, Appointment, Vaccination, RefreshToken } = require('../models');
-const { success, error } = require('../utils/response');
+const { Mother, User, Midwife, Appointment, Vaccination, RefreshToken } = require('../models');
+const { success, error, successResponse, errorResponse } = require('../utils/response');
 const { sequelize } = require('../config/db');
 const bcrypt = require('bcryptjs');
+const generateMotherID = require('../utils/generateMotherID');
 
-// Get mother dashboard
 // Get mother dashboard - FIXED alias case
 const getDashboard = async (req, res) => {
   try {
@@ -12,14 +12,14 @@ const getDashboard = async (req, res) => {
       include: [
         {
           model: Appointment,
-          as: 'Appointments',  // Capital A - matches association
+          as: 'Appointments',
           required: false,
           limit: 5,
           order: [['appointment_date', 'DESC']]
         },
         {
           model: Vaccination,
-          as: 'Vaccinations',  // Capital V - matches association
+          as: 'Vaccinations',
           required: false,
           limit: 5,
           order: [['due_date', 'ASC']]
@@ -76,48 +76,18 @@ const updateProfile = async (req, res) => {
   try {
     const user_id = req.user.user_id;
     
-    // Allowed fields for mother profile - INCLUDING all EMCHCardPage fields
+    // Allowed fields for mother profile
     const allowedFields = [
-      // Basic info
-      'full_name',
-      'nic',
-      'dob',
-      'address',
-      'district',
-      'gs_division',
-      'blood_group',
-      
-      // Pregnancy details
-      'pregnancy_status',
-      'lmp_date',
-      'expected_delivery_date',
-      'current_weight',
-      'height',
-      'gravida',
-      'para',
-      
-      // Medical history
-      'allergies',
-      'chronic_diseases',
-      
-      // Emergency contacts
-      'emergency_contact_name',
-      'emergency_contact_phone',
-      'emergency_relationship',
-      
-      // Family details
-      'husband_name',
-      'husband_contact',
-      
-      // Professional info
-      'assigned_midwife_id',
-      'is_high_risk'
+      'full_name', 'nic', 'dob', 'address', 'district', 'gs_division', 'blood_group',
+      'pregnancy_status', 'lmp_date', 'expected_delivery_date', 'current_weight', 'height',
+      'gravida', 'para', 'allergies', 'chronic_diseases',
+      'emergency_contact_name', 'emergency_contact_phone', 'emergency_relationship',
+      'husband_name', 'husband_contact', 'assigned_midwife_id', 'is_high_risk'
     ];
 
     const updates = {};
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined && req.body[field] !== null && req.body[field] !== '') {
-        // Handle special conversions
         if (field === 'dob' || field === 'lmp_date' || field === 'expected_delivery_date') {
           if (req.body[field]) updates[field] = new Date(req.body[field]);
         } else if (field === 'current_weight' || field === 'height') {
@@ -132,74 +102,170 @@ const updateProfile = async (req, res) => {
       }
     });
 
-    // Update mother profile
-    await Mother.update(updates, {
-      where: { user_id: user_id },
-      transaction
-    });
+    await Mother.update(updates, { where: { user_id: user_id }, transaction });
 
-    // Also update user's name, email, phone if provided
     if (req.body.full_name) {
-      await User.update(
-        { name: req.body.full_name },
-        { where: { user_id: user_id }, transaction }
-      );
+      await User.update({ name: req.body.full_name }, { where: { user_id: user_id }, transaction });
     }
-    
     if (req.body.email) {
-      await User.update(
-        { email: req.body.email },
-        { where: { user_id: user_id }, transaction }
-      );
+      await User.update({ email: req.body.email }, { where: { user_id: user_id }, transaction });
     }
-    
     if (req.body.mobile) {
-      await User.update(
-        { phone_no: req.body.mobile },
-        { where: { user_id: user_id }, transaction }
-      );
+      await User.update({ phone_no: req.body.mobile }, { where: { user_id: user_id }, transaction });
     }
 
-    // Update profile_completed flag if all required fields are filled
-    const updatedMother = await Mother.findOne({
-      where: { user_id: user_id },
-      transaction
-    });
-
-    // Check if profile is complete (has required fields)
-    const isProfileComplete = updatedMother && 
-      updatedMother.full_name && 
-      updatedMother.dob && 
-      updatedMother.blood_group && 
-      updatedMother.expected_delivery_date;
+    const updatedMother = await Mother.findOne({ where: { user_id: user_id }, transaction });
+    const isProfileComplete = updatedMother && updatedMother.full_name && updatedMother.dob && updatedMother.blood_group && updatedMother.expected_delivery_date;
 
     if (isProfileComplete) {
-      await Mother.update(
-        { profile_completed: true },
-        { where: { user_id: user_id }, transaction }
-      );
-      
-      await User.update(
-        { profile_completed: true },
-        { where: { user_id: user_id }, transaction }
-      );
+      await Mother.update({ profile_completed: true }, { where: { user_id: user_id }, transaction });
+      await User.update({ profile_completed: true }, { where: { user_id: user_id }, transaction });
     }
 
     await transaction.commit();
 
-    const finalMother = await Mother.findOne({
-      where: { user_id: user_id }
-    });
-    
-    const finalUser = await User.findByPk(user_id, {
-      attributes: ['name', 'email', 'phone_no', 'profile_picture_url']
-    });
+    const finalMother = await Mother.findOne({ where: { user_id: user_id } });
+    const finalUser = await User.findByPk(user_id, { attributes: ['name', 'email', 'phone_no', 'profile_picture_url'] });
 
     return success(res, { mother: finalMother, user: finalUser }, 'Profile updated successfully');
   } catch (err) {
     await transaction.rollback();
     console.error('Update profile error:', err);
     return error(res, 'Error updating profile: ' + err.message);
+  }
+};
+
+// Add new mother (for provider) - using generateMotherID
+const addMother = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const {
+      mother_code,
+      full_name,
+      nic,
+      dob,
+      phone_no,
+      email,
+      address,
+      district,
+      gs_division,
+      blood_group,
+      lmp_date,
+      expected_delivery_date,
+      current_weight,
+      height,
+      pregnancy_status,
+      gravida,
+      para,
+      is_high_risk,
+      emergency_contact_name,
+      emergency_contact_phone,
+      emergency_relationship,
+      husband_name,
+      husband_contact,
+      allergies,
+      chronic_diseases
+    } = req.body;
+
+    // Get the logged-in midwife
+    const midwife = await Midwife.findOne({
+      where: { user_id: req.user.user_id }
+    });
+
+    if (!midwife) {
+      await transaction.rollback();
+      return errorResponse(res, 'Provider profile not found', 404);
+    }
+
+    // Generate mother_code using the same function as registration
+    let finalMotherCode = mother_code;
+    if (!finalMotherCode) {
+      finalMotherCode = await generateMotherID();
+    } else {
+      // Check if provided mother_code already exists
+      const existingMother = await Mother.findOne({ where: { mother_code: finalMotherCode } });
+      if (existingMother) {
+        await transaction.rollback();
+        return errorResponse(res, `Mother code ${finalMotherCode} already exists. Please use a different code or leave empty for auto-generation.`, 400);
+      }
+    }
+
+    // Create user account for the mother
+    const defaultPassword = full_name.toLowerCase().replace(/\s/g, '') + '123';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    
+    const user = await User.create({
+      phone_no: phone_no,
+      email: email || `${full_name.toLowerCase().replace(/\s/g, '')}@pearlmom.lk`,
+      name: full_name,
+      password_hash: hashedPassword,
+      role: 'mother',
+      profile_completed: true,
+      is_active: true
+    }, { transaction });
+
+    // Calculate weeks from LMP
+    let weeks = null;
+    if (lmp_date) {
+      const lmp = new Date(lmp_date);
+      const today = new Date();
+      const diffTime = today - lmp;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      weeks = Math.floor(diffDays / 7);
+      if (weeks < 0) weeks = 0;
+      if (weeks > 42) weeks = 42;
+    }
+
+    // Create mother profile
+    const mother = await Mother.create({
+      user_id: user.user_id,
+      mother_code: finalMotherCode,
+      full_name: full_name,
+      nic: nic,
+      dob: dob,
+      address: address,
+      district: district,
+      gs_division: gs_division,
+      blood_group: blood_group,
+      lmp_date: lmp_date,
+      expected_delivery_date: expected_delivery_date,
+      current_weight: current_weight,
+      height: height,
+      pregnancy_status: pregnancy_status || 'pregnant',
+      gravida: gravida || 1,
+      para: para || 0,
+      is_high_risk: is_high_risk || false,
+      weeks: weeks,
+      emergency_contact_name: emergency_contact_name,
+      emergency_contact_phone: emergency_contact_phone,
+      emergency_relationship: emergency_relationship,
+      husband_name: husband_name,
+      husband_contact: husband_contact,
+      allergies: allergies,
+      chronic_diseases: chronic_diseases,
+      assigned_midwife_id: midwife.midwife_id,
+      registered_date: new Date(),
+      profile_completed: true
+    }, { transaction });
+
+    await transaction.commit();
+
+    return successResponse(res, { 
+      mother, 
+      user,
+      default_password: defaultPassword
+    }, `Mother added successfully. Default password: ${defaultPassword}`);
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Add mother error:', error);
+    
+    // Handle duplicate entry error specifically
+    if (error.name === 'SequelizeUniqueConstraintError' || error.code === 'ER_DUP_ENTRY') {
+      return errorResponse(res, 'Duplicate entry. Mother code or NIC already exists.', 400);
+    }
+    
+    return errorResponse(res, 'Error adding mother: ' + error.message);
   }
 };
 
@@ -210,25 +276,15 @@ const changePassword = async (req, res) => {
     const { oldPassword, newPassword } = req.body;
     
     const user = await User.findByPk(user_id);
-    
-    if (!user) {
-      return error(res, 'User not found', 404);
-    }
+    if (!user) return error(res, 'User not found', 404);
     
     const isPasswordValid = await user.comparePassword(oldPassword);
-    if (!isPasswordValid) {
-      return error(res, 'Current password is incorrect', 400);
-    }
+    if (!isPasswordValid) return error(res, 'Current password is incorrect', 400);
     
-    if (newPassword.length < 8) {
-      return error(res, 'New password must be at least 8 characters', 400);
-    }
+    if (newPassword.length < 8) return error(res, 'New password must be at least 8 characters', 400);
     
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.update(
-      { password_hash: hashedPassword },
-      { where: { user_id: user_id } }
-    );
+    await User.update({ password_hash: hashedPassword }, { where: { user_id: user_id } });
     
     return success(res, null, 'Password changed successfully');
   } catch (err) {
@@ -244,26 +300,11 @@ const deactivateAccount = async (req, res) => {
   try {
     const user_id = req.user.user_id;
     
-    // Soft delete user
-    await User.update(
-      { is_active: false, is_deleted: true, deleted_at: new Date() },
-      { where: { user_id: user_id }, transaction }
-    );
-    
-    // Soft delete mother profile
-    await Mother.update(
-      { is_deleted: true },
-      { where: { user_id: user_id }, transaction }
-    );
-    
-    // Revoke all refresh tokens
-    await RefreshToken.update(
-      { is_revoked: true },
-      { where: { user_id: user_id }, transaction }
-    );
+    await User.update({ is_active: false, is_deleted: true, deleted_at: new Date() }, { where: { user_id: user_id }, transaction });
+    await Mother.update({ is_deleted: true }, { where: { user_id: user_id }, transaction });
+    await RefreshToken.update({ is_revoked: true }, { where: { user_id: user_id }, transaction });
     
     await transaction.commit();
-    
     return success(res, null, 'Account deactivated successfully');
   } catch (err) {
     await transaction.rollback();
@@ -277,12 +318,7 @@ const uploadProfilePicture = async (req, res) => {
   try {
     const user_id = req.user.user_id;
     const { profile_picture_url } = req.body;
-    
-    await User.update(
-      { profile_picture_url: profile_picture_url },
-      { where: { user_id: user_id } }
-    );
-    
+    await User.update({ profile_picture_url: profile_picture_url }, { where: { user_id: user_id } });
     return success(res, { profile_picture_url }, 'Profile picture updated');
   } catch (err) {
     console.error('Upload profile picture error:', err);
@@ -295,13 +331,8 @@ const getAllMothers = async (req, res) => {
   try {
     const mothers = await Mother.findAll({
       where: { is_deleted: false },
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['name', 'email', 'phone_no']
-      }]
+      include: [{ model: User, as: 'user', attributes: ['name', 'email', 'phone_no'] }]
     });
-
     return success(res, { mothers });
   } catch (err) {
     console.error('Get all mothers error:', err);
@@ -309,36 +340,19 @@ const getAllMothers = async (req, res) => {
   }
 };
 
-// Update mother medical details (vitals, weight, etc.)
+// Update mother medical details
 const updateMedicalDetails = async (req, res) => {
   try {
     const user_id = req.user.user_id;
     const updates = {};
-    
-    // Medical fields that can be updated
-    const medicalFields = [
-      'current_weight',
-      'blood_pressure_systolic',
-      'blood_pressure_diastolic',
-      'fetal_heart_rate',
-      'fundal_height',
-      'notes'
-    ];
+    const medicalFields = ['current_weight', 'blood_pressure_systolic', 'blood_pressure_diastolic', 'fetal_heart_rate', 'fundal_height', 'notes'];
     
     medicalFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
     
-    await Mother.update(updates, {
-      where: { user_id: user_id }
-    });
-    
-    const updated = await Mother.findOne({
-      where: { user_id: user_id }
-    });
-    
+    await Mother.update(updates, { where: { user_id: user_id } });
+    const updated = await Mother.findOne({ where: { user_id: user_id } });
     return success(res, { mother: updated }, 'Medical details updated');
   } catch (err) {
     console.error('Update medical details error:', err);
@@ -352,12 +366,9 @@ const createOrUpdateProfile = async (req, res) => {
   
   try {
     const user_id = req.user.user_id;
-    
-    // Check if mother profile exists
     let mother = await Mother.findOne({ where: { user_id: user_id }, transaction });
     
     if (!mother) {
-      // Create new profile
       mother = await Mother.create({
         user_id: user_id,
         full_name: req.body.full_name || req.user.name,
@@ -366,22 +377,13 @@ const createOrUpdateProfile = async (req, res) => {
         ...req.body
       }, { transaction });
     } else {
-      // Update existing profile
       await mother.update(req.body, { transaction });
     }
     
-    // Update user profile_completed flag
-    await User.update(
-      { profile_completed: true },
-      { where: { user_id: user_id }, transaction }
-    );
-    
+    await User.update({ profile_completed: true }, { where: { user_id: user_id }, transaction });
     await transaction.commit();
     
-    const updatedMother = await Mother.findOne({
-      where: { user_id: user_id }
-    });
-    
+    const updatedMother = await Mother.findOne({ where: { user_id: user_id } });
     return success(res, { mother: updatedMother }, 'Profile saved successfully');
   } catch (err) {
     await transaction.rollback();
@@ -394,6 +396,7 @@ module.exports = {
   getDashboard,
   getProfile,
   updateProfile,
+  addMother,
   changePassword,
   deactivateAccount,
   uploadProfilePicture,

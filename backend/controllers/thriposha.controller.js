@@ -157,11 +157,10 @@ const assessEligibility = async (req, res) => {
   }
 };
 
-// Get list of currently eligible mothers from thriposha_eligibilities
+// Get list of currently eligible mothers from thriposha_eligibilities - FIXED (ALL mothers)
 const getEligibleMothers = async (req, res) => {
   try {
-    const midwife = await Midwife.findOne({ where: { user_id: req.user.user_id } });
-
+    // REMOVED midwife filter - ALL providers can see ALL eligible mothers
     let query = `
       SELECT 
         e.eligibility_id,
@@ -183,19 +182,10 @@ const getEligibleMothers = async (req, res) => {
       JOIN mothers m ON e.mother_id = m.mother_id
       WHERE e.is_eligible = 1
         AND m.is_deleted = 0
+      ORDER BY e.assessed_date DESC
     `;
 
-    const replacements = [];
-    
-    if (midwife) {
-      query += ` AND m.assigned_midwife_id = ?`;
-      replacements.push(midwife.midwife_id);
-    }
-
-    query += ` ORDER BY e.assessed_date DESC`;
-
     const eligibleRows = await sequelize.query(query, {
-      replacements,
       type: sequelize.QueryTypes.SELECT
     });
 
@@ -223,14 +213,10 @@ const getEligibleMothers = async (req, res) => {
   }
 };
 
-// Get eligible mothers list with their distribution history
+// Get eligible mothers list with their distribution history - FIXED (ALL mothers)
 const getEligibleMothersWithDistributions = async (req, res) => {
   try {
-    const midwife = await Midwife.findOne({
-      where: { user_id: req.user.user_id }
-    });
-
-    // Get recent distributions
+    // Get recent distributions - REMOVED midwife filter
     let distributionsQuery = `
       SELECT 
         ns.supplement_id,
@@ -249,19 +235,10 @@ const getEligibleMothersWithDistributions = async (req, res) => {
       LEFT JOIN thriposha_eligibilities e ON m.mother_id = e.mother_id
       WHERE ns.supplement_type = 'thriposha'
         AND m.is_deleted = 0
+      ORDER BY ns.distribution_date DESC LIMIT 20
     `;
 
-    const replacements = [];
-
-    if (midwife) {
-      distributionsQuery += ` AND m.assigned_midwife_id = ?`;
-      replacements.push(midwife.midwife_id);
-    }
-
-    distributionsQuery += ` ORDER BY ns.distribution_date DESC LIMIT 20`;
-
     const recentDistributions = await sequelize.query(distributionsQuery, {
-      replacements: replacements,
       type: sequelize.QueryTypes.SELECT
     });
 
@@ -382,13 +359,10 @@ const getDistributionHistory = async (req, res) => {
   }
 };
 
-// Export report
+// Export report - FIXED (ALL mothers)
 const exportReport = async (req, res) => {
   try {
-    const midwife = await Midwife.findOne({
-      where: { user_id: req.user.user_id }
-    });
-
+    // REMOVED midwife filter
     let query = `
       SELECT 
         ns.distribution_date,
@@ -403,19 +377,10 @@ const exportReport = async (req, res) => {
       LEFT JOIN thriposha_eligibilities e ON m.mother_id = e.mother_id
       WHERE ns.supplement_type = 'thriposha'
         AND m.is_deleted = 0
+      ORDER BY ns.distribution_date DESC
     `;
 
-    const replacements = [];
-
-    if (midwife) {
-      query += ` AND m.assigned_midwife_id = ?`;
-      replacements.push(midwife.midwife_id);
-    }
-
-    query += ` ORDER BY ns.distribution_date DESC`;
-
     const distributions = await sequelize.query(query, {
-      replacements: replacements,
       type: sequelize.QueryTypes.SELECT
     });
 

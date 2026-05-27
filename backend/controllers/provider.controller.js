@@ -187,6 +187,9 @@ const getMyProfile = async (req, res) => {
 
     // Ensure employee_id is never null
     const employeeId = midwife.employee_id || `TEMP-${midwife.midwife_id}`;
+    
+    // Check if profile is completed from either table
+    const isProfileCompleted = user.profile_completed === true || midwife.profile_completed === true;
 
     return successResponse(res, {
       user: {
@@ -194,7 +197,8 @@ const getMyProfile = async (req, res) => {
         name: user.name,
         email: user.email,
         phone_no: user.phone_no,
-        profile_picture_url: user.profile_picture_url
+        profile_picture_url: user.profile_picture_url,
+        profile_completed: isProfileCompleted
       },
       provider: {
         midwife_id: midwife.midwife_id,
@@ -223,11 +227,12 @@ const updateProfile = async (req, res) => {
     const user_id = req.user.user_id;
     const { full_name, email, phone_number, role_type, assigned_area, district } = req.body;
     
-    // Update user table
+    // Update user table - ADD profile_completed: true
     await User.update({
       name: full_name,
       email: email,
-      phone_no: phone_number
+      phone_no: phone_number,
+      profile_completed: true
     }, { 
       where: { user_id: user_id },
       transaction
@@ -246,18 +251,11 @@ const updateProfile = async (req, res) => {
       transaction
     });
     
-    await User.update({
-      profile_completed: true
-    }, {
-      where: { user_id: user_id },
-      transaction
-    });
-    
     await transaction.commit();
     
     const updatedMidwife = await Midwife.findOne({ where: { user_id: user_id } });
     const updatedUser = await User.findByPk(user_id, {
-      attributes: ['name', 'email', 'phone_no']
+      attributes: ['name', 'email', 'phone_no', 'profile_completed']
     });
     
     return successResponse(res, { 
@@ -271,18 +269,13 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Get assigned mothers (for provider's own assigned mothers)
+// @desc    Get assigned mothers (FIXED - ALL mothers accessible to ALL providers)
 // @route   GET /api/providers/mothers
 const getMyMothers = async (req, res) => {
   try {
-    const midwife = await Midwife.findOne({ 
-      where: { user_id: req.user.user_id }
-    });
-    
-    if (!midwife) return errorResponse(res, 'Provider not found', 404);
-
+    // Get ALL mothers (no midwife filter - all providers can see all mothers)
     const mothers = await Mother.findAll({
-      where: { assigned_midwife_id: midwife.midwife_id, is_deleted: false },
+      where: { is_deleted: false },
       include: [{ model: User, attributes: ['name', 'email', 'phone_no'] }],
       order: [['created_at', 'DESC']]
     });
@@ -331,7 +324,7 @@ const recordClinicVisit = async (req, res) => {
   }
 };
 
-// @desc    Get single mother details
+// @desc    Get single mother details (FIXED - no midwife validation)
 // @route   GET /api/providers/mothers/:motherId
 const getMotherDetails = async (req, res) => {
   try {
@@ -357,11 +350,158 @@ const getMotherDetails = async (req, res) => {
   }
 };
 
+// @desc    Get provider work preferences
+// @route   GET /api/providers/work-preferences
+const getWorkPreferences = async (req, res) => {
+  try {
+    const midwife = await Midwife.findOne({
+      where: { user_id: req.user.user_id, is_deleted: false }
+    });
+
+    if (!midwife) {
+      return errorResponse(res, 'Provider profile not found', 404);
+    }
+
+    const workPreferences = midwife.work_preferences || {
+      schedule: {
+        monday: { start: '08:00', end: '16:00', active: true },
+        tuesday: { start: '08:00', end: '16:00', active: true },
+        wednesday: { start: '08:00', end: '16:00', active: true },
+        thursday: { start: '10:00', end: '18:00', active: true },
+        friday: { start: '08:00', end: '14:00', active: true },
+        saturday: { start: '', end: '', active: false },
+        sunday: { start: '', end: '', active: false }
+      },
+      assigned_clinic_network: ['North Hub Main', 'Community Outreach Unit B', 'Riverside Maternity']
+    };
+
+    return successResponse(res, { work_preferences: workPreferences });
+  } catch (error) {
+    console.error('Get work preferences error:', error);
+    return errorResponse(res, 'Error fetching work preferences');
+  }
+};
+
+// @desc    Update provider work preferences
+// @route   PUT /api/providers/work-preferences
+const updateWorkPreferences = async (req, res) => {
+  try {
+    const { schedule, assigned_clinic_network } = req.body;
+
+    await Midwife.update(
+      { 
+        work_preferences: {
+          schedule,
+          assigned_clinic_network
+        }
+      },
+      { where: { user_id: req.user.user_id } }
+    );
+
+    return successResponse(res, { schedule, assigned_clinic_network }, 'Work preferences updated successfully');
+  } catch (error) {
+    console.error('Update work preferences error:', error);
+    return errorResponse(res, 'Error updating work preferences');
+  }
+};
+
+// @desc    Get notification preferences
+// @route   GET /api/providers/notification-preferences
+const getNotificationPreferences = async (req, res) => {
+  try {
+    const midwife = await Midwife.findOne({
+      where: { user_id: req.user.user_id, is_deleted: false }
+    });
+
+    if (!midwife) {
+      return errorResponse(res, 'Provider profile not found', 404);
+    }
+
+    const notificationPrefs = midwife.notification_preferences || {
+      new_appointments: true,
+      high_risk_alerts: true,
+      vaccination_reminders: false
+    };
+
+    return successResponse(res, { notification_preferences: notificationPrefs });
+  } catch (error) {
+    console.error('Get notification preferences error:', error);
+    return errorResponse(res, 'Error fetching notification preferences');
+  }
+};
+
+// @desc    Update notification preferences
+// @route   PUT /api/providers/notification-preferences
+const updateNotificationPreferences = async (req, res) => {
+  try {
+    const { new_appointments, high_risk_alerts, vaccination_reminders } = req.body;
+
+    await Midwife.update(
+      { 
+        notification_preferences: {
+          new_appointments,
+          high_risk_alerts,
+          vaccination_reminders
+        }
+      },
+      { where: { user_id: req.user.user_id } }
+    );
+
+    return successResponse(res, { new_appointments, high_risk_alerts, vaccination_reminders }, 'Notification preferences updated successfully');
+  } catch (error) {
+    console.error('Update notification preferences error:', error);
+    return errorResponse(res, 'Error updating notification preferences');
+  }
+};
+
+// @desc    Change password (provider)
+// @route   PUT /api/providers/change-password
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const bcrypt = require('bcryptjs');
+
+    if (!oldPassword || !newPassword) {
+      return errorResponse(res, 'Old password and new password are required', 400);
+    }
+
+    if (newPassword.length < 8) {
+      return errorResponse(res, 'New password must be at least 8 characters', 400);
+    }
+
+    const user = await User.findByPk(req.user.user_id);
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    const isPasswordValid = await user.comparePassword(oldPassword);
+    if (!isPasswordValid) {
+      return errorResponse(res, 'Current password is incorrect', 401);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.update(
+      { password_hash: hashedPassword },
+      { where: { user_id: req.user.user_id } }
+    );
+
+    return successResponse(res, null, 'Password changed successfully');
+  } catch (error) {
+    console.error('Change password error:', error);
+    return errorResponse(res, 'Error changing password');
+  }
+};
+
 module.exports = { 
   getDashboard, 
   getMyProfile, 
   updateProfile, 
   getMyMothers, 
   recordClinicVisit,
-  getMotherDetails
+  getMotherDetails,
+  getWorkPreferences,
+  updateWorkPreferences,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  changePassword
 };

@@ -1,27 +1,56 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Camera, Shield, Eye, EyeOff, Lock, Mail, Check, X, Edit2, Save,
-  AlertCircle, KeyRound
+  AlertCircle, KeyRound, Loader, User, Phone, MapPin, Briefcase, Calendar
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const ProviderProfileSettings = () => {
+  const { user, updateProfile: updateAuthProfile } = useAuth();
   const fileInputRef = useRef(null);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
   const [personalInfo, setPersonalInfo] = useState({
-    fullName: 'Dr. Sarah Jenkins',
-    email: 's.jenkins@pearlmom.health',
-    mobile: '+1 (555) 012-3456'
+    fullName: '',
+    email: '',
+    mobile: ''
   });
 
   const [editPersonalInfo, setEditPersonalInfo] = useState({ ...personalInfo });
 
-  const [formData, setFormData] = useState({
-    employeeId: 'PM-9942-MED',
-    designation: 'Senior Obstetrician',
-    clinic: 'Green Valley Maternal Center',
-    emergencyContact: '+1 (555) 999-8877'
+  const [professionalInfo, setProfessionalInfo] = useState({
+    employeeId: '',
+    designation: '',
+    clinic: '',
+    emergencyContact: ''
+  });
+
+  // Work Preferences State
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [schedule, setSchedule] = useState({
+    monday: { start: '08:00', end: '16:00', active: true },
+    tuesday: { start: '08:00', end: '16:00', active: true },
+    wednesday: { start: '08:00', end: '16:00', active: true },
+    thursday: { start: '10:00', end: '18:00', active: true },
+    friday: { start: '08:00', end: '14:00', active: true },
+    saturday: { start: '', end: '', active: false },
+    sunday: { start: '', end: '', active: false }
+  });
+  const [clinicNetwork, setClinicNetwork] = useState([
+    'North Hub Main',
+    'Community Outreach Unit B',
+    'Riverside Maternity'
+  ]);
+
+  // Clinical Alerts State
+  const [clinicalAlerts, setClinicalAlerts] = useState({
+    newAppointments: true,
+    highRiskAlerts: true,
+    vaccinationReminders: false
   });
 
   // Password Change Modal State
@@ -38,6 +67,7 @@ const ProviderProfileSettings = () => {
   });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Forgot Password Modal State
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
@@ -45,37 +75,94 @@ const ProviderProfileSettings = () => {
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  // Schedule Edit State
-  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
-  const [schedule, setSchedule] = useState({
-    monday: { start: '08:00', end: '16:00', active: true },
-    tuesday: { start: '08:00', end: '16:00', active: true },
-    wednesday: { start: '08:00', end: '16:00', active: true },
-    thursday: { start: '10:00', end: '18:00', active: true },
-    friday: { start: '08:00', end: '14:00', active: true },
-    saturday: { start: '', end: '', active: false },
-    sunday: { start: '', end: '', active: false }
-  });
+  // Fetch provider data on load
+  useEffect(() => {
+    fetchProviderData();
+    fetchWorkPreferences();
+    fetchNotificationPreferences();
+  }, []);
 
-  // Clinical Alerts State
-  const [clinicalAlerts, setClinicalAlerts] = useState({
-    newAppointments: true,
-    highRiskAlerts: true,
-    vaccinationReminders: false
-  });
+  const fetchProviderData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/providers/profile');
+      if (response.data.success) {
+        const { user: userData, provider } = response.data.data;
+        
+        setPersonalInfo({
+          fullName: userData.name || '',
+          email: userData.email || '',
+          mobile: userData.phone_no || ''
+        });
+        
+        setProfessionalInfo({
+          employeeId: provider.employee_id || '',
+          designation: provider.qualification || '',
+          clinic: provider.assigned_area || '',
+          emergencyContact: provider.contact_number || ''
+        });
+        
+        if (userData.profile_picture_url) {
+          setProfileImage(userData.profile_picture_url);
+        }
+        
+        setEditPersonalInfo({
+          fullName: userData.name || '',
+          email: userData.email || '',
+          mobile: userData.phone_no || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching provider data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const clinicNetwork = [
-    'North Hub Main',
-    'Community Outreach Unit B',
-    'Riverside Maternity'
-  ];
+  const fetchWorkPreferences = async () => {
+    try {
+      const response = await api.get('/providers/work-preferences');
+      if (response.data.success) {
+        const prefs = response.data.data.work_preferences;
+        if (prefs) {
+          if (prefs.schedule) setSchedule(prefs.schedule);
+          if (prefs.assigned_clinic_network) setClinicNetwork(prefs.assigned_clinic_network);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching work preferences:', error);
+    }
+  };
 
-  const handleImageUpload = (e) => {
+  const fetchNotificationPreferences = async () => {
+    try {
+      const response = await api.get('/providers/notification-preferences');
+      if (response.data.success) {
+        const prefs = response.data.data.notification_preferences;
+        if (prefs) {
+          setClinicalAlerts({
+            newAppointments: prefs.new_appointments ?? true,
+            highRiskAlerts: prefs.high_risk_alerts ?? true,
+            vaccinationReminders: prefs.vaccination_reminders ?? false
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching notification preferences:', error);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         setProfileImage(reader.result);
+        try {
+          await api.post('/profile/upload-photo', { photoUrl: reader.result });
+        } catch (error) {
+          console.error('Error uploading photo:', error);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -86,9 +173,30 @@ const ProviderProfileSettings = () => {
     setIsEditingPersonal(true);
   };
 
-  const handleSavePersonal = () => {
-    setPersonalInfo({ ...editPersonalInfo });
-    setIsEditingPersonal(false);
+  const handleSavePersonal = async () => {
+    setSaving(true);
+    try {
+      const response = await api.put('/providers/profile', {
+        full_name: editPersonalInfo.fullName,
+        email: editPersonalInfo.email,
+        phone_number: editPersonalInfo.mobile,
+        role_type: professionalInfo.designation,
+        assigned_area: professionalInfo.clinic,
+        district: ''
+      });
+      
+      if (response.data.success) {
+        setPersonalInfo({ ...editPersonalInfo });
+        setIsEditingPersonal(false);
+        updateAuthProfile({ fullName: editPersonalInfo.fullName, email: editPersonalInfo.email });
+        alert('Profile updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancelPersonal = () => {
@@ -96,8 +204,106 @@ const ProviderProfileSettings = () => {
     setIsEditingPersonal(false);
   };
 
-  // Handle Password Change
-  const handlePasswordChange = () => {
+  const handleSaveProfessional = async () => {
+    setSaving(true);
+    try {
+      const response = await api.put('/providers/profile', {
+        full_name: personalInfo.fullName,
+        email: personalInfo.email,
+        phone_number: professionalInfo.emergencyContact,
+        role_type: professionalInfo.designation,
+        assigned_area: professionalInfo.clinic,
+        district: ''
+      });
+      
+      if (response.data.success) {
+        alert('Professional information updated successfully!');
+        await fetchProviderData();
+      }
+    } catch (error) {
+      console.error('Error saving professional info:', error);
+      alert('Failed to update professional information');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    setSaving(true);
+    try {
+      const response = await api.put('/providers/work-preferences', {
+        schedule: schedule,
+        assigned_clinic_network: clinicNetwork
+      });
+      
+      if (response.data.success) {
+        setIsEditingSchedule(false);
+        alert('Schedule updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      alert('Failed to update schedule');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveNotificationPreferences = async () => {
+    setSaving(true);
+    try {
+      const response = await api.put('/providers/notification-preferences', {
+        new_appointments: clinicalAlerts.newAppointments,
+        high_risk_alerts: clinicalAlerts.highRiskAlerts,
+        vaccination_reminders: clinicalAlerts.vaccinationReminders
+      });
+      
+      if (response.data.success) {
+        alert('Notification preferences updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving notification preferences:', error);
+      alert('Failed to update notification preferences');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAllChanges = async () => {
+    setSaving(true);
+    try {
+      // Save profile
+      await api.put('/providers/profile', {
+        full_name: personalInfo.fullName,
+        email: personalInfo.email,
+        phone_number: professionalInfo.emergencyContact,
+        role_type: professionalInfo.designation,
+        assigned_area: professionalInfo.clinic,
+        district: ''
+      });
+      
+      // Save work preferences
+      await api.put('/providers/work-preferences', {
+        schedule: schedule,
+        assigned_clinic_network: clinicNetwork
+      });
+      
+      // Save notification preferences
+      await api.put('/providers/notification-preferences', {
+        new_appointments: clinicalAlerts.newAppointments,
+        high_risk_alerts: clinicalAlerts.highRiskAlerts,
+        vaccination_reminders: clinicalAlerts.vaccinationReminders
+      });
+      
+      alert('All changes saved successfully!');
+    } catch (error) {
+      console.error('Error saving all changes:', error);
+      alert('Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
     setPasswordError('');
     setPasswordSuccess('');
 
@@ -121,33 +327,52 @@ const ProviderProfileSettings = () => {
       return;
     }
 
-    setTimeout(() => {
-      setPasswordSuccess('Password changed successfully!');
-      setTimeout(() => {
-        setIsPasswordModalOpen(false);
-        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
-        setPasswordSuccess('');
-      }, 1500);
-    }, 1000);
+    setChangingPassword(true);
+    try {
+      const response = await api.put('/providers/change-password', {
+        oldPassword: passwordData.oldPassword,
+        newPassword: passwordData.newPassword
+      });
+      
+      if (response.data.success) {
+        setPasswordSuccess('Password changed successfully!');
+        setTimeout(() => {
+          setIsPasswordModalOpen(false);
+          setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+          setPasswordSuccess('');
+          setPasswordError('');
+        }, 1500);
+      }
+    } catch (error) {
+      setPasswordError(error.response?.data?.message || 'Error changing password');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
-  // Handle Forgot Password
-  const handleForgotPassword = () => {
+  const handleForgotPassword = async () => {
     if (!forgotEmail) {
       setForgotPasswordMessage('Please enter your email address');
       return;
     }
 
     setIsSending(true);
-    setTimeout(() => {
-      setForgotPasswordMessage('Password reset link has been sent to your email address.');
+    try {
+      // Implement forgot password API call
+      const response = await api.post('/auth/forgot-password', { email: forgotEmail });
+      if (response.data.success) {
+        setForgotPasswordMessage('Password reset link has been sent to your email address.');
+        setTimeout(() => {
+          setIsForgotPasswordModalOpen(false);
+          setForgotEmail('');
+          setForgotPasswordMessage('');
+        }, 2000);
+      }
+    } catch (error) {
+      setForgotPasswordMessage('Error sending reset link. Please try again.');
+    } finally {
       setIsSending(false);
-      setTimeout(() => {
-        setIsForgotPasswordModalOpen(false);
-        setForgotEmail('');
-        setForgotPasswordMessage('');
-      }, 2000);
-    }, 1500);
+    }
   };
 
   const handleScheduleChange = (day, field, value) => {
@@ -170,10 +395,6 @@ const ProviderProfileSettings = () => {
     }));
   };
 
-  const handleSaveSchedule = () => {
-    setIsEditingSchedule(false);
-  };
-
   const getDayName = (key) => {
     const days = {
       monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
@@ -181,6 +402,14 @@ const ProviderProfileSettings = () => {
     };
     return days[key];
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin text-pink-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
@@ -216,9 +445,10 @@ const ProviderProfileSettings = () => {
                   </button>
                   <button
                     onClick={handleSavePersonal}
+                    disabled={saving}
                     className="flex items-center space-x-1 text-sm text-pink-600 hover:text-pink-700 font-medium"
                   >
-                    <Save size={16} />
+                    {saving ? <Loader className="h-4 w-4 animate-spin" /> : <Save size={16} />}
                     <span>Save</span>
                   </button>
                 </div>
@@ -232,7 +462,9 @@ const ProviderProfileSettings = () => {
                   style={profileImage ? { backgroundImage: `url(${profileImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {!profileImage && <span className="text-2xl font-semibold text-white">SJ</span>}
+                  {!profileImage && <span className="text-2xl font-semibold text-white">
+                    {personalInfo.fullName?.split(' ').map(n => n[0]).join('') || 'P'}
+                  </span>}
                 </div>
                 <button 
                   className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
@@ -317,7 +549,7 @@ const ProviderProfileSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">EMPLOYEE ID (READ ONLY)</label>
                 <input
                   type="text"
-                  value={formData.employeeId}
+                  value={professionalInfo.employeeId}
                   readOnly
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 cursor-not-allowed"
                 />
@@ -326,8 +558,9 @@ const ProviderProfileSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">DESIGNATION</label>
                 <input
                   type="text"
-                  value={formData.designation}
-                  onChange={(e) => setFormData({...formData, designation: e.target.value})}
+                  value={professionalInfo.designation}
+                  onChange={(e) => setProfessionalInfo({...professionalInfo, designation: e.target.value})}
+                  onBlur={handleSaveProfessional}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 />
               </div>
@@ -335,8 +568,9 @@ const ProviderProfileSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">PRIMARY CLINIC/AREA</label>
                 <input
                   type="text"
-                  value={formData.clinic}
-                  onChange={(e) => setFormData({...formData, clinic: e.target.value})}
+                  value={professionalInfo.clinic}
+                  onChange={(e) => setProfessionalInfo({...professionalInfo, clinic: e.target.value})}
+                  onBlur={handleSaveProfessional}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 />
               </div>
@@ -344,8 +578,9 @@ const ProviderProfileSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">EMERGENCY CONTACT</label>
                 <input
                   type="tel"
-                  value={formData.emergencyContact}
-                  onChange={(e) => setFormData({...formData, emergencyContact: e.target.value})}
+                  value={professionalInfo.emergencyContact}
+                  onChange={(e) => setProfessionalInfo({...professionalInfo, emergencyContact: e.target.value})}
+                  onBlur={handleSaveProfessional}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 />
               </div>
@@ -370,9 +605,10 @@ const ProviderProfileSettings = () => {
               ) : (
                 <button
                   onClick={handleSaveSchedule}
+                  disabled={saving}
                   className="flex items-center space-x-1 text-sm text-green-600 hover:text-green-700 font-medium"
                 >
-                  <Save size={16} />
+                  {saving ? <Loader className="h-4 w-4 animate-spin" /> : <Save size={16} />}
                   <span>Save Schedule</span>
                 </button>
               )}
@@ -452,7 +688,7 @@ const ProviderProfileSettings = () => {
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Change Password</p>
-                  <p className="text-xs text-gray-500 mt-1">Last changed 42 days ago</p>
+                  <p className="text-xs text-gray-500 mt-1">Update your account password</p>
                 </div>
                 <button 
                   onClick={() => setIsPasswordModalOpen(true)}
@@ -468,7 +704,16 @@ const ProviderProfileSettings = () => {
 
       {/* Clinical Alerts - Full Width */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-6">Clinical Alerts & Notifications</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold">Clinical Alerts & Notifications</h2>
+          <button
+            onClick={handleSaveNotificationPreferences}
+            disabled={saving}
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors disabled:opacity-50"
+          >
+            {saving ? <Loader className="h-4 w-4 animate-spin" /> : 'Save Preferences'}
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
             <div>
@@ -525,11 +770,19 @@ const ProviderProfileSettings = () => {
 
       {/* Save Button - Fixed at Bottom */}
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-        <button className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
           Cancel
         </button>
-        <button className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
-          Save Changes
+        <button 
+          onClick={handleSaveAllChanges}
+          disabled={saving}
+          className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+        >
+          {saving && <Loader className="h-4 w-4 animate-spin" />}
+          <span>{saving ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </div>
 
@@ -624,7 +877,9 @@ const ProviderProfileSettings = () => {
                   </button>
                 </div>
               </div>
+            </div>
 
+            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <button
                 onClick={() => {
                   setIsPasswordModalOpen(false);
@@ -634,21 +889,21 @@ const ProviderProfileSettings = () => {
               >
                 Forgot Password?
               </button>
-            </div>
-
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-              <button
-                onClick={() => setIsPasswordModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePasswordChange}
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
-              >
-                Change Password
-              </button>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handlePasswordChange}
+                  disabled={changingPassword}
+                  className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors disabled:opacity-50"
+                >
+                  {changingPassword ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

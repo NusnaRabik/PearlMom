@@ -50,18 +50,51 @@ const ProviderDashboard = () => {
     }
   }, [user]);
 
-  // Check if profile needs to be completed
+  // Check if profile needs to be completed - FIXED
   useEffect(() => {
-    // Use backend profile_completed flag from user context
-    if (user && user.role && (user.role === 'midwife' || user.role === 'doctor')) {
-      if (user.profile_completed === false) {
-        setShowProfileModal(true);
-        setProfileCompleted(false);
-      } else {
-        setProfileCompleted(true);
-        setShowProfileModal(false);
+    const checkProfileStatus = async () => {
+      if (user && user.role && (user.role === 'midwife' || user.role === 'doctor')) {
+        try {
+          // Fetch fresh data from API to get accurate profile_completed status
+          const response = await api.get('/providers/profile');
+          if (response.data.success) {
+            const payload = response.data.data || response.data;
+            const { user: userData, provider } = payload;
+            const isCompleted = userData?.profile_completed === true || provider?.profile_completed === true;
+            
+            if (!isCompleted) {
+              setShowProfileModal(true);
+              setProfileCompleted(false);
+            } else {
+              setProfileCompleted(true);
+              setShowProfileModal(false);
+              localStorage.setItem('pearlmom_provider_profile_complete', 'true');
+            }
+          } else {
+            // Fallback to user context
+            if (user.profile_completed === false) {
+              setShowProfileModal(true);
+              setProfileCompleted(false);
+            } else {
+              setProfileCompleted(true);
+              setShowProfileModal(false);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking profile status:', error);
+          // Fallback to user context
+          if (user.profile_completed === false) {
+            setShowProfileModal(true);
+            setProfileCompleted(false);
+          } else {
+            setProfileCompleted(true);
+            setShowProfileModal(false);
+          }
+        }
       }
-    }
+    };
+    
+    checkProfileStatus();
   }, [user]);
 
   const fetchProviderData = async () => {
@@ -95,8 +128,11 @@ const ProviderDashboard = () => {
           district: provider.district || ''
         });
         
-        if (provider.profile_completed) {
+        // Check if profile is completed
+        const isCompleted = userData.profile_completed === true || provider.profile_completed === true;
+        if (isCompleted) {
           setProfileCompleted(true);
+          setShowProfileModal(false);
           localStorage.setItem('pearlmom_provider_profile_complete', 'true');
         }
       }
@@ -174,13 +210,25 @@ const ProviderDashboard = () => {
           qualification: profileData.role_type
         }));
         
+        // Update localStorage user data
+        const storedUser = localStorage.getItem('pearlmom_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          userData.profile_completed = true;
+          userData.fullName = profileData.full_name;
+          userData.email = profileData.email;
+          localStorage.setItem('pearlmom_user', JSON.stringify(userData));
+        }
+        
+        // Refresh data
+        await fetchProviderData();
+        await fetchDashboardData();
+        
+        // Close modal after delay
         setTimeout(() => {
           setShowProfileModal(false);
           setProfileSuccess(false);
-        }, 2000);
-        
-        fetchProviderData();
-        fetchDashboardData();
+        }, 1500);
       }
     } catch (error) {
       console.error('Profile save error:', error);
@@ -194,7 +242,7 @@ const ProviderDashboard = () => {
     setShowProfileModal(false);
   };
 
-  // Calculate stats from real data - FIXED to use dashboardData
+  // Calculate stats from real data
   const totalMothers = dashboardData?.stats?.totalMothers || 0;
   const activePregnancies = dashboardData?.stats?.activePregnancies || 0;
   const highRiskMothers = dashboardData?.stats?.highRiskMothers || 0;
@@ -354,7 +402,7 @@ Report generated on ${formatDate(new Date(), 'full')}
         </div>
       </div>
 
-      {/* Profile Completion Reminder Banner */}
+      {/* Profile Completion Reminder Banner - Only show if not completed and modal not open */}
       {!profileCompleted && !showProfileModal && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">

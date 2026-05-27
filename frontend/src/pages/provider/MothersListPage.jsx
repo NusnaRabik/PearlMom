@@ -1,93 +1,237 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart } from 'lucide-react';
-import MotherSearchBar from '../../components/provider/MotherSearchBar';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
+import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const MothersListPage = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedMother, setSelectedMother] = useState(null);
   const [addSuccess, setAddSuccess] = useState(false);
+  const [mothers, setMothers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [addSuccessData, setAddSuccessData] = useState(null);
 
   const [newMother, setNewMother] = useState({
-    motherId: '',
-    fullName: '',
+    mother_code: '',
+    full_name: '',
+    nic: '',
+    dob: '',
     age: '',
-    edd: '',
-    bloodGroup: ''
+    phone_no: '',
+    email: '',
+    address: '',
+    district: '',
+    gs_division: '',
+    blood_group: '',
+    lmp_date: '',
+    expected_delivery_date: '',
+    current_weight: '',
+    height: '',
+    pregnancy_status: 'pregnant',
+    gravida: '1',
+    para: '0',
+    is_high_risk: false,
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+    emergency_relationship: '',
+    husband_name: '',
+    husband_contact: '',
+    allergies: '',
+    chronic_diseases: ''
   });
 
-  const [mothers, setMothers] = useState([
-    {
-      id: 'MOT-2024-001', name: 'Elena Rodriguez', pregnancy: '2nd Pregnancy', age: 32,
-      edd: 'Oct 12, 2024', status: 'High-risk', statusType: 'high-risk', lastVisit: '2 days ago',
-      color: 'red', bloodGroup: 'A+', phone: '+94 77 123 4567', address: '42, Galle Road, Colombo 03',
-      weeks: 24, bp: '120/80', weight: '68.5 kg', fhr: '145 bpm', lastVisitDate: '2024-10-20'
-    },
-    {
-      id: 'MOT-2024-045', name: 'Sarah Mitchell', pregnancy: '1st Pregnancy', age: 28,
-      edd: 'Nov 03, 2024', status: 'Normal', statusType: 'normal', lastVisit: '1 week ago',
-      color: 'green', bloodGroup: 'O+', phone: '+94 71 234 5678', address: '15, Kandy Road, Kandy',
-      weeks: 28, bp: '118/75', weight: '72.3 kg', fhr: '152 bpm', lastVisitDate: '2024-10-15'
-    },
-    {
-      id: 'MOT-2024-089', name: 'Amara Okafor', pregnancy: 'Postpartum (Week 4)', age: 31,
-      edd: '—', status: 'Postnatal', statusType: 'postnatal', lastVisit: 'Yesterday',
-      color: 'blue', bloodGroup: 'B+', phone: '+94 76 345 6789', address: '8, Main Street, Jaffna',
-      weeks: 4, bp: '122/82', weight: '65.0 kg', fhr: '—', lastVisitDate: new Date(Date.now() - 86400000).toISOString()
-    },
-    {
-      id: 'MOT-2024-112', name: 'Isabella Chen', pregnancy: 'Gestational Diabetes', age: 35,
-      edd: 'Dec 18, 2024', status: 'High-risk', statusType: 'high-risk', lastVisit: '3 days ago',
-      color: 'red', bloodGroup: 'AB-', phone: '+94 70 456 7890', address: '25, Sea Street, Colombo 11',
-      weeks: 32, bp: '135/88', weight: '75.8 kg', fhr: '140 bpm', lastVisitDate: '2024-10-18'
-    },
-    {
-      id: 'MOT-2024-156', name: 'Maria Santos', pregnancy: '3rd Pregnancy', age: 29,
-      edd: 'Jan 05, 2025', status: 'Normal', statusType: 'normal', lastVisit: '5 days ago',
-      color: 'green', bloodGroup: 'A-', phone: '+94 77 567 8901', address: '12, Hill Street, Nuwara Eliya',
-      weeks: 20, bp: '115/72', weight: '63.2 kg', fhr: '148 bpm', lastVisitDate: '2024-10-16'
-    },
-    {
-      id: 'MOT-2024-203', name: 'Jennifer Adams', pregnancy: '1st Pregnancy', age: 26,
-      edd: 'Feb 14, 2025', status: 'High-risk', statusType: 'high-risk', lastVisit: '1 day ago',
-      color: 'red', bloodGroup: 'O-', phone: '+94 71 678 9012', address: '5, Temple Road, Galle',
-      weeks: 18, bp: '130/85', weight: '58.6 kg', fhr: '155 bpm', lastVisitDate: new Date(Date.now() - 86400000).toISOString()
+  // Fetch mothers on load
+  useEffect(() => {
+    fetchMothers();
+  }, []);
+
+  const fetchMothers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/providers/mothers');
+      if (response.data.success) {
+        const mothersData = response.data.data.mothers || [];
+        const formattedMothers = mothersData.map(mother => ({
+          id: mother.mother_code,
+          name: mother.full_name,
+          pregnancy: `${mother.gravida}${getOrdinal(mother.gravida)} Pregnancy`,
+          age: calculateAge(mother.dob),
+          edd: mother.expected_delivery_date ? formatDate(mother.expected_delivery_date, 'short') : '—',
+          status: mother.is_high_risk ? 'High-risk' : (mother.pregnancy_status === 'postnatal' ? 'Postnatal' : 'Normal'),
+          statusType: mother.is_high_risk ? 'high-risk' : (mother.pregnancy_status === 'postnatal' ? 'postnatal' : 'normal'),
+          lastVisit: mother.updated_at ? getRelativeTime(mother.updated_at) : 'Never',
+          color: mother.is_high_risk ? 'red' : (mother.pregnancy_status === 'postnatal' ? 'blue' : 'green'),
+          bloodGroup: mother.blood_group || 'N/A',
+          phone: mother.emergency_contact_phone || 'N/A',
+          address: mother.address || 'N/A',
+          weeks: mother.weeks || 0,
+          bp: 'N/A',
+          weight: mother.current_weight ? `${mother.current_weight} kg` : 'N/A',
+          fhr: 'N/A',
+          lastVisitDate: mother.updated_at,
+          mother_id: mother.mother_id,
+          nic: mother.nic,
+          dob: mother.dob,
+          height: mother.height,
+          lmp_date: mother.lmp_date,
+          gravida: mother.gravida,
+          para: mother.para,
+          emergency_contact_name: mother.emergency_contact_name,
+          emergency_contact_phone: mother.emergency_contact_phone,
+          emergency_relationship: mother.emergency_relationship,
+          husband_name: mother.husband_name,
+          husband_contact: mother.husband_contact,
+          allergies: mother.allergies,
+          chronic_diseases: mother.chronic_diseases,
+          district: mother.district,
+          gs_division: mother.gs_division
+        }));
+        setMothers(formattedMothers);
+      }
+    } catch (error) {
+      console.error('Error fetching mothers:', error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const filteredMothers = useMemo(() => {
-    return mothers.filter((mother) => {
-      const searchMatch = searchTerm === '' || 
-        mother.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        mother.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        mother.pregnancy.toLowerCase().includes(searchTerm.toLowerCase());
-      const statusMatch = filterStatus === 'all' || mother.statusType === filterStatus;
-      return searchMatch && statusMatch;
-    });
-  }, [searchTerm, filterStatus, mothers]);
+  const calculateAge = (dob) => {
+    if (!dob) return 'N/A';
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
-  const highRiskOverdue = mothers.filter(
-    m => m.statusType === 'high-risk' && (m.lastVisit.includes('10') || m.lastVisit.includes('week'))
-  ).length;
+  const getOrdinal = (n) => {
+    if (!n) return '';
+    const ordinals = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0]);
+  };
 
-  const handleAddMother = () => {
-    if (!newMother.motherId || !newMother.fullName || !newMother.age) return;
-    const mother = {
-      id: newMother.motherId, name: newMother.fullName, pregnancy: 'New Registration',
-      age: parseInt(newMother.age), edd: newMother.edd || '—', status: 'Normal',
-      statusType: 'normal', lastVisit: 'Never', color: 'green',
-      bloodGroup: newMother.bloodGroup || 'N/A', phone: 'N/A', address: 'N/A',
-      weeks: 0, bp: 'N/A', weight: 'N/A', fhr: 'N/A', lastVisitDate: null
-    };
-    setMothers([mother, ...mothers]);
-    setAddSuccess(true);
-    setTimeout(() => {
-      setShowAddModal(false); setAddSuccess(false);
-      setNewMother({ motherId: '', fullName: '', age: '', edd: '', bloodGroup: '' });
-    }, 1500);
+  const getRelativeTime = (date) => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const then = new Date(date);
+    const diffDays = Math.floor((now - then) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week ago`;
+    return formatDate(date, 'short');
+  };
+
+  const calculateAgeFromDOB = (dob) => {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const calculateEDD = (lmpDate) => {
+    if (!lmpDate) return '';
+    const lmp = new Date(lmpDate);
+    const edd = new Date(lmp);
+    edd.setDate(edd.getDate() + 280);
+    return edd.toISOString().split('T')[0];
+  };
+
+  const handleNewMotherChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    const newValue = type === 'checkbox' ? checked : value;
+    
+    setNewMother(prev => ({ ...prev, [name]: newValue }));
+    
+    if (name === 'dob') {
+      const age = calculateAgeFromDOB(value);
+      setNewMother(prev => ({ ...prev, age: age.toString() }));
+    }
+    
+    if (name === 'lmp_date') {
+      const edd = calculateEDD(value);
+      setNewMother(prev => ({ ...prev, expected_delivery_date: edd }));
+    }
+  };
+
+  const handleAddMother = async () => {
+    // Required fields validation (mother_code is auto-generated, so not required)
+    const requiredFields = ['full_name', 'nic', 'dob', 'phone_no', 'address', 'district', 'blood_group', 'lmp_date', 'emergency_contact_name', 'emergency_contact_phone', 'emergency_relationship'];
+    const missingFields = requiredFields.filter(field => !newMother[field]);
+    
+    if (missingFields.length > 0) {
+      alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Don't send mother_code - let backend generate it
+      const { mother_code, ...dataToSend } = newMother;
+      
+      const response = await api.post('/mothers/add', dataToSend);
+      if (response.data.success) {
+        setGeneratedPassword(response.data.data.default_password);
+        setAddSuccessData(response.data.data.mother);
+        setAddSuccess(true);
+        await fetchMothers();
+        setTimeout(() => {
+          setShowAddModal(false);
+          setAddSuccess(false);
+          setAddSuccessData(null);
+          setGeneratedPassword('');
+          setNewMother({
+            mother_code: '',
+            full_name: '',
+            nic: '',
+            dob: '',
+            age: '',
+            phone_no: '',
+            email: '',
+            address: '',
+            district: '',
+            gs_division: '',
+            blood_group: '',
+            lmp_date: '',
+            expected_delivery_date: '',
+            current_weight: '',
+            height: '',
+            pregnancy_status: 'pregnant',
+            gravida: '1',
+            para: '0',
+            is_high_risk: false,
+            emergency_contact_name: '',
+            emergency_contact_phone: '',
+            emergency_relationship: '',
+            husband_name: '',
+            husband_contact: '',
+            allergies: '',
+            chronic_diseases: ''
+          });
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error adding mother:', error);
+      alert(error.response?.data?.message || 'Failed to add mother');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleViewProfile = (mother) => {
@@ -95,8 +239,31 @@ const MothersListPage = () => {
     setShowProfileModal(true);
   };
 
+  const filteredMothers = useMemo(() => {
+    return mothers.filter((mother) => {
+      const searchMatch = searchTerm === '' || 
+        mother.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mother.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const statusMatch = filterStatus === 'all' || mother.statusType === filterStatus;
+      return searchMatch && statusMatch;
+    });
+  }, [searchTerm, filterStatus, mothers]);
+
+  const highRiskOverdue = mothers.filter(
+    m => m.statusType === 'high-risk' && m.lastVisit !== 'Today' && m.lastVisit !== 'Yesterday'
+  ).length;
+
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin text-pink-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Assigned Patients</h1>
@@ -107,9 +274,19 @@ const MothersListPage = () => {
         </button>
       </div>
 
+      {/* Search and Filter */}
       <div className="bg-white rounded-lg shadow-sm p-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          <MotherSearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search by Mother ID, Name, or Pregnancy details" />
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by Mother ID or Name..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+            />
+          </div>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white">
             <option value="all">All Status</option>
             <option value="high-risk">High Risk</option>
@@ -117,28 +294,23 @@ const MothersListPage = () => {
             <option value="postnatal">Postnatal</option>
           </select>
         </div>
-        {(searchTerm || filterStatus !== 'all') && (
-          <div className="mt-3 text-sm text-gray-500">
-            Found {filteredMothers.length} {filteredMothers.length === 1 ? 'patient' : 'patients'}
-            {searchTerm && <span> matching "{searchTerm}"</span>}
-            {filterStatus !== 'all' && <span> with status "{filterStatus}"</span>}
-          </div>
-        )}
       </div>
 
+      {/* Alert for High Risk Overdue */}
       {highRiskOverdue > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-start space-x-3">
             <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} />
             <div className="flex-1">
               <h3 className="text-sm font-medium text-yellow-800">Clinical Priority Alert</h3>
-              <p className="text-sm text-yellow-700 mt-1">There are {highRiskOverdue} high-risk {highRiskOverdue === 1 ? 'mother' : 'mothers'} whose last visit was over 10 days ago. It is recommended to schedule an immediate check-up or telehealth call.</p>
+              <p className="text-sm text-yellow-700 mt-1">There are {highRiskOverdue} high-risk {highRiskOverdue === 1 ? 'mother' : 'mothers'} whose last visit was over a week ago. It is recommended to schedule an immediate check-up.</p>
             </div>
             <button className="text-sm font-medium text-yellow-600 hover:text-yellow-800 whitespace-nowrap transition-colors">Review High-Risk List →</button>
           </div>
         </div>
       )}
 
+      {/* Mothers Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -165,7 +337,7 @@ const MothersListPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
-                      <span className={`inline-block w-2 h-2 rounded-full ${mother.lastVisit.includes('day') && !mother.lastVisit.includes('days') ? 'bg-green-400' : mother.lastVisit.includes('Today') || mother.lastVisit.includes('Yesterday') ? 'bg-green-400' : mother.lastVisit.includes('week') ? 'bg-yellow-400' : 'bg-red-400'}`}></span>
+                      <span className={`inline-block w-2 h-2 rounded-full ${mother.lastVisit === 'Today' ? 'bg-green-400' : mother.lastVisit === 'Yesterday' ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
                       <span className="text-sm text-gray-500">{mother.lastVisit}</span>
                     </div>
                   </td>
@@ -174,132 +346,215 @@ const MothersListPage = () => {
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={7} className="px-6 py-12 text-center">
-                  <Search className="mx-auto text-gray-300 mb-3" size={48} />
-                  <p className="text-gray-500 text-sm">No patients found matching your search criteria</p>
-                  {(searchTerm || filterStatus !== 'all') && <button onClick={() => { setSearchTerm(''); setFilterStatus('all'); }} className="mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium">Clear all filters</button>}
-                </td></tr>
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No mothers found</td></tr>
               )}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-sm text-gray-500">Showing {filteredMothers.length} of {mothers.length} patients</p>
-        </div>
       </div>
-
 
       {/* Add New Mother Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-pink-100 rounded-lg">
                   <User className="h-5 w-5 text-pink-600" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">Add New Mother</h2>
               </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <X size={20} className="text-gray-500" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-6">
               {addSuccess ? (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                    <CheckCircle2 className="h-8 w-8 text-green-500" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Mother Added Successfully!</h3>
-                  <p className="text-sm text-gray-500">The new mother has been registered.</p>
+                  <p className="text-sm text-gray-500">Mother Code: <strong className="text-pink-600">{addSuccessData?.mother_code || 'Generated'}</strong></p>
+                  <p className="text-sm text-gray-500 mt-1">Default password: <strong className="text-pink-600">{generatedPassword}</strong></p>
+                  <p className="text-xs text-gray-400 mt-2">Mother can login using Full Name and this password</p>
                 </div>
               ) : (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Mother ID *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., MOT-2024-001"
-                      value={newMother.motherId}
-                      onChange={(e) => setNewMother({...newMother, motherId: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                    />
+                  {/* Basic Information */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-md font-semibold mb-3 flex items-center"><User className="mr-2 text-pink-500" size={18} /> Basic Information <span className="text-red-500 ml-1">*</span></h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mother ID</label>
+                        <input
+                          type="text"
+                          name="mother_code"
+                          value={newMother.mother_code}
+                          onChange={handleNewMotherChange}
+                          placeholder="Auto-generated"
+                          disabled
+                          className="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Auto-generated. Leave empty for automatic generation.</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name <span className="text-red-500">*</span></label>
+                        <input type="text" name="full_name" value={newMother.full_name} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">NIC <span className="text-red-500">*</span></label>
+                        <input type="text" name="nic" value={newMother.nic} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth <span className="text-red-500">*</span></label>
+                        <input type="date" name="dob" value={newMother.dob} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                        <input type="text" name="age" value={newMother.age} readOnly className="w-full px-3 py-2 border rounded-lg bg-gray-100" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number <span className="text-red-500">*</span></label>
+                        <input type="tel" name="phone_no" value={newMother.phone_no} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
+                        <input type="email" name="email" value={newMother.email} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Elena Rodriguez"
-                      value={newMother.fullName}
-                      onChange={(e) => setNewMother({...newMother, fullName: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                    />
+
+                  {/* Pregnancy Details */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-md font-semibold mb-3 flex items-center"><Heart className="mr-2 text-pink-500" size={18} /> Pregnancy Details <span className="text-red-500">*</span></h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">LMP Date <span className="text-red-500">*</span></label>
+                        <input type="date" name="lmp_date" value={newMother.lmp_date} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Expected Due Date</label>
+                        <input type="date" name="expected_delivery_date" value={newMother.expected_delivery_date} readOnly className="w-full px-3 py-2 border rounded-lg bg-gray-100" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Current Weight (kg) <span className="text-red-500">*</span></label>
+                        <input type="number" step="0.1" name="current_weight" value={newMother.current_weight} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm) <span className="text-red-500">*</span></label>
+                        <input type="number" step="0.1" name="height" value={newMother.height} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group <span className="text-red-500">*</span></label>
+                        <select name="blood_group" value={newMother.blood_group} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required>
+                          <option value="">Select</option>
+                          <option value="A+">A+</option><option value="A-">A-</option>
+                          <option value="B+">B+</option><option value="B-">B-</option>
+                          <option value="O+">O+</option><option value="O-">O-</option>
+                          <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Status</label>
+                        <select name="pregnancy_status" value={newMother.pregnancy_status} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg">
+                          <option value="pregnant">Pregnant</option>
+                          <option value="postnatal">Postnatal</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Gravida (No. of pregnancies)</label>
+                        <input type="number" name="gravida" value={newMother.gravida} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Para (No. of deliveries)</label>
+                        <input type="number" name="para" value={newMother.para} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" />
+                      </div>
+                      <div className="flex items-center">
+                        <input type="checkbox" name="is_high_risk" checked={newMother.is_high_risk} onChange={handleNewMotherChange} className="w-4 h-4 mr-2" />
+                        <label className="text-sm text-gray-700">High Risk Pregnancy</label>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Age *</label>
-                    <input
-                      type="number"
-                      placeholder="e.g., 28"
-                      value={newMother.age}
-                      onChange={(e) => setNewMother({...newMother, age: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                    />
+
+                  {/* Location */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-md font-semibold mb-3 flex items-center"><MapPin className="mr-2 text-green-500" size={18} /> Location <span className="text-red-500">*</span></h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address <span className="text-red-500">*</span></label>
+                        <textarea name="address" value={newMother.address} onChange={handleNewMotherChange} rows="2" className="w-full px-3 py-2 border rounded-lg" required></textarea>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">District <span className="text-red-500">*</span></label>
+                        <input type="text" name="district" value={newMother.district} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">GS Division</label>
+                        <input type="text" name="gs_division" value={newMother.gs_division} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Expected Due Date (EDD)</label>
-                    <input
-                      type="date"
-                      value={newMother.edd}
-                      onChange={(e) => setNewMother({...newMother, edd: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                    />
+
+                  {/* Emergency Contact */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-md font-semibold mb-3 flex items-center"><Phone className="mr-2 text-red-500" size={18} /> Emergency Contact <span className="text-red-500">*</span></h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name <span className="text-red-500">*</span></label>
+                        <input type="text" name="emergency_contact_name" value={newMother.emergency_contact_name} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone <span className="text-red-500">*</span></label>
+                        <input type="tel" name="emergency_contact_phone" value={newMother.emergency_contact_phone} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Relationship <span className="text-red-500">*</span></label>
+                        <input type="text" name="emergency_relationship" value={newMother.emergency_relationship} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" required />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Blood Group</label>
-                    <select
-                      value={newMother.bloodGroup}
-                      onChange={(e) => setNewMother({...newMother, bloodGroup: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                    >
-                      <option value="">Select Blood Group</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                    </select>
+
+                  {/* Family Information */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-md font-semibold mb-3">Family / Spouse Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Husband Name</label>
+                        <input type="text" name="husband_name" value={newMother.husband_name} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Husband Contact</label>
+                        <input type="tel" name="husband_contact" value={newMother.husband_contact} onChange={handleNewMotherChange} className="w-full px-3 py-2 border rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Medical History */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-md font-semibold mb-3">Medical History</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Allergies</label>
+                        <textarea name="allergies" value={newMother.allergies} onChange={handleNewMotherChange} rows="2" className="w-full px-3 py-2 border rounded-lg" placeholder="List any allergies"></textarea>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Chronic Diseases</label>
+                        <textarea name="chronic_diseases" value={newMother.chronic_diseases} onChange={handleNewMotherChange} rows="2" className="w-full px-3 py-2 border rounded-lg" placeholder="List any chronic diseases"></textarea>
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
             </div>
 
             {!addSuccess && (
-              <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddMother}
-                  disabled={!newMother.motherId || !newMother.fullName || !newMother.age}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
-                    !newMother.motherId || !newMother.fullName || !newMother.age
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-pink-600 hover:bg-pink-700'
-                  }`}
-                >
-                  Add Mother
+              <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+                <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">Cancel</button>
+                <button onClick={handleAddMother} disabled={submitting} className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 disabled:opacity-50">
+                  {submitting ? 'Adding...' : 'Add Mother'}
                 </button>
               </div>
             )}
@@ -311,126 +566,45 @@ const MothersListPage = () => {
       {showProfileModal && selectedMother && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
               <h2 className="text-xl font-semibold text-gray-900">Mother Profile</h2>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
+              <button onClick={() => setShowProfileModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} className="text-gray-500" /></button>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Profile Header */}
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl font-semibold text-pink-600">
-                    {selectedMother.name.split(' ').map(n => n[0]).join('')}
-                  </span>
+                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
+                  <span className="text-2xl font-semibold text-pink-600">{selectedMother.name?.split(' ').map(n => n[0]).join('')}</span>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{selectedMother.name}</h3>
                   <p className="text-sm text-gray-500">{selectedMother.id}</p>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                    selectedMother.color === 'red' ? 'bg-red-100 text-red-800' :
-                    selectedMother.color === 'green' ? 'bg-green-100 text-green-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
-                    {selectedMother.status}
-                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${selectedMother.color === 'red' ? 'bg-red-100 text-red-800' : selectedMother.color === 'green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>{selectedMother.status}</span>
                 </div>
               </div>
 
-              {/* Details Grid */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Calendar size={16} className="text-gray-400" />
-                    <span className="text-xs text-gray-500">EDD</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">{selectedMother.edd}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Droplet size={16} className="text-gray-400" />
-                    <span className="text-xs text-gray-500">Blood Group</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">{selectedMother.bloodGroup}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <User size={16} className="text-gray-400" />
-                    <span className="text-xs text-gray-500">Age</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">{selectedMother.age} years</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Activity size={16} className="text-gray-400" />
-                    <span className="text-xs text-gray-500">Pregnancy Week</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">{selectedMother.weeks} Weeks</p>
-                </div>
+                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><Calendar size={16} className="text-gray-400" /><span className="text-xs text-gray-500">EDD</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.edd}</p></div>
+                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><Droplet size={16} className="text-gray-400" /><span className="text-xs text-gray-500">Blood Group</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.bloodGroup}</p></div>
+                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><User size={16} className="text-gray-400" /><span className="text-xs text-gray-500">Age</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.age} years</p></div>
+                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><Activity size={16} className="text-gray-400" /><span className="text-xs text-gray-500">Pregnancy Week</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.weeks} Weeks</p></div>
               </div>
 
-              {/* Vitals */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Vitals</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 bg-pink-50 rounded-lg text-center border border-pink-100">
-                    <p className="text-xs text-gray-500 mb-1">BP</p>
-                    <p className="text-sm font-semibold text-gray-900">{selectedMother.bp}</p>
-                  </div>
-                  <div className="p-3 bg-pink-50 rounded-lg text-center border border-pink-100">
-                    <p className="text-xs text-gray-500 mb-1">Weight</p>
-                    <p className="text-sm font-semibold text-gray-900">{selectedMother.weight}</p>
-                  </div>
-                  <div className="p-3 bg-pink-50 rounded-lg text-center border border-pink-100">
-                    <p className="text-xs text-gray-500 mb-1">FHR</p>
-                    <p className="text-sm font-semibold text-gray-900">{selectedMother.fhr}</p>
-                  </div>
-                </div>
-              </div>
+              <div><h4 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h4><div className="space-y-2"><div className="flex items-center space-x-3"><Phone size={16} className="text-gray-400" /><span className="text-sm text-gray-900">{selectedMother.phone}</span></div><div className="flex items-center space-x-3"><MapPin size={16} className="text-gray-400" /><span className="text-sm text-gray-900">{selectedMother.address}</span></div></div></div>
 
-              {/* Contact Info */}
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <Phone size={16} className="text-gray-400" />
-                  <div>
-                    <p className="text-xs text-gray-500">Phone</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedMother.phone}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <MapPin size={16} className="text-gray-400" />
-                  <div>
-                    <p className="text-xs text-gray-500">Address</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedMother.address}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <Calendar size={16} className="text-gray-400" />
-                  <div>
-                    <p className="text-xs text-gray-500">Last Visit</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedMother.lastVisit}</p>
-                  </div>
-                </div>
-              </div>
+              <div><h4 className="text-sm font-semibold text-gray-700 mb-3">Emergency Contact</h4><div className="space-y-1"><p className="text-sm text-gray-900"><strong>Name:</strong> {selectedMother.emergency_contact_name || 'N/A'}</p><p className="text-sm text-gray-900"><strong>Phone:</strong> {selectedMother.emergency_contact_phone || 'N/A'}</p><p className="text-sm text-gray-900"><strong>Relationship:</strong> {selectedMother.emergency_relationship || 'N/A'}</p></div></div>
+
+              {(selectedMother.husband_name || selectedMother.husband_contact) && (<div><h4 className="text-sm font-semibold text-gray-700 mb-3">Family Information</h4><div className="space-y-1"><p className="text-sm text-gray-900"><strong>Husband:</strong> {selectedMother.husband_name || 'N/A'}</p><p className="text-sm text-gray-900"><strong>Contact:</strong> {selectedMother.husband_contact || 'N/A'}</p></div></div>)}
+
+              {(selectedMother.allergies || selectedMother.chronic_diseases) && (<div><h4 className="text-sm font-semibold text-gray-700 mb-3">Medical History</h4><div className="space-y-1"><p className="text-sm text-gray-900"><strong>Allergies:</strong> {selectedMother.allergies || 'None'}</p><p className="text-sm text-gray-900"><strong>Chronic Diseases:</strong> {selectedMother.chronic_diseases || 'None'}</p></div></div>)}
             </div>
 
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                Close
-              </button>
+            <div className="flex items-center justify-end p-6 border-t border-gray-200 bg-gray-50">
+              <button onClick={() => setShowProfileModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">Close</button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };

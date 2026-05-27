@@ -4,23 +4,12 @@ const { successResponse, errorResponse } = require('../utils/response');
 const { sequelize } = require('../config/db');
 const { Op } = require('sequelize');
 
-// Get all assigned mothers with their latest visit info
+// Get all assigned mothers with their latest visit info - FIXED (ALL mothers)
 const getAssignedMothers = async (req, res) => {
   try {
-    // First get the midwife record for this user
-    const midwife = await Midwife.findOne({
-      where: { user_id: req.user.user_id }
-    });
-
-    if (!midwife) {
-      return errorResponse(res, 'Provider profile not found', 404);
-    }
-
+    // Get ALL mothers (no midwife filter - all providers can see all mothers)
     const mothers = await Mother.findAll({
-      where: { 
-        assigned_midwife_id: midwife.midwife_id,
-        is_deleted: false 
-      },
+      where: { is_deleted: false },
       include: [
         {
           model: User,
@@ -81,7 +70,7 @@ const getAssignedMothers = async (req, res) => {
   }
 };
 
-// Get mother details for clinic visit
+// Get mother details for clinic visit (no midwife validation)
 const getMotherForVisit = async (req, res) => {
   try {
     const { motherId } = req.params;
@@ -112,12 +101,17 @@ const getMotherForVisit = async (req, res) => {
       ];
       
       for (const topic of defaultTopics) {
-        healthEducation.push(await HealthEducationChecklist.create({
+        await HealthEducationChecklist.create({
           mother_id: mother.mother_id,
           topic_title: topic,
           is_completed: false
-        }));
+        });
       }
+      
+      // Fetch again after creation
+      healthEducation = await HealthEducationChecklist.findAll({
+        where: { mother_id: mother.mother_id }
+      });
     }
 
     // Get draft visit if exists
@@ -186,7 +180,7 @@ const saveDraftVisit = async (req, res) => {
     const { motherId } = req.params;
     const visitData = req.body;
     
-    const mother = await Mother.findOne({ where: { mother_code: motherId } });
+    const mother = await Mother.findOne({ where: { mother_code: motherId, is_deleted: false } });
     if (!mother) {
       await transaction.rollback();
       return errorResponse(res, 'Mother not found', 404);
@@ -235,7 +229,7 @@ const completeVisit = async (req, res) => {
       health_education_checklist 
     } = req.body;
     
-    const mother = await Mother.findOne({ where: { mother_code: motherId } });
+    const mother = await Mother.findOne({ where: { mother_code: motherId, is_deleted: false } });
     if (!mother) {
       await transaction.rollback();
       return errorResponse(res, 'Mother not found', 404);
