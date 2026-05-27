@@ -150,12 +150,12 @@ const LoginPage = () => {
 
             <form onSubmit={handleLoginSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Name</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Email or Full Name</label>
                 <div className="relative">
                   <UserCircle className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
                   <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange}
                     className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-900 placeholder-slate-400 outline-none"
-                    placeholder="Enter your full name" />
+                    placeholder="Enter your email or full name" />
                 </div>
               </div>
               <div>

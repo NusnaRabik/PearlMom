@@ -2,6 +2,7 @@ const { Mother, User, Midwife, Appointment, Vaccination, NutritionSupplement, Th
 const { successResponse, errorResponse } = require('../utils/response');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 // @desc    Get provider dashboard
 // @route   GET /api/providers/dashboard
@@ -269,6 +270,71 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Add new midwife/provider (Admin only)
+// @route   POST /api/providers/add
+const addMidwife = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { full_name, contact_number, email, assigned_area, district, qualification } = req.body;
+
+    if (!full_name || !contact_number || !email) {
+      await transaction.rollback();
+      return errorResponse(res, 'Full name, contact number, and email are required', 400);
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      await transaction.rollback();
+      return errorResponse(res, 'Email already exists', 400);
+    }
+
+    const defaultPassword = full_name.toLowerCase().replace(/\s/g, '') + '123';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    const user = await User.create({
+      phone_no: contact_number,
+      email,
+      name: full_name,
+      password_hash: hashedPassword,
+      role: 'midwife',
+      profile_completed: true,
+      is_active: true
+    }, { transaction });
+
+    // Generate a unique employee_id
+    const count = await Midwife.count();
+    const employee_id = `MW-${String(count + 1).padStart(4, '0')}`;
+
+    const midwife = await Midwife.create({
+      user_id: user.user_id,
+      employee_id,
+      full_name,
+      contact_number,
+      assigned_area,
+      district,
+      qualification,
+      is_active: true,
+      profile_completed: true
+    }, { transaction });
+
+    await transaction.commit();
+
+    return successResponse(res, {
+      midwife,
+      user,
+      default_password: defaultPassword
+    }, `Provider added successfully. Default password: ${defaultPassword}`);
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Add midwife error:', error);
+    if (error.name === 'SequelizeUniqueConstraintError' || error.code === 'ER_DUP_ENTRY') {
+      return errorResponse(res, 'Email or employee ID already exists.', 400);
+    }
+    return errorResponse(res, 'Error adding provider: ' + error.message);
+  }
+};
+
 // @desc    Get assigned mothers (FIXED - ALL mothers accessible to ALL providers)
 // @route   GET /api/providers/mothers
 const getMyMothers = async (req, res) => {
@@ -459,7 +525,6 @@ const updateNotificationPreferences = async (req, res) => {
 const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
-    const bcrypt = require('bcryptjs');
 
     if (!oldPassword || !newPassword) {
       return errorResponse(res, 'Old password and new password are required', 400);
@@ -496,6 +561,7 @@ module.exports = {
   getDashboard, 
   getMyProfile, 
   updateProfile, 
+  addMidwife,  // Added this
   getMyMothers, 
   recordClinicVisit,
   getMotherDetails,

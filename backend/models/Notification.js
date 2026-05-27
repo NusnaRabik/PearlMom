@@ -13,7 +13,8 @@ const Notification = sequelize.define('Notification', {
   },
   notification_type: {
     type: DataTypes.ENUM('appointment_reminder', 'vaccination_alert', 'checkup_reminder', 'general'),
-    allowNull: false
+    allowNull: false,
+    defaultValue: 'general'
   },
   title: {
     type: DataTypes.STRING(200),
@@ -29,20 +30,27 @@ const Notification = sequelize.define('Notification', {
   },
   sent_via: {
     type: DataTypes.ENUM('sms', 'email', 'in_app'),
-    allowNull: false
+    allowNull: false,
+    defaultValue: 'in_app'
   },
   sent_date: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   },
-  read_date: DataTypes.DATE,
+  read_date: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   is_deleted: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   }
 }, {
   tableName: 'notifications',
-  timestamps: true
+  timestamps: true,
+  createdAt: 'createdAt',   // matches your DB column exactly
+  updatedAt: false,          // your schema has no updatedAt on notifications
+  underscored: false
 });
 
 module.exports = Notification;

@@ -29,7 +29,7 @@ const Vaccination = sequelize.define('Vaccination', {
   },
   given_date: DataTypes.DATEONLY,
   status: {
-    type: DataTypes.ENUM('due', 'given', 'missed'),
+    type: DataTypes.ENUM('due', 'given', 'missed', 'completed', 'scheduled'),
     defaultValue: 'due'
   },
   administered_by: DataTypes.STRING(200),

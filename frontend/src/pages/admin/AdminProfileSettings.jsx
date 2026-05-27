@@ -1,26 +1,31 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Camera, Shield, Eye, EyeOff, Lock, Mail, Check, X, Edit2, Save,
-  AlertCircle, KeyRound
+  AlertCircle, KeyRound, Loader, User, Phone
 } from 'lucide-react';
+import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const AdminProfileSettings = () => {
+  const { user, updateUser } = useAuth();
   const fileInputRef = useRef(null);
   const [profileImage, setProfileImage] = useState(null);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [personalInfo, setPersonalInfo] = useState({
-    fullName: 'Dr. Sarah Jenkins',
-    email: 's.jenkins@pearlmom.health',
-    mobile: '+1 (555) 234-8901'
+    fullName: '',
+    email: '',
+    mobile: ''
   });
 
   const [editPersonalInfo, setEditPersonalInfo] = useState({ ...personalInfo });
 
   const [formData, setFormData] = useState({
-    employeeId: 'PM-ADMIN-8829',
-    adminLevel: 'Tier 3 (Super Admin)',
-    lastAccessUpdate: 'Oct 24, 2023'
+    employeeId: '',
+    adminLevel: '',
+    lastAccessUpdate: ''
   });
 
   // Password Change Modal
@@ -37,6 +42,7 @@ const AdminProfileSettings = () => {
   });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Forgot Password Modal
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
@@ -52,7 +58,7 @@ const AdminProfileSettings = () => {
   });
 
   // Security Audit Logs
-  const securityLogs = [
+  const [securityLogs, setSecurityLogs] = useState([
     {
       event: 'System Login',
       location: 'San Francisco, CA',
@@ -74,14 +80,71 @@ const AdminProfileSettings = () => {
       time: 'Yesterday, 08:15 AM',
       status: 'success'
     }
-  ];
+  ]);
 
-  const handleImageUpload = (e) => {
+  // Fetch admin profile data
+  useEffect(() => {
+    fetchAdminProfile();
+  }, []);
+
+  const fetchAdminProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/auth/me');
+      if (response.data.success) {
+        const userData = response.data.data.user;
+        
+        setPersonalInfo({
+          fullName: userData.name || '',
+          email: userData.email || '',
+          mobile: userData.phone_no || ''
+        });
+        
+        setEditPersonalInfo({
+          fullName: userData.name || '',
+          email: userData.email || '',
+          mobile: userData.phone_no || ''
+        });
+        
+        // Set admin identity data
+        setFormData({
+          employeeId: userData.employee_id || `ADMIN-${userData.user_id}`,
+          adminLevel: userData.role === 'admin' ? 'Tier 3 (Super Admin)' : 'Admin',
+          lastAccessUpdate: userData.last_login 
+            ? new Date(userData.last_login).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+        });
+        
+        if (userData.profile_picture_url) {
+          setProfileImage(userData.profile_picture_url);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching admin profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImage(reader.result);
+      reader.onloadend = async () => {
+        const imageData = reader.result;
+        setProfileImage(imageData);
+        
+        // Upload to backend
+        try {
+          const response = await api.put('/mothers/upload-profile-picture', {
+            profile_picture_url: imageData
+          });
+          if (response.data.success) {
+            console.log('Profile picture updated');
+          }
+        } catch (error) {
+          console.error('Error uploading profile picture:', error);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -92,9 +155,36 @@ const AdminProfileSettings = () => {
     setIsEditingPersonal(true);
   };
 
-  const handleSavePersonal = () => {
-    setPersonalInfo({ ...editPersonalInfo });
-    setIsEditingPersonal(false);
+  const handleSavePersonal = async () => {
+    setSaving(true);
+    try {
+      const response = await api.put('/admin/users/update-profile', {
+        name: editPersonalInfo.fullName,
+        email: editPersonalInfo.email,
+        phone_no: editPersonalInfo.mobile
+      });
+      
+      if (response.data.success) {
+        setPersonalInfo({ ...editPersonalInfo });
+        setIsEditingPersonal(false);
+        
+        // Update auth context
+        if (updateUser) {
+          updateUser({
+            name: editPersonalInfo.fullName,
+            email: editPersonalInfo.email,
+            phone_no: editPersonalInfo.mobile
+          });
+        }
+        
+        alert('Profile updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Error saving profile: ' + (error.response?.data?.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancelPersonal = () => {
@@ -102,7 +192,7 @@ const AdminProfileSettings = () => {
     setIsEditingPersonal(false);
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     setPasswordError('');
     setPasswordSuccess('');
 
@@ -126,32 +216,69 @@ const AdminProfileSettings = () => {
       return;
     }
 
-    setTimeout(() => {
-      setPasswordSuccess('Password changed successfully!');
-      setTimeout(() => {
-        setIsPasswordModalOpen(false);
-        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
-        setPasswordSuccess('');
-      }, 1500);
-    }, 1000);
+    setChangingPassword(true);
+
+    try {
+      const response = await api.put('/auth/change-password', {
+        oldPassword: passwordData.oldPassword,
+        newPassword: passwordData.newPassword
+      });
+
+      if (response.data.success) {
+        setPasswordSuccess('Password changed successfully!');
+        setTimeout(() => {
+          setIsPasswordModalOpen(false);
+          setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+          setPasswordSuccess('');
+        }, 1500);
+      }
+    } catch (error) {
+      setPasswordError(error.response?.data?.message || 'Error changing password');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
-  const handleForgotPassword = () => {
+  const handleForgotPassword = async () => {
     if (!forgotEmail) {
       setForgotPasswordMessage('Please enter your email address');
       return;
     }
 
     setIsSending(true);
-    setTimeout(() => {
+    try {
+      const response = await api.post('/auth/forgot-password', {
+        email: forgotEmail
+      });
+      
       setForgotPasswordMessage('Password reset link has been sent to your email.');
-      setIsSending(false);
       setTimeout(() => {
         setIsForgotPasswordModalOpen(false);
         setForgotEmail('');
         setForgotPasswordMessage('');
       }, 2000);
-    }, 1500);
+    } catch (error) {
+      setForgotPasswordMessage(error.response?.data?.message || 'Error sending reset link');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSaveAllChanges = async () => {
+    setSaving(true);
+    try {
+      // Save alert preferences
+      const alertResponse = await api.put('/admin/alert-preferences', alertPreferences);
+      
+      if (alertResponse.data.success) {
+        alert('All changes saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      alert('Error saving changes: ' + (error.response?.data?.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -162,6 +289,14 @@ const AdminProfileSettings = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin text-pink-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
@@ -197,9 +332,10 @@ const AdminProfileSettings = () => {
                   </button>
                   <button
                     onClick={handleSavePersonal}
+                    disabled={saving}
                     className="flex items-center space-x-1 text-sm text-pink-600 hover:text-pink-700 font-medium"
                   >
-                    <Save size={16} />
+                    {saving ? <Loader size={16} className="animate-spin" /> : <Save size={16} />}
                     <span>Save</span>
                   </button>
                 </div>
@@ -213,7 +349,9 @@ const AdminProfileSettings = () => {
                   style={profileImage ? { backgroundImage: `url(${profileImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {!profileImage && <span className="text-2xl font-semibold text-white">SJ</span>}
+                  {!profileImage && <span className="text-2xl font-semibold text-white">
+                    {personalInfo.fullName?.charAt(0) || 'A'}
+                  </span>}
                 </div>
                 <button 
                   className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
@@ -289,7 +427,7 @@ const AdminProfileSettings = () => {
             )}
           </div>
 
-          {/* Admin Identity - Removed Department */}
+          {/* Admin Identity */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4">Admin Identity</h2>
             <div className="space-y-4">
@@ -326,7 +464,7 @@ const AdminProfileSettings = () => {
 
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Security & Authentication - Only Change Password */}
+          {/* Security & Authentication */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
               <Shield className="mr-2 text-gray-400" size={20} />
@@ -336,7 +474,7 @@ const AdminProfileSettings = () => {
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Change Password</p>
-                  <p className="text-xs text-gray-500 mt-1">Last changed 42 days ago</p>
+                  <p className="text-xs text-gray-500 mt-1">Last changed {new Date().toLocaleDateString()}</p>
                 </div>
                 <button 
                   onClick={() => setIsPasswordModalOpen(true)}
@@ -437,7 +575,12 @@ const AdminProfileSettings = () => {
         <button className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
           Cancel
         </button>
-        <button className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
+        <button 
+          onClick={handleSaveAllChanges}
+          disabled={saving}
+          className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader size={16} className="animate-spin inline mr-2" /> : null}
           Save Changes
         </button>
       </div>
@@ -503,7 +646,7 @@ const AdminProfileSettings = () => {
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
                     className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
-                    placeholder="Enter new password"
+                    placeholder="Enter new password (min 8 characters)"
                   />
                   <button
                     onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})}
@@ -512,7 +655,6 @@ const AdminProfileSettings = () => {
                     {showPasswords.new ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
               </div>
 
               <div>
@@ -554,9 +696,10 @@ const AdminProfileSettings = () => {
               </button>
               <button
                 onClick={handlePasswordChange}
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700"
+                disabled={changingPassword}
+                className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 disabled:opacity-50"
               >
-                Change Password
+                {changingPassword ? 'Changing...' : 'Change Password'}
               </button>
             </div>
           </div>

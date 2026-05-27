@@ -18,7 +18,7 @@ const getAllNotifications = async (req, res) => {
 
     const { count, rows } = await Notification.findAndCountAll({
       where: whereClause,
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
@@ -203,9 +203,33 @@ const sendTestNotification = async (req, res) => {
   }
 };
 
+// Create a new notification (for reminders, alerts, etc.)
+const createNotification = async (req, res) => {
+  try {
+    const { notification_type, title, message, sent_via, scheduled_for, priority } = req.body;
+    
+    const notification = await Notification.create({
+      user_id: req.user.user_id,
+      notification_type: notification_type || 'general',
+      title: title || 'Reminder',
+      message: message,
+      sent_via: sent_via || 'in_app',
+      sent_date: scheduled_for || new Date(),
+      is_read: false,
+      is_deleted: false
+    });
+    
+    return success(res, { notification }, 'Notification created successfully', 201);
+  } catch (err) {
+    console.error('Error creating notification:', err);
+    return error(res, 'Error creating notification: ' + err.message);
+  }
+};
+
 module.exports = {
   getAllNotifications,
   getUnreadCount,
+  createNotification,
   markAsRead,
   markAllAsRead,
   deleteNotification,

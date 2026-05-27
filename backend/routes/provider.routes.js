@@ -4,29 +4,20 @@ const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
 const providerController = require('../controllers/provider.controller');
 
-// All routes are protected and require midwife/doctor role
-router.use(protect);
-router.use(authorize('midwife', 'doctor'));
+// Provider routes (self)
+router.get('/dashboard', protect, authorize('midwife', 'doctor'), providerController.getDashboard);
+router.get('/profile', protect, authorize('midwife', 'doctor'), providerController.getMyProfile);
+router.put('/profile', protect, authorize('midwife', 'doctor'), providerController.updateProfile);
+router.get('/mothers', protect, authorize('midwife', 'doctor'), providerController.getMyMothers);
+router.get('/mothers/:motherId', protect, authorize('midwife', 'doctor'), providerController.getMotherDetails);
+router.post('/clinic-visit', protect, authorize('midwife', 'doctor'), providerController.recordClinicVisit);
+router.put('/change-password', protect, authorize('midwife', 'doctor'), providerController.changePassword);
+router.get('/work-preferences', protect, authorize('midwife', 'doctor'), providerController.getWorkPreferences);
+router.put('/work-preferences', protect, authorize('midwife', 'doctor'), providerController.updateWorkPreferences);
+router.get('/notification-preferences', protect, authorize('midwife', 'doctor'), providerController.getNotificationPreferences);
+router.put('/notification-preferences', protect, authorize('midwife', 'doctor'), providerController.updateNotificationPreferences);
 
-// Dashboard and profile routes
-router.get('/dashboard', providerController.getDashboard);
-router.get('/profile', providerController.getMyProfile);
-router.put('/profile', providerController.updateProfile);
-router.put('/change-password', providerController.changePassword);
-
-// Work preferences
-router.get('/work-preferences', providerController.getWorkPreferences);
-router.put('/work-preferences', providerController.updateWorkPreferences);
-
-// Notification preferences
-router.get('/notification-preferences', providerController.getNotificationPreferences);
-router.put('/notification-preferences', providerController.updateNotificationPreferences);
-
-// Mother management routes
-router.get('/mothers', providerController.getMyMothers);
-router.get('/mothers/:motherId', providerController.getMotherDetails);
-
-// Clinical routes
-router.post('/clinic-visit', providerController.recordClinicVisit);
+// Admin only - Add new provider
+router.post('/add', protect, authorize('admin'), providerController.addMidwife);
 
 module.exports = router;

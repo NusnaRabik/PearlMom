@@ -9,6 +9,9 @@ router.get('/', protect, notificationController.getAllNotifications);
 // Get unread count
 router.get('/unread-count', protect, notificationController.getUnreadCount);
 
+// Create a new notification (for reminders, alerts, etc.)
+router.post('/', protect, notificationController.createNotification);
+
 // Mark single notification as read
 router.put('/:id/read', protect, notificationController.markAsRead);
 

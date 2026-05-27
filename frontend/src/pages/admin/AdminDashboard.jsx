@@ -1,45 +1,315 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, Activity, Shield, TrendingUp, 
   CheckCircle, AlertTriangle,
-  Database, Server, Heart, Calendar, Download
+  Database, Server, Heart, Calendar, Download, Loader
 } from 'lucide-react';
 import { LineChart, BarChart } from '../../components/charts';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AdminDashboard = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
-  const systemStats = [
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/admin/dashboard');
+      if (response.data.success) {
+        setDashboardData(response.data.data.stats);
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!dashboardData) return;
+    
+    setExporting(true);
+    
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Colors
+      const primaryColor = [219, 39, 119]; // pink-600
+      
+      // Header
+      doc.setFillColor(245, 245, 250);
+      doc.rect(0, 0, pageWidth, 45, 'F');
+      
+      // Title
+      doc.setFontSize(24);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Pearl Mom', 20, 20);
+      
+      doc.setFontSize(16);
+      doc.setTextColor(31, 41, 55);
+      doc.text('System Performance Report', 20, 35);
+      
+      // Date
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 50, 20);
+      
+      // Line separator
+      doc.setDrawColor(229, 231, 235);
+      doc.line(20, 50, pageWidth - 20, 50);
+      
+      let yPos = 65;
+      
+      // ==================== SYSTEM OVERVIEW ====================
+      doc.setFontSize(14);
+      doc.setTextColor(31, 41, 55);
+      doc.setFont('helvetica', 'bold');
+      doc.text('System Overview', 20, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(75, 85, 99);
+      
+      const overviewData = [
+        ['Total Mothers Registered:', dashboardData.totalMothers?.toLocaleString() || '0'],
+        ['Active Providers:', dashboardData.activeProviders?.toLocaleString() || '0'],
+        ['High-risk Cases:', dashboardData.highRiskCases?.toLocaleString() || '0'],
+        ['Vaccination Coverage:', dashboardData.vaccinationCoverage || '0%'],
+        ['Active Maternal Records:', dashboardData.activeMaternalRecords?.toLocaleString() || '0'],
+        ['Providers This Month:', dashboardData.providersThisMonth?.toLocaleString() || '0']
+      ];
+      
+      overviewData.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, 20, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, 80, yPos);
+        yPos += 7;
+      });
+      
+      yPos += 5;
+      
+      // ==================== MOTHER REGISTRATION TRENDS ====================
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Mother Registration Trends (Last 6 Months)', 20, yPos);
+      yPos += 8;
+      
+      const monthlyTableData = dashboardData.monthlyData?.map(m => [m.month, m.total.toString()]) || [];
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Month', 'Mothers Registered']],
+        body: monthlyTableData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 20 },
+        width: pageWidth - 40
+      });
+      
+      yPos = doc.lastAutoTable.finalY + 10;
+      
+      // ==================== DELIVERY SUCCESS RATES ====================
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Delivery Success Rates', 20, yPos);
+      yPos += 8;
+      
+      const deliveryData = [
+        ['Safe Deliveries', '98.2%'],
+        ['Referred Cases', '1.5%'],
+        ['Complications', '0.3%']
+      ];
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Outcome', 'Percentage']],
+        body: deliveryData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 20 },
+        width: pageWidth - 40
+      });
+      
+      yPos = doc.lastAutoTable.finalY + 10;
+      
+      // ==================== REGIONAL PROVIDER PERFORMANCE ====================
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Regional Provider Performance', 20, yPos);
+      yPos += 8;
+      
+      const regionalData = [
+        ['Central Province', '4,102'],
+        ['Eastern Province', '2,840'],
+        ['Northern Province', '1,920'],
+        ['Southern Province', '1,650'],
+        ['Western Province', '3,770']
+      ];
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Region', 'Mothers Served']],
+        body: regionalData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 20 },
+        width: pageWidth - 40
+      });
+      
+      yPos = doc.lastAutoTable.finalY + 10;
+      
+      // ==================== RECENT SYSTEM ACTIVITY ====================
+      // Check if we need a new page
+      if (yPos > 240) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Recent System Activity', 20, yPos);
+      yPos += 8;
+      
+      const activityData = dashboardData.recentActivity?.map(a => [
+        a.timestamp,
+        a.user,
+        a.action,
+        a.status.toUpperCase()
+      ]) || [];
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Time', 'User', 'Action', 'Status']],
+        body: activityData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: 20 },
+        width: pageWidth - 40,
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 80 },
+          3: { cellWidth: 25 }
+        }
+      });
+      
+      yPos = doc.lastAutoTable.finalY + 10;
+      
+      // ==================== SYSTEM HEALTH ====================
+      if (yPos > 240) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('System Health', 20, yPos);
+      yPos += 8;
+      
+      const healthData = [
+        ['System Uptime', `${dashboardData.uptime || '99.9'}%`],
+        ['Last Security Audit', dashboardData.lastAudit || 'Today'],
+        ['Encryption Standard', dashboardData.encryption || 'AES-256'],
+        ['Delivery Success Rate', dashboardData.deliverySuccessRate || '98.2%'],
+        ['Active Maternal Records', dashboardData.activeMaternalRecords?.toLocaleString() || '0']
+      ];
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: healthData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 20 },
+        width: pageWidth - 40
+      });
+      
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(156, 163, 175);
+        doc.text(
+          `Pearl Mom System Report - Page ${i} of ${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+        doc.text(
+          `© ${new Date().getFullYear()} PearlMom. All rights reserved.`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 5,
+          { align: 'center' }
+        );
+      }
+      
+      // Save PDF
+      doc.save(`PearlMom_System_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const systemStats = dashboardData ? [
     {
       title: 'Total Mothers',
-      value: '14,282',
+      value: dashboardData.totalMothers?.toLocaleString() || '0',
       change: '+12%',
       icon: Users,
       color: 'blue'
     },
     {
       title: 'Active Providers',
-      value: '842',
+      value: dashboardData.activeProviders?.toLocaleString() || '0',
       change: '+4.2%',
       icon: Activity,
       color: 'green'
     },
     {
       title: 'High-risk Cases',
-      value: '328',
+      value: dashboardData.highRiskCases?.toLocaleString() || '0',
       change: '+12',
       icon: AlertTriangle,
       color: 'red'
     },
     {
       title: 'Vaccination Coverage',
-      value: '94.8%',
+      value: dashboardData.vaccinationCoverage || '0%',
       change: '+2.1%',
       icon: Shield,
       color: 'purple'
     }
-  ];
+  ] : [];
 
   const deliveryStats = [
     { name: 'Safe Deliveries', value: 98.2, color: '#EC4899' },
@@ -47,32 +317,24 @@ const AdminDashboard = () => {
     { name: 'Complications', value: 0.3, color: '#FBCFE8' }
   ];
 
-  const monthlyData = [
-    { month: 'Jan', total: 2100 },
-    { month: 'Feb', total: 2250 },
-    { month: 'Mar', total: 2400 },
-    { month: 'Apr', total: 2350 },
-    { month: 'May', total: 2500 },
-    { month: 'Jun', total: 2682 }
+  const monthlyData = dashboardData?.monthlyData || [
+    { month: 'Jan', total: 0 },
+    { month: 'Feb', total: 0 },
+    { month: 'Mar', total: 0 },
+    { month: 'Apr', total: 0 },
+    { month: 'May', total: 0 },
+    { month: 'Jun', total: 0 }
   ];
 
-  // Monthly data for mothers and providers separately
-  const motherMonthlyData = [
-    { month: 'Jan', total: 1800 },
-    { month: 'Feb', total: 1920 },
-    { month: 'Mar', total: 2050 },
-    { month: 'Apr', total: 2000 },
-    { month: 'May', total: 2150 },
-    { month: 'Jun', total: 2300 }
-  ];
-
+  const motherMonthlyData = dashboardData?.monthlyData || monthlyData;
+  
   const providerMonthlyData = [
     { month: 'Jan', total: 300 },
     { month: 'Feb', total: 330 },
     { month: 'Mar', total: 350 },
     { month: 'Apr', total: 350 },
     { month: 'May', total: 350 },
-    { month: 'Jun', total: 382 }
+    { month: 'Jun', total: dashboardData?.providersThisMonth || 382 }
   ];
 
   const regionalData = [
@@ -83,115 +345,7 @@ const AdminDashboard = () => {
     { name: 'Western Province', value: 3770, color: '#A78BFA' }
   ];
 
-  const recentActivity = [
-    {
-      timestamp: '10:24 AM',
-      user: 'Dr. Sarah Chen',
-      action: 'Updated Patient #9928',
-      status: 'success'
-    },
-    {
-      timestamp: '09:55 AM',
-      user: 'Admin Marcus',
-      action: 'Bulk Data Export (CSV)',
-      status: 'success'
-    },
-    {
-      timestamp: '09:12 AM',
-      user: 'Nurse Elena',
-      action: 'New Registry: "Amara K."',
-      status: 'success'
-    },
-    {
-      timestamp: '08:45 AM',
-      user: 'SystemBot',
-      action: 'Nightly Backup Routine',
-      status: 'success'
-    },
-    {
-      timestamp: '07:30 AM',
-      user: 'Dr. James Wilson',
-      action: 'Login Attempt Failed',
-      status: 'failed'
-    }
-  ];
-
-  const handleExportReport = () => {
-    const reportContent = `
-═══════════════════════════════════════════════════════
-         PEARL MOM - SYSTEM PERFORMANCE REPORT
-═══════════════════════════════════════════════════════
-Generated: ${new Date().toLocaleDateString()} | ${new Date().toLocaleTimeString()}
-═══════════════════════════════════════════════════════
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SYSTEM OVERVIEW
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Total Mothers Registered:    14,282  (+12%)
-  Active Providers:               842  (+4.2%)
-  High-risk Cases:                328  (+12)
-  Vaccination Coverage:          94.8%  (+2.1%)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MOTHER REGISTRATION TRENDS (Monthly)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ${motherMonthlyData.map(d => `  ${d.month}:  ${d.total} mothers`).join('\n  ')}
-
-  Total: ${motherMonthlyData.reduce((sum, d) => sum + d.total, 0)} mothers registered
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROVIDER REGISTRATION TRENDS (Monthly)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ${providerMonthlyData.map(d => `  ${d.month}:  ${d.total} providers`).join('\n  ')}
-
-  Total: ${providerMonthlyData.reduce((sum, d) => sum + d.total, 0)} providers registered
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DELIVERY SUCCESS RATES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Safe Deliveries:    98.2%
-  Referred Cases:      1.5%
-  Complications:       0.3%
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REGIONAL PROVIDER PERFORMANCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Central Province:    4,102 mothers
-  Eastern Province:    2,840 mothers
-  Northern Province:   1,920 mothers
-  Southern Province:   1,650 mothers
-  Western Province:    3,770 mothers
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RECENT SYSTEM ACTIVITY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ${recentActivity.map(a => `  [${a.timestamp}] ${a.user} - ${a.action} (${a.status})`).join('\n  ')}
-
-═══════════════════════════════════════════════════════
-  System Status: OPERATIONAL  |  Uptime: 99.9%
-  Security: HIPAA Compliant   |  Encryption: AES-256
-═══════════════════════════════════════════════════════
-  © ${new Date().getFullYear()} PearlMom. All rights reserved.
-  This report is confidential and intended for authorized personnel only.
-═══════════════════════════════════════════════════════
-    `;
-
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `PearlMom_System_Report_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
+  const recentActivity = dashboardData?.recentActivity || [];
 
   // Custom Doughnut Chart Component
   const DeliveryDoughnutChart = () => {
@@ -250,6 +404,33 @@ RECENT SYSTEM ACTIVITY
     );
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="h-12 w-12 animate-spin text-pink-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+          <p className="text-red-600 mb-3">{error}</p>
+          <button 
+            onClick={fetchDashboardData} 
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
       {/* Header */}
@@ -260,11 +441,16 @@ RECENT SYSTEM ACTIVITY
         </div>
         <div className="flex space-x-3">
           <button 
-            onClick={handleExportReport}
-            className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2"
+            onClick={handleExportPDF}
+            disabled={exporting}
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={16} />
-            <span>Export Report</span>
+            {exporting ? (
+              <Loader size={16} className="animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
+            <span>{exporting ? 'Exporting...' : 'Export PDF'}</span>
           </button>
         </div>
       </div>
@@ -327,21 +513,27 @@ RECENT SYSTEM ACTIVITY
         </div>
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold mb-4">Recent System Activity</h2>
-          <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                <div className={`w-2 h-2 rounded-full mt-2 ${
-                  activity.status === 'success' ? 'bg-green-400' : 'bg-red-400'
-                }`}></div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-900">{activity.user}</p>
-                    <span className="text-xs text-gray-400">{activity.timestamp}</span>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className={`w-2 h-2 rounded-full mt-2 ${
+                    activity.status === 'success' ? 'bg-green-400' : 'bg-red-400'
+                  }`}></div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900">{activity.user}</p>
+                      <span className="text-xs text-gray-400">{activity.timestamp}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{activity.action}</p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{activity.action}</p>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No recent activity</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -352,7 +544,7 @@ RECENT SYSTEM ACTIVITY
           <div className="flex items-center space-x-3">
             <Server className="text-green-500" size={24} />
             <div>
-              <p className="text-sm font-medium text-gray-900">99.9% Uptime</p>
+              <p className="text-sm font-medium text-gray-900">{dashboardData?.uptime || '99.9'}% Uptime</p>
               <p className="text-xs text-gray-500">Last 30 days</p>
             </div>
           </div>
@@ -361,7 +553,7 @@ RECENT SYSTEM ACTIVITY
           <div className="flex items-center space-x-3">
             <Database className="text-pink-500" size={24} />
             <div>
-              <p className="text-sm font-medium text-gray-900">1,284 Records</p>
+              <p className="text-sm font-medium text-gray-900">{dashboardData?.activeMaternalRecords?.toLocaleString() || '0'} Records</p>
               <p className="text-xs text-gray-500">Active maternal records</p>
             </div>
           </div>
@@ -370,7 +562,7 @@ RECENT SYSTEM ACTIVITY
           <div className="flex items-center space-x-3">
             <Heart className="text-pink-500" size={24} />
             <div>
-              <p className="text-sm font-medium text-gray-900">98.2% Safe</p>
+              <p className="text-sm font-medium text-gray-900">{dashboardData?.deliverySuccessRate || '98.2'}% Safe</p>
               <p className="text-xs text-gray-500">Delivery success rate</p>
             </div>
           </div>
@@ -379,7 +571,7 @@ RECENT SYSTEM ACTIVITY
           <div className="flex items-center space-x-3">
             <Calendar className="text-pink-500" size={24} />
             <div>
-              <p className="text-sm font-medium text-gray-900">842 Active</p>
+              <p className="text-sm font-medium text-gray-900">{dashboardData?.providersThisMonth?.toLocaleString() || '0'} Active</p>
               <p className="text-xs text-gray-500">Providers this month</p>
             </div>
           </div>
@@ -397,8 +589,8 @@ RECENT SYSTEM ACTIVITY
             </div>
           </div>
           <div className="text-right text-xs text-gray-500">
-            <p>Last Security Audit: Today</p>
-            <p>Encryption: AES-256</p>
+            <p>Last Security Audit: {dashboardData?.lastAudit || 'Today'}</p>
+            <p>Encryption: {dashboardData?.encryption || 'AES-256'}</p>
           </div>
         </div>
       </div>

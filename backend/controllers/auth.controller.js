@@ -96,8 +96,6 @@ const register = async (req, res) => {
       while (retries > 0 && !created) {
         try {
           motherCode = await generateMotherID();
-          // Keep initial Mother creation compatible with current schema.
-            // Avoid writing fields that may not exist in DB (legacy migrations may differ).
           await Mother.create({
             user_id: user.user_id,
             mother_code: motherCode,
@@ -118,7 +116,6 @@ const register = async (req, res) => {
     }
 
     if (backendRole === 'midwife') {
-      // Generate a unique employee_id
       const timestamp = Date.now().toString().slice(-6);
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       const employeeId = `PHM-${timestamp}${random}`;
@@ -190,20 +187,22 @@ const register = async (req, res) => {
   }
 };
 
-// Login by Full Name (for mother AND provider)
+// Login by Full Name (for mother, provider, and admin)
 const loginByName = async (req, res) => {
   try {
     const { fullName, password, role } = req.body;
     const requestedRole = role?.toLowerCase();
-    const normalizedFullName = fullName?.trim().toLowerCase();
+    const normalizedFullName = fullName?.trim() || '';
+    const normalizedFullNameLower = normalizedFullName.toLowerCase();
     const normalizedPassword = password?.trim();
 
-    console.log('Login attempt:', { fullName, role: requestedRole, password: '***' });
+    console.log('Login attempt:', { fullName: normalizedFullName, role: requestedRole, password: '***' });
 
     let user = null;
     let foundIn = null;
 
-    const buildNameCondition = (column) => where(fn('LOWER', col(column)), normalizedFullName);
+    const buildNameCondition = (column) => where(fn('LOWER', col(column)), normalizedFullNameLower);
+    const buildEmailCondition = () => where(fn('LOWER', col('email')), normalizedFullNameLower);
     const providerIdOrNameCondition = {
       [Op.or]: [
         buildNameCondition('full_name'),
@@ -215,8 +214,24 @@ const loginByName = async (req, res) => {
       return await Midwife.findOne({ where: providerIdOrNameCondition });
     };
 
-    // If logging in as provider, search provider profile first
-    if (requestedRole === 'provider') {
+    // === ADMIN & GENERAL FALLBACK FIRST (most reliable for admin) ===
+    if (requestedRole === 'admin' || !requestedRole) {
+      user = await User.findOne({ 
+        where: {
+          [Op.or]: [
+            buildNameCondition('name'),
+            buildEmailCondition()
+          ]
+        }
+      });
+      if (user) {
+        console.log('Found admin/general user in users table');
+        foundIn = 'users';
+      }
+    }
+
+    // If logging in as provider, search provider profile
+    if (!user && requestedRole === 'provider') {
       const midwife = await findMidwife();
       if (midwife) {
         console.log('Found in midwives table:', midwife.midwife_id);
@@ -225,8 +240,8 @@ const loginByName = async (req, res) => {
       }
     }
 
-    // If logging in as mother, search mother profile first
-    if (!user && requestedRole !== 'provider') {
+    // If logging in as mother, search mother profile
+    if (!user && requestedRole === 'mother') {
       const mother = await Mother.findOne({ where: buildNameCondition('full_name') });
       if (mother) {
         console.log('Found in mothers table:', mother.mother_id);
@@ -235,29 +250,18 @@ const loginByName = async (req, res) => {
       }
     }
 
-    // Search provider profile if we haven't already found a provider account
-    if (!user && requestedRole !== 'mother') {
-      const midwife = await findMidwife();
-      if (midwife) {
-        console.log('Found in midwives table:', midwife.midwife_id);
-        user = await User.findOne({ where: { user_id: midwife.user_id } });
-        foundIn = 'midwives';
-      }
-    }
-
-    // Try users table by name
+    // Final fallback - search users table by name (for any role)
     if (!user) {
       user = await User.findOne({ where: buildNameCondition('name') });
       if (user) {
-        console.log('Found in users table by name');
-        foundIn = 'users';
+        console.log('Found in users table by name (fallback)');
+        foundIn = 'users_name';
       }
     }
 
-    // Try by email
+    // Try by email as last resort
     if (!user) {
-      const normalizedEmail = fullName?.trim().toLowerCase();
-      user = await User.findOne({ where: { email: normalizedEmail } });
+      user = await User.findOne({ where: buildEmailCondition() });
       if (user) {
         console.log('Found in users table by email');
         foundIn = 'users_email';
@@ -265,7 +269,7 @@ const loginByName = async (req, res) => {
     }
 
     if (!user) {
-      console.log('User not found for:', fullName);
+      console.log('User not found for:', normalizedFullName);
       return res.status(401).json({
         success: false,
         message: 'Invalid full name or password'
@@ -273,8 +277,8 @@ const loginByName = async (req, res) => {
     }
 
     console.log('User found:', { user_id: user.user_id, role: user.role, foundIn });
-    console.log('Password hash prefix (first 12 chars):', String(user.password_hash).slice(0, 12));
-    console.log('Normalized password length:', (normalizedPassword || '').length);
+    console.log('Stored password hash:', user.password_hash);
+    console.log('Input password length:', normalizedPassword?.length || 0);
 
     // Check if user is active
     if (!user.is_active) {
@@ -291,22 +295,40 @@ const loginByName = async (req, res) => {
       });
     }
 
-    // Verify password
-    const isPasswordValid = await user.comparePassword(normalizedPassword);
-    console.log('Password valid:', isPasswordValid);
+    // Verify password - Enhanced with better error handling
+        // Verify password
+    let isPasswordValid = false;
+    
+    try {
+      isPasswordValid = await user.comparePassword(normalizedPassword);
+      console.log('Password valid (standard):', isPasswordValid);
+    } catch (err) {
+      console.error('Password compare error:', err.message);
+    }
+
+    if (!isPasswordValid) {
+      console.log('❌ Password verification failed');
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid full name or password'
+      });
+    }
     
     if (!isPasswordValid) {
+      console.log('Password validation FAILED for user:', user.name);
       return res.status(401).json({
         success: false,
         message: 'Invalid full name or password'
       });
     }
 
+    console.log('Password validation SUCCESS for user:', user.name);
+
     // Check role match if role was specified
-    if (role && !isRoleMatch(user.role, role)) {
+    if (requestedRole && !isRoleMatch(user.role, requestedRole)) {
       return res.status(403).json({
         success: false,
-        message: `This account is not registered as a ${role}`
+        message: `This account is not registered as a ${requestedRole}`
       });
     }
 

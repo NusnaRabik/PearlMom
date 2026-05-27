@@ -49,6 +49,25 @@ const User = sequelize.define('User', {
   },
   deleted_at: {
     type: DataTypes.DATE
+  },
+  // Add alert_preferences field
+  alert_preferences: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    defaultValue: JSON.stringify({
+      criticalSystemAlerts: true,
+      securityLoginAlerts: true,
+      newUserRegistration: true
+    })
+  },
+  // Add reset token fields for password reset
+  reset_token: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  reset_token_expires: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'users',
