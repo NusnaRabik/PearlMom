@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Phone, UploadCloud, Asterisk, ExternalLink, GraduationCap, CheckCircle2, PlayCircle, FileText, Bug, MessageSquare, Info, Clock } from 'lucide-react';
+import { 
+  Search, ChevronDown, ChevronUp, Phone, UploadCloud, Asterisk, 
+  ExternalLink, GraduationCap, CheckCircle2, FileText, Bug, 
+  MessageSquare, Info 
+} from 'lucide-react';
+import api from '../../services/api'; // Add this import
 
 const HelpSupportPage = () => {
   const [activeTab, setActiveTab] = useState('Mother');
@@ -10,6 +15,7 @@ const HelpSupportPage = () => {
   const [formType, setFormType] = useState('contact');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [attachment, setAttachment] = useState(null);
 
   const faqs = {
     Mother: [
@@ -57,16 +63,61 @@ const HelpSupportPage = () => {
     faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleFormSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAttachment(file);
+    }
+  };
+
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitSuccess(false);
-    setTimeout(() => {
+    
+    // Get form values using name attributes
+    const formValues = {
+      subject: e.target.subject?.value,
+      page_url: e.target.page_url?.value,
+      browser_info: e.target.browser_info?.value,
+      steps_to_reproduce: e.target.steps_to_reproduce?.value,
+      message: e.target.message?.value
+    };
+    
+    // Get browser info automatically
+    const browserInfo = `${navigator.userAgent} | ${navigator.platform} | Screen: ${window.screen.width}x${window.screen.height}`;
+    
+    // Get current page URL
+    const pageUrl = window.location.href;
+    
+    // Prepare payload
+    const payload = {
+      ticket_type: formType,
+      subject: formType === 'contact' ? formValues.subject : null,
+      page_url: pageUrl,
+      browser_info: browserInfo,
+      steps_to_reproduce: formType === 'bug' ? formValues.steps_to_reproduce : null,
+      message: formValues.message,
+      attachment_url: null
+    };
+    
+    try {
+      const response = await api.post('/support/ticket', payload);
+      
+      if (response.data.success) {
+        setSubmitSuccess(true);
+        e.target.reset();
+        setAttachment(null);
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      } else {
+        alert('Failed to submit: ' + (response.data.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error submitting ticket:', error);
+      alert(error.response?.data?.message || 'Failed to submit. Please try again.');
+    } finally {
       setIsSubmitting(false);
-      setSubmitSuccess(true);
-      e.target.reset();
-      setTimeout(() => setSubmitSuccess(false), 5000);
-    }, 1200);
+    }
   };
 
   return (
@@ -206,12 +257,14 @@ const HelpSupportPage = () => {
                 {/* Form Toggle */}
                 <div className="flex bg-slate-100 p-1 rounded-xl">
                   <button 
+                    type="button"
                     onClick={() => setFormType('contact')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${formType === 'contact' ? 'bg-white shadow-sm text-pink-600' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     <MessageSquare className="w-4 h-4" /> Contact
                   </button>
                   <button 
+                    type="button"
                     onClick={() => setFormType('bug')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${formType === 'bug' ? 'bg-white shadow-sm text-red-600' : 'text-slate-500 hover:text-slate-700'}`}
                   >
@@ -239,7 +292,7 @@ const HelpSupportPage = () => {
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Subject</label>
                       <div className="relative group">
-                        <select required className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all text-slate-700 font-medium appearance-none hover:border-slate-300 cursor-pointer">
+                        <select name="subject" required className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all text-slate-700 font-medium appearance-none hover:border-slate-300 cursor-pointer">
                           <option value="">Select a topic</option>
                           <option value="technical">Technical Issue</option>
                           <option value="account">Account Issue</option>
@@ -252,7 +305,7 @@ const HelpSupportPage = () => {
                   ) : (
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Page where issue occurred</label>
-                      <input required type="text" placeholder="e.g. Dashboard, Registration" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
+                      <input name="page_url" required type="text" placeholder="e.g. Dashboard, Registration" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
                     </div>
                   )}
                   
@@ -260,8 +313,8 @@ const HelpSupportPage = () => {
                     <label className="block text-[12px] font-bold text-slate-700 mb-2">Attachment (Optional)</label>
                     <label className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-pink-600 font-semibold rounded-xl px-4 py-3.5 transition-colors border border-transparent cursor-pointer">
                       <UploadCloud className="h-5 w-5" />
-                      <span>Upload Screenshot</span>
-                      <input type="file" className="hidden" accept="image/*" />
+                      <span>{attachment ? attachment.name : 'Upload Screenshot'}</span>
+                      <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                     </label>
                   </div>
                 </div>
@@ -270,11 +323,11 @@ const HelpSupportPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Browser / Device Information</label>
-                      <input required type="text" placeholder="e.g. Chrome on Windows 11, Safari on iOS" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
+                      <input name="browser_info" required type="text" placeholder="e.g. Chrome on Windows 11, Safari on iOS" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
                     </div>
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Steps to Reproduce</label>
-                      <textarea required rows="1" placeholder="1. Go to... 2. Click..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 resize-none hover:border-slate-300"></textarea>
+                      <textarea name="steps_to_reproduce" required rows="1" placeholder="1. Go to... 2. Click..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 resize-none hover:border-slate-300"></textarea>
                     </div>
                   </div>
                 )}
@@ -284,6 +337,7 @@ const HelpSupportPage = () => {
                     {formType === 'contact' ? 'Message' : 'Description of the problem'}
                   </label>
                   <textarea 
+                    name="message"
                     required
                     rows="4" 
                     placeholder={formType === 'contact' ? "Describe your issue or inquiry in detail..." : "What exactly happened? What were you expecting to happen?"}
@@ -342,25 +396,6 @@ const HelpSupportPage = () => {
                     <p className="text-[11px] text-slate-500">View what to do in an emergency</p>
                   </div>
                   <ExternalLink className="w-4 h-4 text-red-400 group-hover:text-red-600 transition-colors" />
-                </a>
-              </div>
-            </div>
-
-            {/* Need Training Card */}
-            <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl p-7 border border-pink-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-              <div className="absolute -right-6 -bottom-6 opacity-[0.05] group-hover:opacity-10 transition-opacity">
-                <GraduationCap className="w-40 h-40" />
-              </div>
-              
-              <div className="relative z-10">
-                <h3 className="text-lg font-bold text-pink-700 mb-3">Need Training?</h3>
-                <p className="text-sm text-slate-600 leading-relaxed mb-6">
-                  Watch our step-by-step video tutorials on how to maximize your health tracking experience.
-                </p>
-                
-                <a href="#" className="inline-flex items-center gap-2 text-sm font-bold text-pink-600 hover:text-pink-700 transition-colors group-hover:underline underline-offset-4 decoration-pink-300">
-                  Open Academy
-                  <ExternalLink className="w-4 h-4" />
                 </a>
               </div>
             </div>

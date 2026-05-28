@@ -15,5 +15,6 @@ router.get('/distributions', protect, authorize('midwife', 'doctor'), thriposhaC
 router.post('/distribute', protect, authorize('midwife', 'doctor'), thriposhaController.distributeSupplement);
 router.get('/history/:motherId', protect, authorize('midwife', 'doctor'), thriposhaController.getDistributionHistory);
 router.get('/report/export', protect, authorize('midwife', 'doctor'), thriposhaController.exportReport);
+router.get('/search-mother', protect, authorize('midwife', 'doctor'), thriposhaController.searchMotherEligibility); // Add this line
 
 module.exports = router;

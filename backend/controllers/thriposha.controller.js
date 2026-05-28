@@ -399,6 +399,174 @@ const exportReport = async (req, res) => {
   }
 };
 
+// @desc    Search mother for Thriposha eligibility
+// @route   GET /api/thriposha/search-mother
+const searchMotherEligibility = async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query || query.trim() === '') {
+      return error(res, 'Search query is required', 400);
+    }
+    
+    const searchQuery = query.trim();
+    
+    // Search for mother by mother_code or full_name
+    let motherQuery = `
+      SELECT 
+        m.mother_id,
+        m.mother_code,
+        m.full_name,
+        m.weeks,
+        m.current_weight,
+        m.height,
+        m.address,
+        m.district,
+        m.emergency_contact_phone,
+        m.is_high_risk,
+        m.pregnancy_status,
+        e.eligibility_id,
+        e.is_eligible,
+        e.bmi,
+        e.assessed_date,
+        e.gestational_week,
+        e.notes as eligibility_notes
+      FROM mothers m
+      LEFT JOIN (
+        SELECT * FROM thriposha_eligibilities 
+        WHERE (mother_id, assessed_date) IN (
+          SELECT mother_id, MAX(assessed_date) 
+          FROM thriposha_eligibilities 
+          GROUP BY mother_id
+        )
+      ) e ON m.mother_id = e.mother_id
+      WHERE m.is_deleted = 0
+        AND (m.mother_code LIKE ? OR m.full_name LIKE ?)
+      LIMIT 1
+    `;
+    
+    const searchPattern = `%${searchQuery}%`;
+    const mothers = await sequelize.query(motherQuery, {
+      replacements: [searchPattern, searchPattern],
+      type: sequelize.QueryTypes.SELECT
+    });
+    
+    if (!mothers || mothers.length === 0) {
+      return success(res, {
+        found: false,
+        eligible: false,
+        mother: null,
+        message: `No mother found with ID or Name: "${searchQuery}". Please check the information and try again.`
+      });
+    }
+    
+    const mother = mothers[0];
+    
+    // Calculate BMI if weight and height available
+    let bmi = null;
+    if (mother.current_weight && mother.height && mother.height > 0) {
+      const heightInMeters = mother.height / 100;
+      bmi = (mother.current_weight / (heightInMeters * heightInMeters)).toFixed(1);
+    }
+    
+    // Determine eligibility and packets based on latest assessment or current data
+    let isEligible = false;
+    let recommendedPackets = 1;
+    let eligibilityReason = '';
+    
+    if (mother.is_eligible !== null && mother.is_eligible !== undefined) {
+      // Use stored eligibility from assessments
+      isEligible = mother.is_eligible === 1 || mother.is_eligible === true;
+      
+      if (isEligible && mother.bmi) {
+        if (parseFloat(mother.bmi) < 18.5) {
+          recommendedPackets = 2;
+          eligibilityReason = 'Underweight - qualifies for 2 packets';
+        } else if (parseFloat(mother.bmi) >= 30) {
+          recommendedPackets = 2;
+          eligibilityReason = 'Obese - qualifies for 2 packets';
+        } else {
+          recommendedPackets = 1;
+          eligibilityReason = 'Normal BMI - qualifies for 1 packet';
+        }
+      } else if (isEligible) {
+        recommendedPackets = 1;
+        eligibilityReason = 'Eligible based on assessment';
+      } else {
+        eligibilityReason = mother.eligibility_notes || 'Does not meet eligibility criteria';
+      }
+    } else {
+      // No assessment found, calculate based on BMI
+      if (bmi) {
+        if (bmi < 18.5) {
+          isEligible = true;
+          recommendedPackets = 2;
+          eligibilityReason = 'Underweight - qualifies for 2 packets';
+        } else if (bmi >= 30) {
+          isEligible = true;
+          recommendedPackets = 2;
+          eligibilityReason = 'Obese - qualifies for 2 packets';
+        } else if (bmi >= 18.5 && bmi <= 24.9) {
+          isEligible = true;
+          recommendedPackets = 1;
+          eligibilityReason = 'Normal BMI - qualifies for 1 packet';
+        } else {
+          isEligible = true;
+          recommendedPackets = 1;
+          eligibilityReason = 'Qualifies for 1 packet';
+        }
+      } else {
+        // Default to eligible with 1 packet if no data
+        isEligible = true;
+        recommendedPackets = 1;
+        eligibilityReason = 'Default eligibility - needs assessment';
+      }
+    }
+    
+    // Get last distribution date
+    let lastDistributionQuery = `
+      SELECT distribution_date, packets
+      FROM nutrition_supplements
+      WHERE mother_id = ? AND supplement_type = 'thriposha'
+      ORDER BY distribution_date DESC
+      LIMIT 1
+    `;
+    
+    const lastDistribution = await sequelize.query(lastDistributionQuery, {
+      replacements: [mother.mother_id],
+      type: sequelize.QueryTypes.SELECT
+    });
+    
+    const result = {
+      found: true,
+      eligible: isEligible,
+      mother: {
+        motherId: mother.mother_code,
+        name: mother.full_name,
+        week: mother.weeks ? `${mother.weeks}th Week` : 'N/A',
+        bmi: bmi || mother.bmi || 'N/A',
+        packets: recommendedPackets,
+        address: mother.address || 'N/A',
+        phone: mother.emergency_contact_phone || 'N/A',
+        isHighRisk: mother.is_high_risk === 1 || mother.is_high_risk === true,
+        pregnancyStatus: mother.pregnancy_status || 'N/A',
+        lastAssessmentDate: mother.assessed_date ? new Date(mother.assessed_date).toLocaleDateString() : 'Not assessed',
+        lastDistributionDate: lastDistribution[0] ? new Date(lastDistribution[0].distribution_date).toLocaleDateString() : 'No previous distribution',
+        lastPackets: lastDistribution[0]?.packets || 'N/A'
+      },
+      message: isEligible 
+        ? `${mother.full_name} (ID: ${mother.mother_code}) is ELIGIBLE for Thriposha program. ${eligibilityReason}`
+        : `${mother.full_name} (ID: ${mother.mother_code}) is NOT ELIGIBLE for Thriposha program. ${eligibilityReason}`
+    };
+    
+    return success(res, result);
+    
+  } catch (err) {
+    console.error('Error searching mother eligibility:', err);
+    return error(res, 'Error searching mother eligibility: ' + err.message);
+  }
+};
+
 module.exports = {
   getMyThriposhaStatus,
   getMyThriposhaHistory,
@@ -407,5 +575,6 @@ module.exports = {
   getEligibleMothersWithDistributions,
   distributeSupplement,
   getDistributionHistory,
-  exportReport
+  exportReport,
+  searchMotherEligibility 
 };

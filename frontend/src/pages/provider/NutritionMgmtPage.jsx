@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Calculator, Package, FileText, Download, TrendingUp, 
   ChevronRight, CheckCircle, X, User, Calendar, Phone, 
-  MapPin, Activity, Heart, Info, Plus, Loader
+  MapPin, Activity, Heart, Info, Plus, Loader, Search, AlertCircle
 } from 'lucide-react';
 import ThriposhaCriteria from '../../components/provider/ThriposhaCriteria';
 import api from '../../services/api';
@@ -22,6 +22,12 @@ const NutritionMgmtPage = () => {
   const [loading, setLoading] = useState(false);
   const [recentLogs, setRecentLogs] = useState([]);
   const [eligibleMothers, setEligibleMothers] = useState([]);
+  
+  // Search state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResult, setSearchResult] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
 
   // New Distribution Form
   const [newDistribution, setNewDistribution] = useState({
@@ -71,12 +77,98 @@ const NutritionMgmtPage = () => {
   const fetchEligibleMothers = async () => {
     try {
       const response = await api.get('/thriposha/eligible-mothers');
-      console.log('Eligible mothers response:', response.data);
       if (response.data.success) {
         setEligibleMothers(response.data.data.eligible_mothers || []);
       }
     } catch (error) {
       console.error('Error fetching eligible mothers:', error);
+    }
+  };
+
+  // Search for mother eligibility
+  const handleSearchMother = async () => {
+    if (!searchTerm.trim()) {
+      setSearchError('Please enter Mother ID or Full Name');
+      setSearchResult(null);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+    setSearchResult(null);
+
+    try {
+      // First, fetch all eligible mothers
+      const eligibleResponse = await api.get('/thriposha/eligible-mothers');
+      const allEligibleMothers = eligibleResponse.data.data?.eligible_mothers || [];
+      
+      // Search for mother by ID or name
+      const foundMother = allEligibleMothers.find(
+        mother => mother.motherId?.toLowerCase() === searchTerm.toLowerCase() ||
+                  mother.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      if (foundMother) {
+        setSearchResult({
+          found: true,
+          eligible: true,
+          mother: foundMother,
+          message: `${foundMother.name} (ID: ${foundMother.motherId}) is ELIGIBLE for Thriposha program.`
+        });
+      } else {
+        // Check if mother exists but not eligible
+        try {
+          const allMothersResponse = await api.get('/providers/mothers');
+          const allMothers = allMothersResponse.data.data?.mothers || [];
+          const existingMother = allMothers.find(
+            mother => mother.mother_code?.toLowerCase() === searchTerm.toLowerCase() ||
+                      mother.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+          
+          if (existingMother) {
+            setSearchResult({
+              found: true,
+              eligible: false,
+              mother: {
+                name: existingMother.full_name,
+                motherId: existingMother.mother_code
+              },
+              message: `${existingMother.full_name} (ID: ${existingMother.mother_code}) is NOT ELIGIBLE for Thriposha program. Please check BMI and pregnancy criteria.`
+            });
+          } else {
+            setSearchResult({
+              found: false,
+              eligible: false,
+              mother: null,
+              message: `No mother found with ID or Name: "${searchTerm}". Please check the information and try again.`
+            });
+          }
+        } catch (error) {
+          setSearchResult({
+            found: false,
+            eligible: false,
+            mother: null,
+            message: `No mother found with ID or Name: "${searchTerm}".`
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error searching mother:', error);
+      setSearchError('Failed to search. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setSearchResult(null);
+    setSearchError(null);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearchMother();
     }
   };
 
@@ -176,6 +268,7 @@ const NutritionMgmtPage = () => {
         setEligibilityResult(null);
         
         await fetchRecentDistributions();
+        await fetchEligibleMothers();
       }
     } catch (error) {
       console.error('Distribution error:', error);
@@ -200,6 +293,7 @@ const NutritionMgmtPage = () => {
       if (response.data.success) {
         setDistributionSuccess(true);
         await fetchRecentDistributions();
+        await fetchEligibleMothers();
         
         setTimeout(() => {
           setShowNewDistribution(false);
@@ -358,20 +452,160 @@ const NutritionMgmtPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 min-h-screen pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Nutrition & Wellness Log</h1>
-          <p className="text-gray-500 mt-1">Streamline your maternal support flow. Monitor Thriposha distribution and ensure every mother receives the care they need.</p>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5"><div>
+          <div className="flex items-center gap-4 mb-3">
+
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Nutrition & Wellness
+              </h1>
+
+              <p className="text-gray-500 mt-1">
+                Maternal nutrition monitoring and Thriposha management
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <span className="px-4 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-medium">
+              Thriposha Program
+            </span>
+
+            <span className="px-4 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+              {eligibleMothers.length} Eligible Mothers
+            </span>
+          </div>
         </div>
-        <button 
+
+        <button
           onClick={() => setShowNewDistribution(true)}
-          className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors whitespace-nowrap flex items-center space-x-2"
+          className="
+            px-5 py-3
+            bg-pink-600 text-white
+            rounded-2xl
+            flex items-center gap-2
+          "
         >
-          <Plus size={16} />
-          <span>New Distribution</span>
+          <Plus size={18} />
+          New Distribution
         </button>
+      </div>
+
+      {/* Search Bar Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6 border-2 border-pink-100">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold flex items-center">
+            <Search className="mr-2 text-pink-500" size={20} />
+            Check Mother Eligibility
+          </h2>
+          <span className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-xs font-medium">
+            Search by ID or Name
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">Search for a mother to check if they are eligible for the Thriposha program.</p>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={18} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Enter Mother ID (e.g., MOM-26-0009) or Full Name..."
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+            />
+          </div>
+          <button
+            onClick={handleSearchMother}
+            disabled={isSearching}
+            className="px-6 py-3 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors whitespace-nowrap flex items-center justify-center gap-2"
+          >
+            {isSearching ? <Loader size={16} className="animate-spin" /> : <Search size={16} />}
+            {isSearching ? 'Searching...' : 'Check Eligibility'}
+          </button>
+          {searchTerm && (
+            <button
+              onClick={handleClearSearch}
+              className="px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* Search Result Display */}
+        {searchError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <AlertCircle size={20} className="text-red-500" />
+              <p className="text-sm text-red-700">{searchError}</p>
+            </div>
+          </div>
+        )}
+
+        {searchResult && (
+          <div className={`mt-4 p-4 rounded-lg border-2 ${
+            searchResult.eligible 
+              ? 'bg-green-50 border-green-300' 
+              : searchResult.found 
+                ? 'bg-yellow-50 border-yellow-300'
+                : 'bg-red-50 border-red-300'
+          }`}>
+            <div className="flex items-start space-x-3">
+              {searchResult.eligible ? (
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CheckCircle size={16} className="text-white" />
+                </div>
+              ) : searchResult.found ? (
+                <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <AlertCircle size={16} className="text-white" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <X size={16} className="text-white" />
+                </div>
+              )}
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${
+                  searchResult.eligible ? 'text-green-800' : 
+                  searchResult.found ? 'text-yellow-800' : 'text-red-800'
+                }`}>
+                  {searchResult.message}
+                </p>
+                {searchResult.mother && (
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="text-xs text-gray-600">
+                      <span className="font-medium">Mother ID:</span> {searchResult.mother.motherId}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      <span className="font-medium">Full Name:</span> {searchResult.mother.name}
+                    </div>
+                    {searchResult.mother.week && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-medium">Pregnancy Week:</span> {searchResult.mother.week}
+                      </div>
+                    )}
+                    {searchResult.mother.bmi && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-medium">BMI:</span> {searchResult.mother.bmi}
+                      </div>
+                    )}
+                    {searchResult.eligible && searchResult.mother.packets && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-medium">Recommended Packets:</span> {searchResult.mother.packets}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

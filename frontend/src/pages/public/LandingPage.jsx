@@ -1,5 +1,5 @@
 // frontend/src/pages/public/LandingPage.jsx
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
@@ -12,8 +12,122 @@ import {
 import heroImage from '../../assets/hero-image.png';
 import doctorTabletImage from '../../assets/doctor_tablet.png';
 import babyHandImage from '../../assets/baby_hand.png';
+import api from '../../services/api';
 
 const LandingPage = () => {
+  const [stats, setStats] = useState({
+    totalMothers: 0,
+    successfulDeliveries: 0,
+    activeProviders: 0,
+    clinicsConnected: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [animatedStats, setAnimatedStats] = useState({
+    totalMothers: 0,
+    successfulDeliveries: 0,
+    activeProviders: 0,
+    clinicsConnected: 0
+  });
+  const statsRef = useRef(null);
+  const hasAnimated = useRef(false);
+
+  // Fetch stats from database
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/public/stats');
+        if (response.data.success) {
+          const data = response.data.data;
+          setStats({
+            totalMothers: data.total_mothers || 0,
+            successfulDeliveries: data.successful_deliveries || 0,
+            activeProviders: data.active_providers || 0,
+            clinicsConnected: data.clinics_connected || 0
+          });
+        } else {
+          // Fallback to default values if API fails
+          setStats({
+            totalMothers: 25000,
+            successfulDeliveries: 18000,
+            activeProviders: 500,
+            clinicsConnected: 120
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        // Fallback to default values
+        setStats({
+          totalMothers: 25000,
+          successfulDeliveries: 18000,
+          activeProviders: 500,
+          clinicsConnected: 120
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Count animation when stats come into view
+  useEffect(() => {
+    const animateValue = (start, end, duration, setter) => {
+      const increment = (end - start) / (duration / 16);
+      let current = start;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= end) {
+          setter(end);
+          clearInterval(timer);
+        } else {
+          setter(Math.floor(current));
+        }
+      }, 16);
+      return timer;
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasAnimated.current && !loading) {
+          hasAnimated.current = true;
+          
+          animateValue(0, stats.totalMothers, 2000, (value) => 
+            setAnimatedStats(prev => ({ ...prev, totalMothers: value }))
+          );
+          animateValue(0, stats.successfulDeliveries, 2000, (value) => 
+            setAnimatedStats(prev => ({ ...prev, successfulDeliveries: value }))
+          );
+          animateValue(0, stats.activeProviders, 2000, (value) => 
+            setAnimatedStats(prev => ({ ...prev, activeProviders: value }))
+          );
+          animateValue(0, stats.clinicsConnected, 2000, (value) => 
+            setAnimatedStats(prev => ({ ...prev, clinicsConnected: value }))
+          );
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (statsRef.current) {
+      observer.observe(statsRef.current);
+    }
+
+    return () => {
+      if (statsRef.current) {
+        observer.unobserve(statsRef.current);
+      }
+    };
+  }, [stats, loading]);
+
+  const formatNumber = (num) => {
+    if (num >= 1000) {
+      return `${Math.floor(num / 1000)}${num % 1000 >= 100 ? ',' + (num % 1000) : num % 1000 === 0 ? 'K+' : ',' + (num % 1000)}`;
+    }
+    return num.toString();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar />
@@ -73,7 +187,7 @@ const LandingPage = () => {
         </section>
 
         {/* Community Impact Section */}
-        <section className="bg-white py-20">
+        <section className="bg-white py-20" ref={statsRef}>
           <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
             <h2 className="text-3xl font-bold text-slate-900 mb-4">Community Impact</h2>
             <div className="w-16 h-1 bg-pink-600 mx-auto mb-4"></div>
@@ -82,35 +196,43 @@ const LandingPage = () => {
             </p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow">
-                <div className="bg-pink-100 p-3 rounded-full mb-4">
+              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow group">
+                <div className="bg-pink-100 p-3 rounded-full mb-4 group-hover:bg-pink-200 transition-colors">
                   <Users className="text-pink-500 w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-1">25,000+</h3>
+                <h3 className="text-2xl font-bold text-slate-900 mb-1">
+                  {loading ? '...' : `${formatNumber(animatedStats.totalMothers)}+`}
+                </h3>
                 <p className="text-sm text-slate-500 text-center">Mothers Registered</p>
               </div>
               
-              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow">
-                <div className="bg-pink-100 p-3 rounded-full mb-4">
+              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow group">
+                <div className="bg-pink-100 p-3 rounded-full mb-4 group-hover:bg-pink-200 transition-colors">
                   <Heart className="text-pink-500 w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-bold text-pink-600 mb-1">18,000+</h3>
+                <h3 className="text-2xl font-bold text-slate-900 mb-1">
+                  {loading ? '...' : `${formatNumber(animatedStats.successfulDeliveries)}+`}
+                </h3>
                 <p className="text-sm text-slate-500 text-center">Successful Deliveries</p>
               </div>
 
-              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow">
-                <div className="bg-pink-100 p-3 rounded-full mb-4">
+              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow group">
+                <div className="bg-pink-100 p-3 rounded-full mb-4 group-hover:bg-pink-200 transition-colors">
                   <Stethoscope className="text-pink-500 w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-1">500+</h3>
+                <h3 className="text-2xl font-bold text-slate-900 mb-1">
+                  {loading ? '...' : `${formatNumber(animatedStats.activeProviders)}+`}
+                </h3>
                 <p className="text-sm text-slate-500 text-center">Active Providers</p>
               </div>
 
-              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow">
-                <div className="bg-pink-100 p-3 rounded-full mb-4">
+              <div className="bg-slate-50 p-6 rounded-2xl flex flex-col items-center hover:shadow-md transition-shadow group">
+                <div className="bg-pink-100 p-3 rounded-full mb-4 group-hover:bg-pink-200 transition-colors">
                   <Building className="text-pink-500 w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-1">120+</h3>
+                <h3 className="text-2xl font-bold text-slate-900 mb-1">
+                  {loading ? '...' : `${formatNumber(animatedStats.clinicsConnected)}+`}
+                </h3>
                 <p className="text-sm text-slate-500 text-center">Clinics Connected</p>
               </div>
             </div>

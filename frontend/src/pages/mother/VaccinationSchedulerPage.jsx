@@ -391,7 +391,7 @@ const VaccinationSchedulerPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 min-h-screen pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
       
       <div>
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Vaccination & Care</h2>

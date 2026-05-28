@@ -26,6 +26,8 @@ const providerRoutes = require('./routes/provider.routes');
 const profileRoutes = require('./routes/profile.routes');
 const adminRoutes = require('./routes/admin.routes');
 const clinicVisitRoutes = require('./routes/clinicVisit.routes');
+const supportRoutes = require('./routes/support.routes');
+const publicRoutes = require('./routes/public.routes');
 
 
 // Initialize express app
@@ -56,6 +58,8 @@ app.use('/api/providers', providerRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/clinic-visits', clinicVisitRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/public', publicRoutes);
 
 // ✅ Health check route
 app.get('/api/health', (req, res) => {

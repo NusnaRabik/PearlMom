@@ -327,7 +327,7 @@ const MotherDashboard = () => {
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 space-y-6 min-h-screen pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* ── Left / Main column ── */}

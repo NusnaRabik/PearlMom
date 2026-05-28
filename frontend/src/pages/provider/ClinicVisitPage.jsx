@@ -398,12 +398,20 @@ const ClinicVisitPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 min-h-screen pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clinic Visit Management</h1>
-          <p className="text-gray-500 mt-1">Patient Record &gt; Current Visit</p>
+        <div className="flex items-center gap-4 mb-3">
+
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Clinic Visit Management
+            </h1>
+
+            <p className="text-gray-500 mt-1">
+              Track patient visits, appointments, and maternal healthcare records
+            </p>
+          </div>
         </div>
       </div>
 

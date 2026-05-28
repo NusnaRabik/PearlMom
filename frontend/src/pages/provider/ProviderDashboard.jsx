@@ -467,21 +467,69 @@ const ProviderDashboard = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 min-h-screen pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Provider Dashboard</h1>
-          <p className="text-gray-500 mt-1">
-            Welcome back, {providerInfo.full_name || user?.fullName || 'Provider'}. 
-            Employee ID: <span className="font-semibold text-pink-600">{providerInfo.employee_id || 'Not assigned'}</span> | 
-            Here's your real-time health overview for {formatDate(new Date(), 'long')}.
-          </p>
+          <div className="flex items-center gap-3 mb-2">
+
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Provider Dashboard
+              </h1>
+
+              <p className="text-gray-500 text-sm mt-1">
+                Welcome back,{" "}
+                <span className="font-semibold text-pink-600">
+                  {providerInfo.full_name || user?.fullName || 'Provider'}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+            <span className="bg-white shadow-sm border px-3 py-1 rounded-full">
+              Employee ID: {providerInfo.employee_id || 'Not assigned'}
+            </span>
+
+            <span className="bg-pink-100 text-pink-700 px-3 py-1 rounded-full">
+              {providerInfo.assigned_area || 'Area Pending'}
+            </span>
+          </div>
         </div>
-        <div className="flex space-x-3">
-          <button onClick={handleExportReport} className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 flex items-center space-x-2 transition-colors">
-            <Download size={16} /><span>Export PDF</span>
-          </button>
+
+        <button
+          onClick={handleExportReport}
+          className="px-5 py-3 bg-pink-600 text-white rounded-2xl flex items-center gap-2"
+        >
+          <Download size={18} />
+          Export Report
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border">
+          <p className="text-sm text-gray-500">Today's Appointments</p>
+          <h3 className="text-2xl font-bold text-gray-900">24</h3>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border">
+          <p className="text-sm text-gray-500">Emergency Cases</p>
+          <h3 className="text-2xl font-bold text-red-500">3</h3>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border">
+          <p className="text-sm text-gray-500">Upcoming Deliveries</p>
+          <h3 className="text-2xl font-bold text-pink-600">
+            {getTotalDeliveries()}
+          </h3>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border">
+          <p className="text-sm text-gray-500">Vaccination Progress</p>
+          <h3 className="text-2xl font-bold text-green-600">
+            {vaccinationRate}%
+          </h3>
         </div>
       </div>
 
@@ -504,7 +552,7 @@ const ProviderDashboard = () => {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {stats.map((stat, index) => (<KPICard key={index} {...stat} />))}
       </div>
 
@@ -566,7 +614,7 @@ const ProviderDashboard = () => {
       {/* Weekly Deliveries Schedule Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-3xl w-full max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-pink-100 rounded-lg"><Baby className="h-5 w-5 text-pink-600" /></div>
@@ -629,7 +677,7 @@ const ProviderDashboard = () => {
       {/* Provider Profile Completion Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
               <div className="flex items-center space-x-3">

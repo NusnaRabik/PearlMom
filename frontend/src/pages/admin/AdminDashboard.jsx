@@ -432,18 +432,18 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 min-h-screen pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pearl Mom Performance</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Pearl Mom Performance</h1>
           <p className="text-gray-500 mt-1">System-wide health metrics and provider efficiency overview for Pearl Mom network.</p>
         </div>
         <div className="flex space-x-3">
           <button 
             onClick={handleExportPDF}
             disabled={exporting}
-            className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors whitespace-nowrap flex items-center space-x-2 disabled:cursor-not-allowed"
           >
             {exporting ? (
               <Loader size={16} className="animate-spin" />

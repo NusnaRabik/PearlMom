@@ -195,15 +195,6 @@ const LoginPage = () => {
               </button>
             </form>
 
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <p className="text-xs font-semibold text-gray-500 mb-2 text-center">Demo Quick Login</p>
-              <div className="flex gap-2">
-                <button onClick={() => handleDemoLogin('mother')} className="flex-1 py-2 bg-pink-100 text-pink-700 rounded-lg text-xs font-medium hover:bg-pink-200 transition-colors">Mother</button>
-                <button onClick={() => handleDemoLogin('provider')} className="flex-1 py-2 bg-pink-100 text-pink-700 rounded-lg text-xs font-medium hover:bg-pink-200 transition-colors">Provider</button>
-                <button onClick={() => handleDemoLogin('admin')} className="flex-1 py-2 bg-pink-100 text-pink-700 rounded-lg text-xs font-medium hover:bg-pink-200 transition-colors">Admin</button>
-              </div>
-            </div>
-
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-600">Need an account? <Link to="/register" className="font-semibold text-pink-600 hover:text-pink-700">Register Here</Link></p>
             </div>
