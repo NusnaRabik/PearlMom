@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, Search, Shield, Settings, 
   Database, Eye, Edit2, Trash2,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 
 const UserSystemMgmtPage = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -301,7 +303,7 @@ USER DETAILS BY ROLE
             <span>Export Report</span>
           </button>
           <button 
-            onClick={handleOpenAddUserModal}
+            onClick={() => navigate('/register')}
             className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2"
           >
             <Plus size={16} />
