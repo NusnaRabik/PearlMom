@@ -8,7 +8,7 @@ import { formatDate, formatTime } from '../../utils/formatDate';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const EMCHCardPage = () => {
   const { user } = useAuth();
@@ -84,7 +84,6 @@ const EMCHCardPage = () => {
           setVitalSigns(data.vitalSigns);
         }
         
-        // Get only last 2 visits
         if (data.clinicVisits && data.clinicVisits.length > 0) {
           setClinicVisits(data.clinicVisits.slice(0, 2));
         }
@@ -172,95 +171,136 @@ const EMCHCardPage = () => {
     return age;
   };
 
-  const handleViewReport = (report) => {
-    setSelectedReport(report);
-    setShowReportModal(true);
-  };
-
+  // Fixed PDF download for individual report
   const handleDownloadReport = async (report) => {
     try {
-      if (report.file_url) {
-        window.open(report.file_url, '_blank');
-      } else {
-        const pdfContent = `
-          <html>
-            <head><title>${report.test_name} Report</title></head>
-            <body>
-              <h1>${report.test_name}</h1>
-              <p>Collected Date: ${report.collected_date ? formatDate(report.collected_date, 'long') : 'Not specified'}</p>
-              <p>Result: ${report.test_value || 'Not available'} ${report.unit || ''}</p>
-              ${report.notes ? `<p>Notes: ${report.notes}</p>` : ''}
-            </body>
-          </html>
-        `;
-        
-        const blob = new Blob([pdfContent], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `${report.test_name.replace(/\s/g, '_')}_report.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const primaryColor = [219, 39, 119];
+      
+      // Header
+      doc.setFillColor(253, 242, 248);
+      doc.rect(0, 0, pageWidth, 45, 'F');
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Pearl Mom', 20, 20);
+      doc.setFontSize(12);
+      doc.setTextColor(31, 41, 55);
+      doc.text('Laboratory Report', 20, 32);
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 45, 20);
+      doc.line(20, 45, pageWidth - 20, 45);
+      
+      let yPos = 60;
+      
+      // Report Details
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Report Details', 20, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Test Name: ${report.test_name || 'N/A'}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Collected Date: ${report.collected_date ? formatDate(report.collected_date, 'long') : 'Not specified'}`, 20, yPos);
+      yPos += 7;
+      if (report.test_value) {
+        doc.text(`Result: ${report.test_value} ${report.unit || ''}`, 20, yPos);
+        yPos += 7;
       }
+      if (report.notes) {
+        doc.text(`Notes: ${report.notes}`, 20, yPos);
+        yPos += 7;
+      }
+      
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(156, 163, 175);
+        doc.text(`Pearl Mom Lab Report - Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      }
+      
+      doc.save(`${report.test_name?.replace(/\s/g, '_') || 'Report'}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error downloading report:', error);
       alert('Failed to download report');
     }
   };
 
-  const handleViewCategory = (categoryReports) => {
-    setSelectedCategory(categoryReports);
-    setShowReportModal(true);
-  };
-
+  // Fixed PDF download for category
   const handleDownloadCategory = async (categoryReports, categoryName) => {
     try {
-      let pdfContent = `
-        <html>
-          <head><title>${categoryName} Reports</title></head>
-          <body>
-            <h1>${categoryName}</h1>
-            <table border="1" cellpadding="10" cellspacing="0" style="width:100%; border-collapse: collapse;">
-              <tr style="background-color: #f2f2f2;">
-                <th>Test Name</th>
-                <th>Date</th>
-                <th>Result</th>
-                <th>Unit</th>
-              </tr>
-      `;
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const primaryColor = [219, 39, 119];
       
-      categoryReports.forEach(report => {
-        pdfContent += `
-          <tr>
-            <td>${report.test_name || 'N/A'}</td>
-            <td>${report.collected_date ? formatDate(report.collected_date, 'long') : 'Not specified'}</td>
-            <td>${report.test_value || 'Not available'}</td>
-            <td>${report.unit || ''}</td>
-          </tr>
-        `;
+      // Header
+      doc.setFillColor(253, 242, 248);
+      doc.rect(0, 0, pageWidth, 45, 'F');
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Pearl Mom', 20, 20);
+      doc.setFontSize(12);
+      doc.setTextColor(31, 41, 55);
+      doc.text(categoryName, 20, 32);
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 45, 20);
+      doc.line(20, 45, pageWidth - 20, 45);
+      
+      let yPos = 60;
+      
+      // Table of reports
+      const tableData = categoryReports.map(report => [
+        report.test_name || 'N/A',
+        report.collected_date ? formatDate(report.collected_date, 'short') : 'N/A',
+        report.test_value || 'N/A',
+        report.unit || ''
+      ]);
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Test Name', 'Date', 'Result', 'Unit']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 20 },
+        width: pageWidth - 40
       });
       
-      pdfContent += `
-            </table>
-          </body>
-        </html>
-      `;
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(156, 163, 175);
+        doc.text(`Pearl Mom Report - Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      }
       
-      const blob = new Blob([pdfContent], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${categoryName.replace(/\s/g, '_')}_Reports.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      doc.save(`${categoryName.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error downloading reports:', error);
       alert('Failed to download reports');
     }
+  };
+
+  const handleViewReport = (report) => {
+    setSelectedReport(report);
+    setShowReportModal(true);
+  };
+
+  const handleViewCategory = (categoryReports) => {
+    setSelectedCategory(categoryReports);
+    setShowReportModal(true);
   };
 
   const getStatusColor = (status) => {
@@ -312,12 +352,10 @@ const EMCHCardPage = () => {
           thirdTrimester.push(report);
         }
       } else {
-        // If no LMP date, add to third trimester
         thirdTrimester.push(report);
       }
     });
     
-    // Further categorize by test type
     const categorizeByType = (reports) => {
       return {
         bloodTests: reports.filter(r => 
@@ -955,6 +993,7 @@ const EMCHCardPage = () => {
             </h4>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Blood Tests */}
               {categorizedReports.secondTrimester.bloodTests.length > 0 && (
                 <Card className="hover:shadow-lg">
                   <CardContent className="p-4">
@@ -986,6 +1025,7 @@ const EMCHCardPage = () => {
                 </Card>
               )}
 
+              {/* Urine Tests */}
               {categorizedReports.secondTrimester.urineTests.length > 0 && (
                 <Card className="hover:shadow-lg">
                   <CardContent className="p-4">
@@ -1017,6 +1057,7 @@ const EMCHCardPage = () => {
                 </Card>
               )}
 
+              {/* Ultrasound Scans */}
               {categorizedReports.secondTrimester.ultrasoundScans.length > 0 && (
                 <Card className="hover:shadow-lg">
                   <CardContent className="p-4">
@@ -1064,6 +1105,7 @@ const EMCHCardPage = () => {
             </h4>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Blood Tests */}
               {categorizedReports.thirdTrimester.bloodTests.length > 0 && (
                 <Card className="hover:shadow-lg">
                   <CardContent className="p-4">
@@ -1095,8 +1137,9 @@ const EMCHCardPage = () => {
                 </Card>
               )}
 
+              {/* Urine Tests */}
               {categorizedReports.thirdTrimester.urineTests.length > 0 && (
-                <Card className="hover:shadow-lg5">
+                <Card className="hover:shadow-lg">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -1126,6 +1169,7 @@ const EMCHCardPage = () => {
                 </Card>
               )}
 
+              {/* Ultrasound Scans */}
               {categorizedReports.thirdTrimester.ultrasoundScans.length > 0 && (
                 <Card className="hover:shadow-lg">
                   <CardContent className="p-4">

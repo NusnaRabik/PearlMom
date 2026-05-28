@@ -274,7 +274,14 @@ const motherService = {
     } catch (error) {
       throw error.response?.data || { message: 'Failed to save profile' };
     }
+  },
+
+  // Add this method to your motherService.js
+  getEmchCardData: async () => {
+    const response = await api.get('/mothers/emch-card-data');
+    return response.data;
   }
 };
+
 
 export default motherService;

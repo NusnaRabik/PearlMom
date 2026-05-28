@@ -1,4 +1,5 @@
-const { User, Mother, Midwife, Appointment, Vaccination, Notification, ClinicVisit, sequelize } = require('../models');
+const { User, Mother, Midwife, Appointment, Vaccination, Notification, ClinicVisit } = require('../models');
+const { sequelize } = require('../config/db');
 const { successResponse, errorResponse } = require('../utils/response');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
@@ -145,6 +146,8 @@ const getAllUsers = async (req, res) => {
 
 // @desc    Get user statistics (active/inactive counts)
 // @route   GET /api/admin/user-stats
+// @desc    Get user statistics (active/inactive counts)
+// @route   GET /api/admin/user-stats
 const getUserStats = async (req, res) => {
   try {
     const activeUsers = await User.count({ where: { is_active: true, is_deleted: false } });
@@ -152,6 +155,8 @@ const getUserStats = async (req, res) => {
     const totalMothers = await Mother.count({ where: { is_deleted: false } });
     const totalProviders = await Midwife.count({ where: { is_deleted: false } });
     const pendingMothers = await Mother.count({ where: { profile_completed: false, is_deleted: false } });
+    
+    console.log('User stats:', { activeUsers, inactiveUsers, totalMothers, totalProviders, pendingMothers });
     
     return successResponse(res, {
       stats: {
@@ -247,15 +252,33 @@ const bulkActivateUsers = async (req, res) => {
 
 // @desc    Update user
 // @route   PUT /api/admin/users/:id
+// @desc    Update user
+// @route   PUT /api/admin/users/:id
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, phone_no, role, is_active } = req.body;
-    await User.update({ name, email, phone_no, role, is_active }, { where: { user_id: id } });
-    return successResponse(res, null, 'User updated successfully');
+
+    const user = await User.findOne({ where: { user_id: id, is_deleted: false } });
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    // Build update object with only provided fields
+    const updateFields = {};
+    if (name !== undefined)      updateFields.name      = name;
+    if (email !== undefined)     updateFields.email     = email;
+    if (phone_no !== undefined)  updateFields.phone_no  = phone_no;
+    if (role !== undefined)      updateFields.role      = role;
+    if (is_active !== undefined) updateFields.is_active = is_active;
+    updateFields.updated_at = new Date();
+
+    await user.update(updateFields);
+
+    return successResponse(res, { user }, 'User updated successfully');
   } catch (error) {
     console.error('Error updating user:', error);
-    return errorResponse(res, 'Error updating user');
+    return errorResponse(res, 'Error updating user: ' + error.message);
   }
 };
 
@@ -563,6 +586,54 @@ const updateAlertPreferences = async (req, res) => {
     return errorResponse(res, 'Error updating alert preferences');
   }
 };
+// @desc    Get detailed user info by user_id (joins role-specific table)
+// @route   GET /api/admin/users/:id/details
+const getUserDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findOne({
+      where: { 
+        user_id: id, 
+        is_deleted: false 
+        // ← NO is_active filter here — deactivated users must be fetchable
+      },
+      attributes: { exclude: ['password_hash'] }
+    });
+
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    let roleDetails = null;
+
+    if (user.role === 'mother') {
+      roleDetails = await Mother.findOne({
+        where: { 
+          user_id: id, 
+          is_deleted: false 
+          // ← NO is_active filter here either
+        }
+      });
+    } else if (user.role === 'midwife') {
+      roleDetails = await Midwife.findOne({
+        where: { 
+          user_id: id, 
+          is_deleted: false 
+        }
+      });
+    }
+
+    return successResponse(res, {
+      user: user.toJSON(),
+      roleDetails: roleDetails ? roleDetails.toJSON() : null
+    });
+
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    return errorResponse(res, 'Error fetching user details');
+  }
+};
 
 module.exports = {
   getDashboard,
@@ -578,5 +649,6 @@ module.exports = {
   addProvider,
   addAdmin,
   getAlertPreferences,     // Add this
-  updateAlertPreferences 
+  updateAlertPreferences,
+  getUserDetails
 };

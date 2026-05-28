@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import ThriposhaCriteria from '../../components/provider/ThriposhaCriteria';
 import api from '../../services/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const NutritionMgmtPage = () => {
   const [pregnancyWeek, setPregnancyWeek] = useState('');
@@ -67,16 +69,16 @@ const NutritionMgmtPage = () => {
   };
 
   const fetchEligibleMothers = async () => {
-  try {
-    const response = await api.get('/thriposha/eligible-mothers');
-    console.log('Eligible mothers response:', response.data);
-    if (response.data.success) {
-      setEligibleMothers(response.data.data.eligible_mothers || []);
+    try {
+      const response = await api.get('/thriposha/eligible-mothers');
+      console.log('Eligible mothers response:', response.data);
+      if (response.data.success) {
+        setEligibleMothers(response.data.data.eligible_mothers || []);
+      }
+    } catch (error) {
+      console.error('Error fetching eligible mothers:', error);
     }
-  } catch (error) {
-    console.error('Error fetching eligible mothers:', error);
-  }
-};
+  };
 
   const calculateEligibility = async () => {
     if (!motherName || !motherId || !pregnancyWeek || !bmi) {
@@ -93,11 +95,10 @@ const NutritionMgmtPage = () => {
     setIsCalculating(true);
     
     try {
-      // First find the mother by ID or name
       const response = await api.post('/thriposha/assess', {
         mother_id: motherId,
         gestational_week: parseInt(pregnancyWeek),
-        mother_weight_kg: null, // Will be calculated from BMI if needed
+        mother_weight_kg: null,
         notes: `BMI: ${bmi}, Week: ${pregnancyWeek}`
       });
 
@@ -128,7 +129,6 @@ const NutritionMgmtPage = () => {
           color: 'green'
         });
         
-        // Refresh eligible mothers list
         await fetchEligibleMothers();
       }
     } catch (error) {
@@ -169,14 +169,12 @@ const NutritionMgmtPage = () => {
       if (response.data.success) {
         alert(`Successfully distributed ${eligibilityResult.packets} packet(s) to ${motherName}`);
         
-        // Reset form
         setMotherName('');
         setMotherId('');
         setPregnancyWeek('');
         setBmi('');
         setEligibilityResult(null);
         
-        // Refresh the list
         await fetchRecentDistributions();
       }
     } catch (error) {
@@ -222,24 +220,132 @@ const NutritionMgmtPage = () => {
     }
   };
 
+  // Fixed PDF Download Function
   const handleDownloadReport = async () => {
     try {
-      const response = await api.get('/thriposha/report/export', {
-        params: { format: 'pdf' },
-        responseType: 'blob'
-      });
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const primaryColor = [219, 39, 119];
+      const today = new Date();
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Thriposha_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Header
+      doc.setFillColor(253, 242, 248);
+      doc.rect(0, 0, pageWidth, 45, 'F');
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Pearl Mom', 20, 20);
+      doc.setFontSize(13);
+      doc.setTextColor(31, 41, 55);
+      doc.text('Thriposha Monthly Distribution Report', 20, 32);
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Generated: ${today.toLocaleString()}`, pageWidth - 45, 20);
+      doc.line(20, 50, pageWidth - 20, 50);
+      
+      let yPos = 65;
+      
+      // Report Summary
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Report Summary', 20, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Report Period: ${today.toLocaleString('default', { month: 'long', year: 'numeric' })}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Total Eligible Mothers: ${eligibleMothers.length}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Total Distributions This Month: ${recentLogs.length}`, 20, yPos);
+      yPos += 6;
+      
+      // Calculate total packets distributed
+      const totalPackets = recentLogs.reduce((sum, log) => sum + (log.packets || 1), 0);
+      doc.text(`Total Packets Distributed: ${totalPackets}`, 20, yPos);
+      yPos += 15;
+      
+      // Eligible Mothers Table
+      if (eligibleMothers.length > 0) {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(31, 41, 55);
+        doc.text('Eligible Mothers', 20, yPos);
+        yPos += 8;
+        
+        const eligibleTableData = eligibleMothers.slice(0, 20).map(mother => [
+          mother.name || 'N/A',
+          mother.motherId || 'N/A',
+          mother.week || 'N/A',
+          mother.bmi || 'N/A',
+          mother.packets?.toString() || '1'
+        ]);
+        
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Name', 'Mother ID', 'Week', 'BMI', 'Packets']],
+          body: eligibleTableData,
+          theme: 'striped',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: 20 },
+          width: pageWidth - 40
+        });
+        
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
+      
+      // Recent Distributions Table
+      if (recentLogs.length > 0) {
+        if (yPos > 240) {
+          doc.addPage();
+          yPos = 20;
+        }
+        
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(31, 41, 55);
+        doc.text('Recent Distributions', 20, yPos);
+        yPos += 8;
+        
+        const distributionsTableData = recentLogs.slice(0, 20).map(log => [
+          log.name || 'N/A',
+          log.motherId || 'N/A',
+          log.date || 'N/A',
+          log.packets?.toString() || '1',
+          log.status || 'Active'
+        ]);
+        
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Name', 'Mother ID', 'Date', 'Packets', 'Status']],
+          body: distributionsTableData,
+          theme: 'striped',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: 20 },
+          width: pageWidth - 40
+        });
+        
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
+      
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(156, 163, 175);
+        doc.text(`Pearl Mom Thriposha Report - Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+        doc.text(`© ${today.getFullYear()} PearlMom. All rights reserved.`, pageWidth / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
+      }
+      
+      doc.save(`Thriposha_Report_${today.toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error downloading report:', error);
-      alert('Failed to download report');
+      alert('Failed to generate PDF report. Please try again.');
     }
   };
 
@@ -696,7 +802,7 @@ const NutritionMgmtPage = () => {
                 </div>
                 <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-xs text-green-600 font-medium mb-1">Next Eligible</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedLog.nextEligible}</p>
+                  <p className="text-sm font-semibold text-gray-900">30 days from last distribution</p>
                 </div>
               </div>
 
@@ -705,7 +811,7 @@ const NutritionMgmtPage = () => {
                   <Info size={16} className="text-yellow-600 mt-0.5" />
                   <div>
                     <p className="text-xs text-yellow-600 font-medium mb-1">Clinical Notes</p>
-                    <p className="text-sm text-gray-700">{selectedLog.notes}</p>
+                    <p className="text-sm text-gray-700">{selectedLog.notes || 'Regular Thriposha distribution'}</p>
                   </div>
                 </div>
               </div>
@@ -717,9 +823,6 @@ const NutritionMgmtPage = () => {
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 Close
-              </button>
-              <button className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
-                Edit Distribution
               </button>
             </div>
           </div>

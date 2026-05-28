@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2, Download } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const MothersListPage = () => {
   const { user } = useAuth();
@@ -91,7 +93,12 @@ const MothersListPage = () => {
           allergies: mother.allergies,
           chronic_diseases: mother.chronic_diseases,
           district: mother.district,
-          gs_division: mother.gs_division
+          gs_division: mother.gs_division,
+          email: mother.email,
+          phone_no: mother.phone_no,
+          current_weight: mother.current_weight,
+          expected_delivery_date: mother.expected_delivery_date,
+          pregnancy_status: mother.pregnancy_status
         }));
         setMothers(formattedMothers);
       }
@@ -239,6 +246,227 @@ const MothersListPage = () => {
     setShowProfileModal(true);
   };
 
+  const handleDownloadPDF = () => {
+    if (!selectedMother) return;
+
+    // Create new PDF document
+    const doc = new jsPDF();
+    
+    // Add header with pink color
+    doc.setFillColor(236, 72, 153);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.text("Mother's Health Record", 105, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 32, { align: 'center' });
+    
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+    
+    // Profile Header
+    doc.setFillColor(253, 242, 248);
+    doc.rect(14, 50, 182, 40, 'F');
+    doc.setDrawColor(236, 72, 153);
+    doc.setLineWidth(0.5);
+    doc.rect(14, 50, 182, 40);
+    
+    doc.setFontSize(16);
+    doc.setTextColor(236, 72, 153);
+    doc.text(selectedMother.name || 'N/A', 105, 65, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`ID: ${selectedMother.id || 'N/A'}`, 105, 75, { align: 'center' });
+    
+    // Status badge
+    const statusColor = selectedMother.statusType === 'high-risk' ? [220, 38, 38] : 
+                        selectedMother.statusType === 'postnatal' ? [37, 99, 235] : [22, 163, 74];
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.roundedRect(80, 80, 50, 6, 3, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.text(selectedMother.status || 'Normal', 105, 85, { align: 'center' });
+    
+    let yPos = 100;
+    
+    // Personal Information Section (without emoji)
+    doc.setTextColor(236, 72, 153);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Personal Information", 14, yPos);
+    doc.setFont('helvetica', 'normal');
+    
+    const personalData = [
+      ["Full Name", selectedMother.name || 'N/A'],
+      ["Mother ID", selectedMother.id || 'N/A'],
+      ["NIC", selectedMother.nic || 'N/A'],
+      ["Date of Birth", selectedMother.dob ? formatDate(selectedMother.dob, 'long') : 'N/A'],
+      ["Age", `${selectedMother.age || 'N/A'} years`],
+      ["Blood Group", selectedMother.bloodGroup || 'N/A'],
+      ["Phone Number", selectedMother.phone_no || selectedMother.phone || 'N/A'],
+      ["Email", selectedMother.email || 'N/A'],
+      ["Address", selectedMother.address || 'N/A'],
+      ["District", selectedMother.district || 'N/A'],
+      ["GS Division", selectedMother.gs_division || 'N/A']
+    ];
+    
+    autoTable(doc, {
+      startY: yPos + 5,
+      head: [['Field', 'Information']],
+      body: personalData,
+      theme: 'striped',
+      headStyles: { fillColor: [236, 72, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [253, 242, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 60, fontStyle: 'bold' },
+        1: { cellWidth: 110 }
+      }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    // Pregnancy Details Section (without emoji)
+    doc.setTextColor(236, 72, 153);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Pregnancy Details", 14, yPos);
+    doc.setFont('helvetica', 'normal');
+    
+    const pregnancyData = [
+      ["LMP Date", selectedMother.lmp_date ? formatDate(selectedMother.lmp_date, 'long') : 'N/A'],
+      ["Expected Due Date (EDD)", selectedMother.edd || (selectedMother.expected_delivery_date ? formatDate(selectedMother.expected_delivery_date, 'long') : 'N/A')],
+      ["Current Week", `${selectedMother.weeks || 'N/A'} Weeks`],
+      ["Gravida", selectedMother.gravida || 'N/A'],
+      ["Para", selectedMother.para || 'N/A'],
+      ["Current Weight", selectedMother.current_weight ? `${selectedMother.current_weight} kg` : selectedMother.weight || 'N/A'],
+      ["Height", selectedMother.height ? `${selectedMother.height} cm` : 'N/A'],
+      ["Pregnancy Status", selectedMother.pregnancy_status ? selectedMother.pregnancy_status.charAt(0).toUpperCase() + selectedMother.pregnancy_status.slice(1) : selectedMother.status || 'N/A']
+    ];
+    
+    autoTable(doc, {
+      startY: yPos + 5,
+      head: [['Field', 'Information']],
+      body: pregnancyData,
+      theme: 'striped',
+      headStyles: { fillColor: [236, 72, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [253, 242, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 60, fontStyle: 'bold' },
+        1: { cellWidth: 110 }
+      }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    // Emergency Contact Section (without emoji)
+    doc.setTextColor(236, 72, 153);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Emergency Contact", 14, yPos);
+    doc.setFont('helvetica', 'normal');
+    
+    const emergencyData = [
+      ["Contact Name", selectedMother.emergency_contact_name || 'N/A'],
+      ["Contact Phone", selectedMother.emergency_contact_phone || 'N/A'],
+      ["Relationship", selectedMother.emergency_relationship || 'N/A']
+    ];
+    
+    autoTable(doc, {
+      startY: yPos + 5,
+      head: [['Field', 'Information']],
+      body: emergencyData,
+      theme: 'striped',
+      headStyles: { fillColor: [236, 72, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [253, 242, 248] },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 60, fontStyle: 'bold' },
+        1: { cellWidth: 110 }
+      }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    // Family Information (if available) (without emoji)
+    if (selectedMother.husband_name || selectedMother.husband_contact) {
+      doc.setTextColor(236, 72, 153);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Family Information", 14, yPos);
+      doc.setFont('helvetica', 'normal');
+      
+      const familyData = [
+        ["Husband Name", selectedMother.husband_name || 'N/A'],
+        ["Husband Contact", selectedMother.husband_contact || 'N/A']
+      ];
+      
+      autoTable(doc, {
+        startY: yPos + 5,
+        head: [['Field', 'Information']],
+        body: familyData,
+        theme: 'striped',
+        headStyles: { fillColor: [236, 72, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [253, 242, 248] },
+        margin: { left: 14, right: 14 },
+        columnStyles: {
+          0: { cellWidth: 60, fontStyle: 'bold' },
+          1: { cellWidth: 110 }
+        }
+      });
+      
+      yPos = doc.lastAutoTable.finalY + 10;
+    }
+    
+    // Medical History (if available) (without emoji)
+    if (selectedMother.allergies || selectedMother.chronic_diseases) {
+      doc.setTextColor(236, 72, 153);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Medical History", 14, yPos);
+      doc.setFont('helvetica', 'normal');
+      
+      const medicalData = [
+        ["Allergies", selectedMother.allergies || 'None'],
+        ["Chronic Diseases", selectedMother.chronic_diseases || 'None']
+      ];
+      
+      autoTable(doc, {
+        startY: yPos + 5,
+        head: [['Field', 'Information']],
+        body: medicalData,
+        theme: 'striped',
+        headStyles: { fillColor: [236, 72, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [253, 242, 248] },
+        margin: { left: 14, right: 14 },
+        columnStyles: {
+          0: { cellWidth: 60, fontStyle: 'bold' },
+          1: { cellWidth: 110 }
+        }
+      });
+      
+      yPos = doc.lastAutoTable.finalY + 10;
+    }
+    
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `This is a computer-generated document. No signature required. © ${new Date().getFullYear()} Maternal Health System - Clinical Record`,
+        105,
+        doc.internal.pageSize.height - 10,
+        { align: 'center' }
+      );
+    }
+    
+    // Save the PDF
+    doc.save(`Mother_Profile_${selectedMother.id || selectedMother.name.replace(/\s/g, '_')}.pdf`);
+  };
+
   const filteredMothers = useMemo(() => {
     return mothers.filter((mother) => {
       const searchMatch = searchTerm === '' || 
@@ -329,7 +557,7 @@ const MothersListPage = () => {
               {filteredMothers.length > 0 ? filteredMothers.map((mother) => (
                 <tr key={mother.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap"><span className="text-sm font-mono text-gray-900">{mother.id}</span></td>
-                  <td className="px-6 py-4"><div><p className="text-sm font-medium text-gray-900">{mother.name}</p><p className="text-xs text-gray-500">{mother.pregnancy}</p></div></td>
+                  <td className="px-6 py-4"><div><p className="text-sm font-medium text-gray-900">{mother.name}</p></div></td>
                   <td className="px-6 py-4 whitespace-nowrap"><span className="text-sm text-gray-900">{mother.age}</span></td>
                   <td className="px-6 py-4 whitespace-nowrap"><span className="text-sm text-gray-900">{mother.edd}</span></td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -340,11 +568,13 @@ const MothersListPage = () => {
                       <span className={`inline-block w-2 h-2 rounded-full ${mother.lastVisit === 'Today' ? 'bg-green-400' : mother.lastVisit === 'Yesterday' ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
                       <span className="text-sm text-gray-500">{mother.lastVisit}</span>
                     </div>
-                  </td>
+                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button onClick={() => handleViewProfile(mother)} className="text-pink-600 hover:text-pink-900 font-medium text-sm transition-colors">View Profile</button>
-                  </td>
-                </tr>
+                    <button onClick={() => handleViewProfile(mother)} className="text-pink-600 hover:text-pink-900 font-medium text-sm transition-colors">
+                      View Profile
+                    </button>
+                   </td>
+                 </tr>
               )) : (
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No mothers found</td></tr>
               )}
@@ -599,8 +829,20 @@ const MothersListPage = () => {
               {(selectedMother.allergies || selectedMother.chronic_diseases) && (<div><h4 className="text-sm font-semibold text-gray-700 mb-3">Medical History</h4><div className="space-y-1"><p className="text-sm text-gray-900"><strong>Allergies:</strong> {selectedMother.allergies || 'None'}</p><p className="text-sm text-gray-900"><strong>Chronic Diseases:</strong> {selectedMother.chronic_diseases || 'None'}</p></div></div>)}
             </div>
 
-            <div className="flex items-center justify-end p-6 border-t border-gray-200 bg-gray-50">
-              <button onClick={() => setShowProfileModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">Close</button>
+            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={handleDownloadPDF}
+                className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2"
+              >
+                <Download size={16} />
+                <span>Download PDF</span>
+              </button>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

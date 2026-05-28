@@ -71,8 +71,15 @@ router.post('/login-by-name', [
 // Refresh token
 router.post('/refresh-token', authController.refreshAccessToken);
 
-// Protected routes
+// Password management routes
+router.put('/change-password', protect, authController.changePassword);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
+// Profile management routes
 router.get('/me', protect, authController.getMe);
+router.put('/update-profile', protect, authController.updateProfile);
+router.put('/upload-profile-picture', protect, authController.uploadProfilePicture);
 router.get('/check-profile', protect, authController.checkProfileStatus);
 router.put('/complete-profile', protect, authController.completeProfile);
 router.post('/logout', protect, authController.logout);

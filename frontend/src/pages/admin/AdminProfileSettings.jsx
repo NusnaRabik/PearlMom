@@ -158,7 +158,8 @@ const AdminProfileSettings = () => {
   const handleSavePersonal = async () => {
     setSaving(true);
     try {
-      const response = await api.put('/admin/users/update-profile', {
+      // Change this endpoint
+      const response = await api.put('/auth/update-profile', {
         name: editPersonalInfo.fullName,
         email: editPersonalInfo.email,
         phone_no: editPersonalInfo.mobile

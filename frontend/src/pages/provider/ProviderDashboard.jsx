@@ -9,6 +9,8 @@ import { LineChart, BarChart, PieChart } from '../../components/charts';
 import { formatDate } from '../../utils/formatDate';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ProviderDashboard = () => {
   const { user } = useAuth();
@@ -242,6 +244,129 @@ const ProviderDashboard = () => {
     setShowProfileModal(false);
   };
 
+  // Fixed PDF Export Function
+  const handleExportReport = () => {
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const primaryColor = [219, 39, 119];
+      const today = new Date();
+      
+      // Header
+      doc.setFillColor(253, 242, 248);
+      doc.rect(0, 0, pageWidth, 45, 'F');
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Pearl Mom', 20, 20);
+      doc.setFontSize(13);
+      doc.setTextColor(31, 41, 55);
+      doc.text('Provider Performance Report', 20, 32);
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Generated: ${today.toLocaleString()}`, pageWidth - 45, 20);
+      doc.line(20, 50, pageWidth - 20, 50);
+      
+      let yPos = 65;
+      
+      // Provider Information
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Provider Information', 20, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Provider Name: ${providerInfo.full_name || user?.fullName || 'N/A'}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Employee ID: ${providerInfo.employee_id || 'N/A'}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Email: ${providerInfo.email || 'N/A'}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Assigned Area: ${providerInfo.assigned_area || 'N/A'}`, 20, yPos);
+      yPos += 6;
+      doc.text(`District: ${providerInfo.district || 'N/A'}`, 20, yPos);
+      yPos += 15;
+      
+      // System Overview
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('System Overview', 20, yPos);
+      yPos += 8;
+      
+      const totalMothers = dashboardData?.stats?.totalMothers || 0;
+      const activePregnancies = dashboardData?.stats?.activePregnancies || 0;
+      const highRiskMothers = dashboardData?.stats?.highRiskMothers || 0;
+      const vaccinationRate = dashboardData?.stats?.vaccinationRate || 94;
+      
+      const statsData = [
+        ['Total Mothers Registered:', totalMothers.toLocaleString()],
+        ['Active Pregnancies:', activePregnancies.toLocaleString()],
+        ['High-Risk Cases:', highRiskMothers.toLocaleString()],
+        ['Vaccination Rate:', `${vaccinationRate}%`]
+      ];
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      statsData.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, 20, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, 80, yPos);
+        yPos += 7;
+      });
+      
+      yPos += 10;
+      
+      // Recent Alerts
+      const recentAlerts = dashboardData?.recentAlerts?.slice(0, 5) || [];
+      if (recentAlerts.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(31, 41, 55);
+        doc.text('Recent Alerts', 20, yPos);
+        yPos += 8;
+        
+        const alertData = recentAlerts.map(alert => [
+          alert.is_high_risk ? 'High Risk' : 'Normal',
+          alert.doctors_notes?.substring(0, 30) || 'Routine checkup',
+          formatDate(alert.created_at, 'short') || 'Recently'
+        ]);
+        
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Severity', 'Message', 'Date']],
+          body: alertData,
+          theme: 'striped',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 9 },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: 20 },
+          width: pageWidth - 40
+        });
+        
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
+      
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(156, 163, 175);
+        doc.text(`Pearl Mom Provider Report - Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+        doc.text(`© ${today.getFullYear()} PearlMom. All rights reserved.`, pageWidth / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
+      }
+      
+      doc.save(`PearlMom_Provider_Report_${formatDate(today, 'short').replace(/[, ]/g, '_')}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  };
+
   // Calculate stats from real data
   const totalMothers = dashboardData?.stats?.totalMothers || 0;
   const activePregnancies = dashboardData?.stats?.activePregnancies || 0;
@@ -317,48 +442,6 @@ const ProviderDashboard = () => {
     }
   };
 
-  const handleExportReport = () => {
-    const reportContent = `
-PEARL MOM - PROVIDER PERFORMANCE REPORT
-========================================
-Generated: ${formatDate(new Date(), 'dateTime')}
-Provider: ${providerInfo.full_name || user?.fullName || 'Provider'}
-Employee ID: ${providerInfo.employee_id || 'N/A'}
-
-SYSTEM OVERVIEW
----------------
-Total Mothers Registered: ${totalMothers}
-Active Pregnancy Count: ${activePregnancies}
-Urgent High-Risk Cases: ${highRiskMothers}
-Population Vaccination Coverage: ${vaccinationRate}%
-
-MATERNAL RISK DISTRIBUTION
---------------------------
-Stable Routine Care: 62%
-Observation Required: 28%
-Urgent Clinical Intervention: 10%
-
-APPOINTMENT ATTENDANCE
-----------------------
-Completed: 70%
-Rescheduled: 15%
-No-show: 15%
-
-Report generated on ${formatDate(new Date(), 'full')}
-© ${new Date().getFullYear()} PearlMom. All rights reserved.
-    `;
-
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `PearlMom_Provider_Report_${formatDate(new Date(), 'short').replace(/[, ]/g, '_')}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
-
   if (loading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center">
@@ -397,7 +480,7 @@ Report generated on ${formatDate(new Date(), 'full')}
         </div>
         <div className="flex space-x-3">
           <button onClick={handleExportReport} className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 flex items-center space-x-2 transition-colors">
-            <Download size={16} /><span>Export Report</span>
+            <Download size={16} /><span>Export PDF</span>
           </button>
         </div>
       </div>

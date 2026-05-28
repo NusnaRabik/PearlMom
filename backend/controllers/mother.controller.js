@@ -137,7 +137,6 @@ const updateProfile = async (req, res) => {
 };
 
 // Get EMCH Card Data (for mother dashboard)
-// Get EMCH Card Data (for mother dashboard)
 const getEMCHCardData = async (req, res) => {
   try {
     const user_id = req.user.user_id;
@@ -180,7 +179,7 @@ const getEMCHCardData = async (req, res) => {
     if (nextAppointment && nextAppointment.clinic_id) {
       clinicDetails = await Clinic.findOne({
         where: { clinic_id: nextAppointment.clinic_id },
-        attributes: [['name', 'clinic_name'], 'address', 'contact_number', 'district'] // Use alias to map 'name' to 'clinic_name'
+        attributes: [['name', 'clinic_name'], 'address', 'contact_number', 'district']
       });
     }
     
@@ -471,6 +470,137 @@ const createOrUpdateProfile = async (req, res) => {
   }
 };
 
+// Check if mother profile is complete
+const checkProfileCompletion = async (req, res) => {
+  try {
+    const mother = await Mother.findOne({
+      where: { user_id: req.user.user_id, is_deleted: false }
+    });
+
+    if (!mother) {
+      return error(res, 'Mother profile not found', 404);
+    }
+
+    // EXACT REQUIRED FIELDS
+    const requiredFields = [
+      'full_name', 'nic', 'dob', 'address', 'district', 'blood_group',
+      'pregnancy_status', 'lmp_date', 'expected_delivery_date', 
+      'current_weight', 'height', 'gravida', 'emergency_contact_name', 
+      'emergency_contact_phone', 'husband_name', 'husband_contact', 
+      'para', 'allergies', 'chronic_diseases', 'emergency_relationship', 'weeks'
+    ];
+
+    const missingFields = requiredFields.filter(field => {
+      const value = mother[field];
+      return value === null || value === undefined || value === '' || (typeof value === 'number' && value === 0);
+    });
+
+    const isComplete = missingFields.length === 0;
+
+    const currentData = {
+      full_name: mother.full_name || '',
+      nic: mother.nic || '',
+      dob: mother.dob ? mother.dob.toISOString().split('T')[0] : '',
+      address: mother.address || '',
+      district: mother.district || '',
+      gs_division: mother.gs_division || '',
+      blood_group: mother.blood_group || '',
+      pregnancy_status: mother.pregnancy_status || 'pregnant',
+      lmp_date: mother.lmp_date ? mother.lmp_date.toISOString().split('T')[0] : '',
+      expected_delivery_date: mother.expected_delivery_date ? mother.expected_delivery_date.toISOString().split('T')[0] : '',
+      current_weight: mother.current_weight || '',
+      height: mother.height || '',
+      gravida: mother.gravida || 1,
+      para: mother.para || 0,
+      allergies: mother.allergies || '',
+      chronic_diseases: mother.chronic_diseases || '',
+      emergency_contact_name: mother.emergency_contact_name || '',
+      emergency_contact_phone: mother.emergency_contact_phone || '',
+      emergency_relationship: mother.emergency_relationship || '',
+      husband_name: mother.husband_name || '',
+      husband_contact: mother.husband_contact || '',
+      weeks: mother.weeks || ''
+    };
+
+    return success(res, {
+      is_complete: isComplete,
+      missing_fields: missingFields,
+      current_data: currentData,
+      profile_completed: mother.profile_completed || false
+    });
+  } catch (err) {
+    console.error('Check profile completion error:', err);
+    return error(res, 'Error checking profile completion: ' + err.message);
+  }
+};
+
+// Complete profile
+// Complete profile (save all profile data at once)
+const completeProfileData = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const user_id = req.user.user_id;
+    
+    // First check if mother exists
+    let mother = await Mother.findOne({ where: { user_id: user_id } });
+    
+    if (!mother) {
+      await transaction.rollback();
+      return error(res, 'Mother profile not found', 404);
+    }
+    
+    // Allowed fields for mother profile
+    const allowedFields = [
+      'full_name', 'nic', 'dob', 'address', 'district', 'gs_division', 'blood_group',
+      'pregnancy_status', 'lmp_date', 'expected_delivery_date', 'current_weight', 'height',
+      'gravida', 'para', 'allergies', 'chronic_diseases',
+      'emergency_contact_name', 'emergency_contact_phone', 'emergency_relationship',
+      'husband_name', 'husband_contact', 'weeks'
+    ];
+
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined && req.body[field] !== null && req.body[field] !== '') {
+        if (field === 'dob' || field === 'lmp_date' || field === 'expected_delivery_date') {
+          if (req.body[field]) updates[field] = new Date(req.body[field]);
+        } else if (field === 'current_weight' || field === 'height') {
+          if (req.body[field]) updates[field] = parseFloat(req.body[field]);
+        } else if (field === 'gravida' || field === 'para' || field === 'weeks') {
+          if (req.body[field]) updates[field] = parseInt(req.body[field]) || 0;
+        } else {
+          updates[field] = req.body[field];
+        }
+      }
+    });
+
+    // Only update if there are changes
+    if (Object.keys(updates).length > 0) {
+      await Mother.update(updates, { where: { user_id: user_id }, transaction });
+    }
+
+    // Update user name if full_name is provided
+    if (req.body.full_name) {
+      await User.update({ name: req.body.full_name }, { where: { user_id: user_id }, transaction });
+    }
+
+    // Mark profile as completed
+    await Mother.update({ profile_completed: true }, { where: { user_id: user_id }, transaction });
+    await User.update({ profile_completed: true }, { where: { user_id: user_id }, transaction });
+
+    await transaction.commit();
+
+    const finalMother = await Mother.findOne({ where: { user_id: user_id } });
+    const finalUser = await User.findByPk(user_id, { attributes: ['name', 'email', 'phone_no', 'profile_picture_url'] });
+
+    return success(res, { mother: finalMother, user: finalUser }, 'Profile completed successfully');
+  } catch (err) {
+    await transaction.rollback();
+    console.error('Complete profile error:', err);
+    return error(res, 'Error completing profile: ' + err.message);
+  }
+};
+
 module.exports = {
   getDashboard,
   getProfile,
@@ -482,5 +612,7 @@ module.exports = {
   uploadProfilePicture,
   getAllMothers,
   updateMedicalDetails,
-  createOrUpdateProfile
+  createOrUpdateProfile,
+  checkProfileCompletion,
+  completeProfileData
 };

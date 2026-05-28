@@ -2,17 +2,73 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Phone, MapPin, Calendar, FileText, Syringe, ChevronRight, Video, Droplet, Apple, Download, X, CheckCircle2, User, Heart, AlertCircle } from 'lucide-react';
+import {
+  Phone, MapPin, Calendar, FileText, Syringe, ChevronRight,
+  Video, Droplet, Apple, Download, X, CheckCircle2, User,
+  Heart, AlertCircle, Loader
+} from 'lucide-react';
 import { useNotificationsHook } from '../../hooks/useNotifications';
 import { formatDate, getRelativeTime } from '../../utils/formatDate';
 import authService from '../../services/authService';
 import { calculateWeeksFromEDD, calculateWeeksFromLMP } from '../../utils/calculateWeeks';
 import motherService from '../../services/motherService';
 import { useAuth } from '../../context/AuthContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const REQUIRED_FIELDS = [
+  'full_name', 'nic', 'dob', 'address', 'district', 'blood_group',
+  'pregnancy_status', 'lmp_date', 'expected_delivery_date',
+  'current_weight', 'height', 'gravida', 'emergency_contact_name',
+  'emergency_contact_phone', 'husband_name', 'husband_contact',
+  'para', 'allergies', 'chronic_diseases', 'emergency_relationship', 'weeks',
+];
+
+const EMPTY_PROFILE = {
+  full_name: '', nic: '', dob: '', address: '', district: '',
+  gs_division: '', blood_group: '', pregnancy_status: 'pregnant',
+  lmp_date: '', expected_delivery_date: '', current_weight: '',
+  height: '', gravida: 1, para: 0, allergies: '', chronic_diseases: '',
+  emergency_contact_name: '', emergency_contact_phone: '',
+  emergency_relationship: '', husband_name: '', husband_contact: '', weeks: '',
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const getTrimester = (w) => {
+  if (!w) return { trimester: 'N/A', weekText: 'Week ? of 40' };
+  const trimester = w <= 13 ? '1st Trimester' : w <= 26 ? '2nd Trimester' : '3rd Trimester';
+  return { trimester, weekText: `Week ${w} of 40` };
+};
+
+const getBabySize = (w) => {
+  if (!w) return 'your little one';
+  if (w <= 4) return 'a poppy seed';
+  if (w <= 8) return 'a raspberry';
+  if (w <= 12) return 'a lime';
+  if (w <= 16) return 'an avocado';
+  if (w <= 20) return 'a banana';
+  if (w <= 24) return 'an ear of corn';
+  if (w <= 28) return 'a large eggplant';
+  if (w <= 32) return 'a squash';
+  if (w <= 36) return 'a honeydew melon';
+  if (w <= 40) return 'a small pumpkin';
+  return 'ready to meet the world';
+};
+
+const getDaysUntilDue = (edd) => {
+  if (!edd) return 0;
+  return Math.ceil((new Date(edd) - new Date()) / 86400000);
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 const MotherDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Dashboard data
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,229 +76,232 @@ const MotherDashboard = () => {
   const [pregnancyProgress, setPregnancyProgress] = useState(0);
   const { notifications, unreadCount, markAllAsRead } = useNotificationsHook();
 
-  // Profile completion modal state
+  // EMCH data
+  const [emchData, setEmchData] = useState(null);
+  const [emchLoading, setEmchLoading] = useState(true);
+
+  // Profile completion modal
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [profileCompleted, setProfileCompleted] = useState(false);
-  const [profileData, setProfileData] = useState({
-    fullName: '',
-    nic: '',
-    dob: '',
-    address: '',
-    district: '',
-    bloodGroup: '',
-    pregnancyStatus: '',
-    lmpDate: '',
-    gestationalWeeks: '',
-    expectedDeliveryDate: '',
-    currentWeight: '',
-    height: '',
-    husbandName: '',
-    husbandContact: '',
-    emergencyContact: ''
-  });
+  const [profileData, setProfileData] = useState(EMPTY_PROFILE);
+  const [missingFields, setMissingFields] = useState([]);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileError, setProfileError] = useState('');
 
-  // Check if profile needs to be completed
-  useEffect(() => {
-    const isNewRegistration = localStorage.getItem('pearlmom_new_registration');
-    const isProfileComplete = localStorage.getItem('pearlmom_mother_profile_complete');
-    
-    if (isNewRegistration === 'true' && !isProfileComplete) {
-      setShowProfileModal(true);
-    } else {
-      setProfileCompleted(true);
-      if (isProfileComplete) {
-        localStorage.removeItem('pearlmom_new_registration');
-      }
-    }
-  }, []);
+  // UI toggles
+  const [showVisitSummary, setShowVisitSummary] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
-  // Fetch dashboard data from backend
+  // ── On mount: check profile then load data ──────────────────────────────
   useEffect(() => {
-    if (user && user.role === 'mother') {
-      fetchDashboardData();
+    if (user?.role === 'mother') {
+      checkProfileCompletion();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
+  // ── Profile completion check (pure frontend → API call) ─────────────────
+  /**
+   * Calls GET /api/mothers/check-profile-completion
+   * Expected response shape:
+   * {
+   *   success: true,
+   *   data: {
+   *     is_complete: boolean,
+   *     missing_fields: string[],
+   *     current_data: { ...motherFields }
+   *   }
+   * }
+   */
+  const checkProfileCompletion = async () => {
+    try {
+      const token = localStorage.getItem('pearlmom_token');
+      const response = await fetch(`${API_URL}/mothers/check-profile-completion`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        // If endpoint not available yet fall through to dashboard load
+        console.warn('Profile-completion check returned', response.status);
+        fetchDashboardData();
+        fetchEmchData();
+        return;
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        const { is_complete, missing_fields = [], current_data = {} } = result.data;
+
+        if (!is_complete) {
+          // Pre-fill modal with whatever data already exists
+          setProfileData((prev) => ({ ...prev, ...current_data }));
+          setMissingFields(missing_fields);
+          setShowProfileModal(true);
+        }
+      }
+    } catch (err) {
+      console.error('Profile completion check error:', err);
+    } finally {
+      // Always load dashboard regardless of profile status
+      fetchDashboardData();
+      fetchEmchData();
+    }
+  };
+
+  // ── Fetch dashboard data ────────────────────────────────────────────────
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('Fetching dashboard data...');
       const result = await motherService.getDashboard();
-      console.log('Dashboard API response:', result);
-      
+
       if (result.success) {
         setDashboardData(result.data);
-        
-        // Extract mother data from response
         const mother = result.data?.mother || result.data;
-        
-        // Calculate weeks from database data
-        let calculatedWeeks = 0;
-        
-        if (mother?.weeks) {
-          calculatedWeeks = mother.weeks;
-        } else if (mother?.gestational_weeks) {
-          calculatedWeeks = parseInt(mother.gestational_weeks);
-        } else if (mother?.lmp_date) {
-          calculatedWeeks = calculateWeeksFromLMP(mother.lmp_date);
-        } else if (mother?.expected_delivery_date) {
-          calculatedWeeks = calculateWeeksFromEDD(mother.expected_delivery_date);
-        }
-        
-        console.log('Calculated weeks:', calculatedWeeks);
+
+        let calculatedWeeks =
+          mother?.weeks ||
+          (mother?.gestational_weeks ? parseInt(mother.gestational_weeks) : 0) ||
+          (mother?.lmp_date ? calculateWeeksFromLMP(mother.lmp_date) : 0) ||
+          (mother?.expected_delivery_date ? calculateWeeksFromEDD(mother.expected_delivery_date) : 0);
+
         setWeeks(calculatedWeeks);
         setPregnancyProgress(calculatedWeeks ? Math.round((calculatedWeeks / 40) * 100) : 0);
       } else {
         setError(result.message || 'Failed to load dashboard data');
       }
-    } catch (error) {
-      console.error('Error fetching dashboard:', error);
-      setError(error.response?.data?.message || 'Could not load dashboard. Please try again.');
+    } catch (err) {
+      console.error('Error fetching dashboard:', err);
+      setError(err.response?.data?.message || 'Could not load dashboard. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Fetch EMCH data ─────────────────────────────────────────────────────
+  const fetchEmchData = async () => {
+    try {
+      setEmchLoading(true);
+      const result = await motherService.getEmchCardData();
+      if (result.success) setEmchData(result.data);
+    } catch (err) {
+      console.error('Error fetching EMCH data:', err);
+    } finally {
+      setEmchLoading(false);
+    }
+  };
+
+  // ── Profile form handlers ───────────────────────────────────────────────
   const handleProfileInputChange = (e) => {
     const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
+    setProfileData((prev) => ({ ...prev, [name]: value }));
     setProfileError('');
   };
 
+  /**
+   * Validates all required fields on the client before sending.
+   * Returns array of field names that are still empty.
+   */
+  const getLocalMissingFields = () =>
+    REQUIRED_FIELDS.filter((f) => {
+      const v = profileData[f];
+      return v === null || v === undefined || v === '';
+    });
+
+  /**
+   * Submits profile data to POST /api/mothers/complete-profile
+   * Backend should update Mother + User tables and set profile_completed = true.
+   */
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setProfileError('');
 
-    const requiredFields = ['fullName', 'nic', 'dob', 'address', 'district', 'bloodGroup', 'expectedDeliveryDate', 'currentWeight', 'height', 'emergencyContact'];
-    const emptyFields = requiredFields.filter(field => !profileData[field]);
-    
-    if (emptyFields.length > 0) {
-      setProfileError(`Please fill in all required fields: ${emptyFields.map(f => f.replace(/([A-Z])/g, ' $1').trim()).join(', ')}`);
+    // Client-side validation
+    const stillMissing = getLocalMissingFields();
+    if (stillMissing.length > 0) {
+      setMissingFields(stillMissing);
+      setProfileError(
+        `Please fill in: ${stillMissing.map((f) => f.replace(/_/g, ' ')).join(', ')}`
+      );
       return;
     }
 
+    setProfileLoading(true);
     try {
-      const result = await authService.completeProfile({
-        fullName: profileData.fullName,
-        nic: profileData.nic,
-        dob: profileData.dob,
-        address: profileData.address,
-        district: profileData.district,
-        bloodGroup: profileData.bloodGroup,
-        pregnancyStatus: profileData.pregnancyStatus || 'pregnant',
-        lmpDate: profileData.lmpDate,
-        gestationalWeeks: profileData.gestationalWeeks,
-        expectedDeliveryDate: profileData.expectedDeliveryDate,
-        currentWeight: profileData.currentWeight,
-        height: profileData.height,
-        husbandName: profileData.husbandName,
-        husbandContact: profileData.husbandContact,
-        emergencyContact: profileData.emergencyContact
+      const token = localStorage.getItem('pearlmom_token');
+
+      // Coerce numeric fields before sending
+      const payload = {
+        ...profileData,
+        current_weight: parseFloat(profileData.current_weight) || 0,
+        height: parseFloat(profileData.height) || 0,
+        gravida: parseInt(profileData.gravida) || 1,
+        para: parseInt(profileData.para) || 0,
+        weeks: parseInt(profileData.weeks) || 0,
+      };
+
+      const response = await fetch(`${API_URL}/mothers/complete-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       });
 
-      if (result.success) {
-        const profileInfo = { ...profileData, updatedAt: new Date().toISOString() };
-        localStorage.setItem('pearlmom_mother_profile', JSON.stringify(profileInfo));
-        localStorage.setItem('pearlmom_mother_profile_complete', 'true');
-        localStorage.removeItem('pearlmom_new_registration');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
-        await fetchDashboardData();
-        
+      const result = await response.json();
+
+      if (result.success) {
         setProfileSuccess(true);
         setTimeout(() => {
           setShowProfileModal(false);
-          setProfileCompleted(true);
           setProfileSuccess(false);
-        }, 2000);
+          setMissingFields([]);
+          // Refresh dashboard with updated data
+          fetchDashboardData();
+          fetchEmchData();
+        }, 1800);
       } else {
         setProfileError(result.message || 'Failed to save profile');
       }
-    } catch (error) {
-      console.error('Profile save error:', error);
-      setProfileError('An error occurred while saving your profile');
+    } catch (err) {
+      console.error('Profile save error:', err);
+      setProfileError('An error occurred while saving your profile: ' + err.message);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
-  // Calculate pregnancy info
-  const getTrimester = (weeksValue) => {
-    if (!weeksValue || weeksValue === 0) return { trimester: 'N/A', weekText: 'Week ? of 40' };
-    const trimester = weeksValue <= 13 ? '1st Trimester' : weeksValue <= 26 ? '2nd Trimester' : '3rd Trimester';
-    return { trimester, weekText: `Week ${weeksValue} of 40` };
-  };
-
-  const getBabySize = (weeksValue) => {
-    if (!weeksValue || weeksValue === 0) return 'your little one';
-    if (weeksValue <= 4) return 'a poppy seed';
-    if (weeksValue <= 8) return 'a raspberry';
-    if (weeksValue <= 12) return 'a lime';
-    if (weeksValue <= 16) return 'an avocado';
-    if (weeksValue <= 20) return 'a banana';
-    if (weeksValue <= 24) return 'an ear of corn';
-    if (weeksValue <= 28) return 'a large eggplant';
-    if (weeksValue <= 32) return 'a squash';
-    if (weeksValue <= 36) return 'a honeydew melon';
-    if (weeksValue <= 40) return 'a small pumpkin';
-    return 'ready to meet the world';
-  };
-
-  const getDaysUntilDue = (edd) => {
-    if (!edd) return 0;
-    const today = new Date();
-    const dueDate = new Date(edd);
-    const diffTime = dueDate - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  const handleSkipProfile = () => {
-    setShowProfileModal(false);
-  };
-
-  const handleDownloadReport = () => {
-    const storedProfile = localStorage.getItem('pearlmom_mother_profile');
-    const profile = storedProfile ? JSON.parse(storedProfile) : {};
-    
-    const reportContent = `
-BLOOD TEST REPORT
-=================
-Patient: ${profile.fullName || 'Mother'}
-Date: ${formatDate(new Date())}
-
-Results:
-- Hemoglobin: 12.2 g/dL (Normal: 11-15)
-- Blood Glucose: 88 mg/dL (Normal: 70-100)
-- Blood Pressure: 120/80 mmHg
-- Platelet Count: 250,000/mcL
-
-Status: NORMAL
-All values within normal range.
-    `;
-    
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Blood_Report_${formatDate(new Date(), 'short').replace(/, /g, '_')}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
-
+  // ── Derived values ──────────────────────────────────────────────────────
   const mother = dashboardData?.mother || dashboardData;
   const { trimester, weekText } = getTrimester(weeks);
   const babySize = getBabySize(weeks);
   const daysUntilDue = getDaysUntilDue(mother?.expected_delivery_date);
   const isHighRisk = mother?.is_high_risk || false;
 
+  const nextAppointment = emchData?.nextAppointment || null;
+  const lastClinicVisit = emchData?.clinicVisits?.[0] || null;
+  const labReports = emchData?.labReports || [];
+  const vitalSigns = emchData?.vitalSigns || null;
+  const displayedLabResults = labReports.slice(0, 3);
+
+  // ── Loading / error states ──────────────────────────────────────────────
   if (loading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
@@ -255,8 +314,8 @@ All values within normal range.
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-md mx-auto">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-3">{error}</p>
-          <button 
-            onClick={fetchDashboardData}
+          <button
+            onClick={() => { fetchDashboardData(); fetchEmchData(); }}
             className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
           >
             Try Again
@@ -266,16 +325,18 @@ All values within normal range.
     );
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-6 min-h-screen pb-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
+        {/* ── Left / Main column ── */}
         <div className="lg:col-span-2 space-y-6">
-          
-          {/* Hero Section */}
+
+          {/* Hero */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500 text-white p-8 shadow-lg">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full border-4 border-white/10 opacity-30"></div>
-            <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full border-4 border-white/10 opacity-20"></div>
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full border-4 border-white/10 opacity-30" />
+            <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full border-4 border-white/10 opacity-20" />
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center">
               <div>
                 <Badge className="bg-white/20 text-white hover:bg-white/30 border-none mb-4 px-3 py-1">
@@ -283,19 +344,22 @@ All values within normal range.
                 </Badge>
                 <h2 className="text-4xl font-bold mb-2">{weekText}</h2>
                 <p className="text-pink-100 max-w-sm mb-6 leading-relaxed">
-                  Your baby is the size of {babySize}. {daysUntilDue > 0 ? `${daysUntilDue} days until your due date!` : 'Almost there!'}
+                  Your baby is the size of {babySize}.{' '}
+                  {daysUntilDue > 0 ? `${daysUntilDue} days until your due date!` : 'Almost there!'}
                 </p>
                 <div className="flex gap-8">
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">Status</p>
                     <p className="font-semibold flex items-center">
-                      <span className={`h-2 w-2 rounded-full mr-2 ${isHighRisk ? 'bg-red-300' : 'bg-green-300'}`}></span>
+                      <span className={`h-2 w-2 rounded-full mr-2 ${isHighRisk ? 'bg-red-300' : 'bg-green-300'}`} />
                       {isHighRisk ? 'High Risk' : 'Low Risk'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">EDD</p>
-                    <p className="font-semibold">{mother?.expected_delivery_date ? formatDate(mother.expected_delivery_date, 'long') : 'Not set'}</p>
+                    <p className="font-semibold">
+                      {mother?.expected_delivery_date ? formatDate(mother.expected_delivery_date, 'long') : 'Not set'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-pink-200 mb-1 uppercase tracking-wider">Gestational Weeks</p>
@@ -308,7 +372,8 @@ All values within normal range.
                   <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
                     <circle cx="60" cy="60" r="52" fill="none" stroke="white" strokeWidth="8" strokeLinecap="round"
-                      strokeDasharray={`${(pregnancyProgress / 100) * 326.73} 326.73`} className="transition-all duration-1000" />
+                      strokeDasharray={`${(pregnancyProgress / 100) * 326.73} 326.73`}
+                      className="transition-all duration-1000" />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-3xl font-bold">{pregnancyProgress}%</span>
@@ -320,26 +385,7 @@ All values within normal range.
             </div>
           </div>
 
-          {!profileCompleted && !showProfileModal && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600">
-                  <User className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-yellow-800">Complete Your Profile</p>
-                  <p className="text-xs text-yellow-600">Please fill in your health information to get personalized care.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowProfileModal(true)}
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
-              >
-                Complete Now
-              </button>
-            </div>
-          )}
-
+          {/* Quick links */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="hover:border-pink-300 cursor-pointer transition-all">
               <Link to="/mother/emch-card">
@@ -369,90 +415,199 @@ All values within normal range.
             </Card>
           </div>
 
+          {/* Appointment + Vaccination */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-6">
-                 <div className="flex justify-between items-start mb-4">
-                   <div className="h-10 w-10 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600">
-                     <Calendar className="h-5 w-5" />
-                   </div>
-                   <Badge variant="success">CONFIRMED</Badge>
-                 </div>
-                 <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mb-1">NEXT APPOINTMENT</p>
-                 <h4 className="text-xl font-bold text-gray-900 mb-1">{formatDate('2024-11-24', 'long')}, 10:30 AM</h4>
-                 <p className="text-sm text-gray-600">Consultation with <span className="font-medium text-pink-600">Dr. Perera</span></p>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="h-10 w-10 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <Badge variant={nextAppointment ? 'success' : 'secondary'}>
+                    {nextAppointment ? 'CONFIRMED' : 'NONE'}
+                  </Badge>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mb-1">NEXT APPOINTMENT</p>
+                {emchLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                  </div>
+                ) : nextAppointment ? (
+                  <>
+                    <h4 className="text-xl font-bold text-gray-900 mb-1">
+                      {formatDate(nextAppointment.appointment_date, 'long')}
+                      {nextAppointment.appointment_time ? `, ${nextAppointment.appointment_time}` : ''}
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      {nextAppointment.appointment_type || 'Consultation'}
+                      {nextAppointment.Clinic?.clinic_name && (
+                        <> at <span className="font-medium text-pink-600">{nextAppointment.Clinic.clinic_name}</span></>
+                      )}
+                    </p>
+                    {nextAppointment.notes && <p className="text-xs text-gray-400 mt-1">{nextAppointment.notes}</p>}
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-xl font-bold text-gray-900 mb-1">No upcoming appointment</h4>
+                    <p className="text-sm text-gray-600">Contact your midwife to schedule one.</p>
+                  </>
+                )}
               </CardContent>
             </Card>
+
             <Card>
               <CardContent className="p-6">
-                 <div className="flex justify-between items-start mb-4">
-                   <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600">
-                     <Syringe className="h-5 w-5" />
-                   </div>
-                   <Badge variant="warning">DUE SOON</Badge>
-                 </div>
-                 <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mb-1">VACCINATION DUE</p>
-                 <h4 className="text-xl font-bold text-gray-900 mb-1">TDAP Booster</h4>
-                 <p className="text-sm text-gray-600">Recommended by <span className="font-medium">Week 30</span></p>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600">
+                    <Syringe className="h-5 w-5" />
+                  </div>
+                  <Badge variant="warning">DUE SOON</Badge>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mb-1">VACCINATION DUE</p>
+                <h4 className="text-xl font-bold text-gray-900 mb-1">TDAP Booster</h4>
+                <p className="text-sm text-gray-600">Recommended by <span className="font-medium">Week 30</span></p>
               </CardContent>
             </Card>
           </div>
 
+          {/* Clinic Visit + Vital Signs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h4 className="font-semibold text-xs tracking-wider uppercase text-gray-500">LAST CLINIC VISIT</h4>
-                  <span className="text-xs text-gray-400">{formatDate('2024-10-28', 'short')}</span>
+                  <span className="text-xs text-gray-400">
+                    {emchLoading ? '...' : lastClinicVisit ? formatDate(lastClinicVisit.visit_date, 'short') : 'No visits'}
+                  </span>
                 </div>
-                <p className="text-gray-700 text-sm leading-relaxed mb-6 italic">
-                  "Patient shows normal weight gain. Fetal heartbeat stable at 145 bpm. Iron supplements continued."
-                </p>
-                <button className="text-sm font-medium text-pink-600 flex items-center hover:underline">
-                  VIEW FULL SUMMARY <ChevronRight className="h-4 w-4 ml-1" />
-                </button>
+                {emchLoading ? (
+                  <div className="animate-pulse space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-full" />
+                    <div className="h-4 bg-gray-200 rounded w-5/6" />
+                    <div className="h-4 bg-gray-200 rounded w-4/6" />
+                  </div>
+                ) : lastClinicVisit ? (
+                  <>
+                    <p className="text-gray-700 text-sm leading-relaxed mb-6 italic">
+                      "{lastClinicVisit.notes || lastClinicVisit.clinical_notes || 'No notes recorded for this visit.'}"
+                    </p>
+                    <button
+                      onClick={() => setShowVisitSummary(true)}
+                      className="text-sm font-medium text-pink-600 flex items-center hover:underline"
+                    >
+                      VIEW FULL SUMMARY <ChevronRight className="h-4 w-4 ml-1" />
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-gray-500 text-sm italic">No clinic visits recorded yet.</p>
+                )}
               </CardContent>
             </Card>
+
             <Card>
               <CardContent className="p-6 flex flex-col h-full">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-semibold text-xs tracking-wider uppercase text-gray-500">RECENT TEST RESULTS</h4>
-                  <Badge variant="success">NORMAL</Badge>
+                  <h4 className="font-semibold text-xs tracking-wider uppercase text-gray-500">LATEST VITAL SIGNS</h4>
+                  <Badge variant="success">{vitalSigns ? 'UPDATED' : 'PENDING'}</Badge>
                 </div>
-                <div className="space-y-4 flex-grow">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Hemoglobin</span>
-                    <span className="text-sm font-semibold text-gray-900">12.2 g/dL</span>
+                {emchLoading ? (
+                  <div className="animate-pulse space-y-4 flex-grow">
+                    {[1, 2, 3].map((i) => <div key={i} className="h-4 bg-gray-200 rounded w-full" />)}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Blood Glucose</span>
-                    <span className="text-sm font-semibold text-gray-900">88 mg/dL</span>
+                ) : (
+                  <div className="space-y-4 flex-grow">
+                    {[
+                      { label: 'Blood Pressure', value: vitalSigns?.blood_pressure_systolic && vitalSigns?.blood_pressure_diastolic ? `${vitalSigns.blood_pressure_systolic}/${vitalSigns.blood_pressure_diastolic}` : 'Not recorded' },
+                      { label: 'Weight', value: vitalSigns?.weight_kg ? `${vitalSigns.weight_kg} kg` : 'Not recorded' },
+                      { label: 'Fetal Heart Rate', value: vitalSigns?.fetal_heart_rate ? `${vitalSigns.fetal_heart_rate} bpm` : 'Not recorded' },
+                      { label: 'Fundal Height', value: vitalSigns?.fundal_height_cm ? `${vitalSigns.fundal_height_cm} cm` : 'Not recorded' },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="flex justify-between items-center pb-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">{label}</span>
+                        <span className="text-sm font-semibold text-gray-900">{value}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Blood Pressure</span>
-                    <span className="text-sm font-semibold text-gray-900">120/80</span>
+                )}
+
+                {displayedLabResults.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">LABORATORY REPORTS</p>
+                    <div className="space-y-2">
+                      {displayedLabResults.map((report, i) => (
+                        <div key={report.lab_report_id || i} className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">{report.test_name}</span>
+                          <Badge variant="success" className="text-[10px]">
+                            {report.status?.toUpperCase() || 'COMPLETED'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <button 
-                  onClick={handleDownloadReport}
+                )}
+
+                <button
+                  onClick={() => {
+                    const doc = new jsPDF('p', 'mm', 'a4');
+                    const pw = doc.internal.pageSize.getWidth();
+                    const pink = [219, 39, 119];
+                    doc.setFillColor(253, 242, 248);
+                    doc.rect(0, 0, pw, 45, 'F');
+                    doc.setFontSize(22); doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...pink); doc.text('Pearl Mom', 20, 20);
+                    doc.setFontSize(13); doc.setTextColor(31, 41, 55);
+                    doc.text('Laboratory Report', 20, 32);
+                    doc.setFontSize(8); doc.setTextColor(107, 114, 128);
+                    doc.text(`Generated: ${new Date().toLocaleString()}`, pw - 50, 20, { align: 'right' });
+                    doc.setDrawColor(...pink); doc.setLineWidth(0.5); doc.line(20, 50, pw - 20, 50);
+                    let y = 65;
+                    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(31, 41, 55);
+                    doc.text('Patient Information', 20, y); y += 8;
+                    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(75, 85, 99);
+                    doc.text(`Name: ${mother?.full_name || 'N/A'}`, 20, y);
+                    doc.text(`Age: ${weeks > 0 ? weeks + ' weeks pregnant' : 'N/A'}`, 100, y); y += 6;
+                    doc.text(`EDD: ${mother?.expected_delivery_date ? formatDate(mother.expected_delivery_date, 'long') : 'N/A'}`, 20, y); y += 15;
+                    if (labReports.length > 0) {
+                      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(31, 41, 55);
+                      doc.text('Laboratory Reports', 20, y); y += 8;
+                      autoTable(doc, {
+                        startY: y,
+                        head: [['Test Name', 'Date', 'Status']],
+                        body: labReports.map((r) => [r.test_name || 'N/A', r.collected_date ? formatDate(r.collected_date, 'short') : 'N/A', r.status?.toUpperCase() || 'Completed']),
+                        theme: 'striped',
+                        headStyles: { fillColor: pink, textColor: 255, fontSize: 9 },
+                        bodyStyles: { fontSize: 8 }, margin: { left: 20 },
+                      });
+                    } else {
+                      doc.setFontSize(10); doc.setTextColor(107, 114, 128);
+                      doc.text('No laboratory reports available.', 20, y);
+                    }
+                    const pc = doc.internal.getNumberOfPages();
+                    for (let i = 1; i <= pc; i++) {
+                      doc.setPage(i); doc.setFontSize(8); doc.setTextColor(156, 163, 175);
+                      doc.text(`Pearl Mom Lab Report - Page ${i} of ${pc} - © ${new Date().getFullYear()} PearlMom`, pw / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+                    }
+                    doc.save(`Lab_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+                  }}
                   className="w-full mt-4 py-2 border border-pink-200 rounded-lg text-sm font-medium text-pink-600 hover:bg-pink-50 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Download className="h-4 w-4" />
-                  <span>DOWNLOAD BLOOD REPORT</span>
+                  <span>DOWNLOAD LAB REPORT</span>
                 </button>
               </CardContent>
             </Card>
           </div>
-
         </div>
 
+        {/* ── Right / Sidebar column ── */}
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-bold text-pink-600 flex items-center mb-4">
               <span className="text-xl mr-2">📍</span> Quick Actions
             </h3>
             <div className="space-y-3">
-              <button 
+              <button
                 onClick={() => navigate('/mother/clinic-locator')}
                 className="w-full rounded-xl bg-gray-100 p-4 text-gray-900 flex items-center hover:bg-pink-50 transition"
               >
@@ -468,51 +623,34 @@ All values within normal range.
             </div>
           </div>
 
+          {/* Alerts & Tips */}
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-900">Alerts & Tips</h3>
+                <h3 className="font-bold text-gray-900">Alerts &amp; Tips</h3>
                 <button onClick={markAllAsRead} className="text-xs font-medium text-pink-600 hover:underline">
                   MARK ALL READ {unreadCount > 0 && `(${unreadCount})`}
                 </button>
               </div>
               <div className="space-y-6">
-                <div className="flex">
-                  <div className="mr-4 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-pink-50 flex items-center justify-center text-pink-600">
-                      <Calendar className="h-4 w-4" />
+                {[
+                  { Icon: Calendar, bg: 'bg-pink-50', fg: 'text-pink-600', title: 'Clinic Schedule Update', body: 'The Friday clinic will now start at 8:00 AM instead of 9:00 AM.', ago: Date.now() - 7200000 },
+                  { Icon: Droplet, bg: 'bg-green-50', fg: 'text-green-600', title: 'Maternal Wellness Tip', body: 'Stay hydrated! Drinking 2.5L of water daily helps maintain amniotic fluid levels.', ago: Date.now() - 86400000 },
+                  { Icon: Apple, bg: 'bg-orange-50', fg: 'text-orange-600', title: 'Nutrition Guide', body: 'Add more leafy greens to your dinner for a natural folic acid boost.', ago: Date.now() - 172800000 },
+                ].map(({ Icon, bg, fg, title, body, ago }) => (
+                  <div key={title} className="flex">
+                    <div className="mr-4 mt-1">
+                      <div className={`h-8 w-8 rounded-full ${bg} flex items-center justify-center ${fg}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{title}</p>
+                      <p className="text-sm text-gray-600 mt-1 leading-snug">{body}</p>
+                      <p className="text-xs text-gray-400 mt-2">{getRelativeTime(new Date(ago))}</p>
                     </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Clinic Schedule Update</p>
-                    <p className="text-sm text-gray-600 mt-1 leading-snug">The Friday clinic will now start at 8:00 AM instead of 9:00 AM.</p>
-                    <p className="text-xs text-gray-400 mt-2">{getRelativeTime(new Date(Date.now() - 7200000))}</p>
-                  </div>
-                </div>
-                <div className="flex">
-                  <div className="mr-4 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                      <Droplet className="h-4 w-4" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Maternal Wellness Tip</p>
-                    <p className="text-sm text-gray-600 mt-1 leading-snug">Stay hydrated! Drinking 2.5L of water daily helps maintain amniotic fluid levels.</p>
-                    <p className="text-xs text-gray-400 mt-2">{getRelativeTime(new Date(Date.now() - 86400000))}</p>
-                  </div>
-                </div>
-                <div className="flex">
-                  <div className="mr-4 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
-                      <Apple className="h-4 w-4" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Nutrition Guide</p>
-                    <p className="text-sm text-gray-600 mt-1 leading-snug">Add more leafy greens to your dinner for a natural folic acid boost.</p>
-                    <p className="text-xs text-gray-400 mt-2">{getRelativeTime(new Date(Date.now() - 172800000))}</p>
-                  </div>
-                </div>
+                ))}
               </div>
               <button className="w-full mt-6 flex justify-center items-center text-sm font-medium text-gray-500 hover:text-gray-900">
                 View All Notifications <ChevronRight className="h-4 w-4 ml-1" />
@@ -520,28 +658,37 @@ All values within normal range.
             </CardContent>
           </Card>
 
-          <div className="rounded-2xl overflow-hidden relative group cursor-pointer h-48 bg-gradient-to-br from-pink-600 to-rose-700">
-            <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1555252117-426bf85fc585?auto=format&fit=crop&q=80')" }}></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          {/* Video guide */}
+          <div
+            className="rounded-2xl overflow-hidden relative group cursor-pointer h-48 bg-gradient-to-br from-pink-600 to-rose-700"
+            onClick={() => setShowVideo(true)}
+          >
+            <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-cover bg-center"
+              style={{ backgroundImage: "url('https://images.unsplash.com/photo-1555252117-426bf85fc585?auto=format&fit=crop&q=80')" }} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4">
               <Badge className="bg-white/20 text-white border-none mb-2 backdrop-blur-sm tracking-wider uppercase text-[10px]">VIDEO GUIDE</Badge>
-              <h3 className="font-bold text-white text-lg leading-tight group-hover:text-pink-200 transition-colors">Gentle Stretching for 3rd Trimester</h3>
+              <h3 className="font-bold text-white text-lg leading-tight group-hover:text-pink-200 transition-colors">
+                Pregnancy: A Month-By-Month Guide
+              </h3>
             </div>
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                 <Video className="h-6 w-6 text-white" />
-               </div>
+              <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Video className="h-6 w-6 text-white" />
+              </div>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* Profile Completion Modal */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          Profile Completion Modal
+      ══════════════════════════════════════════════════════════════════════ */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto">
+
+            {/* Modal header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-pink-100 rounded-lg">
@@ -549,17 +696,23 @@ All values within normal range.
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Complete Your Health Profile</h2>
-                  <p className="text-xs text-gray-500">This information helps us provide personalized care</p>
+                  <p className="text-xs text-gray-500">This information helps us provide personalised care</p>
                 </div>
               </div>
-              <button onClick={handleSkipProfile} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              {/* Only allow closing after a deliberate choice; X still available */}
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Skip for now"
+              >
                 <X size={20} className="text-gray-500" />
               </button>
             </div>
 
             <div className="p-6">
+              {/* ── Success state ── */}
               {profileSuccess ? (
-                <div className="text-center py-12">
+                <div className="text-center py-16">
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 className="h-10 w-10 text-green-500" />
                   </div>
@@ -567,151 +720,155 @@ All values within normal range.
                   <p className="text-gray-500">Your health information has been saved successfully.</p>
                 </div>
               ) : (
+                /* ── Form ── */
                 <form onSubmit={handleProfileSubmit} className="space-y-5">
+
+                  {/* Errors / warnings */}
                   {profileError && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                      {profileError}
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>{profileError}</span>
+                    </div>
+                  )}
+                  {missingFields.length > 0 && !profileError && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                      <strong>Please complete:</strong>{' '}
+                      {missingFields.map((f) => f.replace(/_/g, ' ')).join(', ')}
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                      <input type="text" name="fullName" value={profileData.fullName} onChange={handleProfileInputChange}
-                        placeholder="e.g., Elena Richardson"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                  {/* ── Section: Personal Details ── */}
+                  <fieldset className="space-y-4">
+                    <legend className="text-sm font-semibold text-pink-700 uppercase tracking-wider pb-1 border-b border-pink-100 w-full">
+                      Personal Details
+                    </legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="Full Name *" name="full_name" type="text" value={profileData.full_name} onChange={handleProfileInputChange} />
+                      <Field label="NIC Number *" name="nic" type="text" value={profileData.nic} onChange={handleProfileInputChange} />
+                      <Field label="Date of Birth *" name="dob" type="date" value={profileData.dob} onChange={handleProfileInputChange} />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
+                        <select name="blood_group" value={profileData.blood_group} onChange={handleProfileInputChange}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
+                          <option value="">Select Blood Group</option>
+                          {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map((g) => <option key={g}>{g}</option>)}
+                        </select>
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">NIC Number *</label>
-                      <input type="text" name="nic" value={profileData.nic} onChange={handleProfileInputChange}
-                        placeholder="e.g., 987654321V"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Home Address *</label>
+                      <textarea name="address" value={profileData.address} onChange={handleProfileInputChange} rows="2"
+                        placeholder="Enter your residential address"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-pink-500" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
-                      <input type="date" name="dob" value={profileData.dob} onChange={handleProfileInputChange}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">District *</label>
+                        <select name="district" value={profileData.district} onChange={handleProfileInputChange}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
+                          <option value="">Select District</option>
+                          {['Colombo','Gampaha','Kalutara','Kandy','Matale','Nuwara Eliya','Galle','Matara','Hambantota',
+                            'Jaffna','Kilinochchi','Mannar','Vavuniya','Mullaitivu','Batticaloa','Ampara','Trincomalee',
+                            'Kurunegala','Puttalam','Anuradhapura','Polonnaruwa','Badulla','Moneragala','Ratnapura','Kegalle']
+                            .map((d) => <option key={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <Field label="GS Division" name="gs_division" type="text" placeholder="e.g., 123A"
+                        value={profileData.gs_division} onChange={handleProfileInputChange} />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group *</label>
-                      <select name="bloodGroup" value={profileData.bloodGroup} onChange={handleProfileInputChange}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-                        <option value="">Select Blood Group</option>
-                        <option value="A+">A+</option><option value="A-">A-</option>
-                        <option value="B+">B+</option><option value="B-">B-</option>
-                        <option value="O+">O+</option><option value="O-">O-</option>
-                        <option value="AB+">AB+</option><option value="AB-">AB-</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Status</label>
-                      <select name="pregnancyStatus" value={profileData.pregnancyStatus} onChange={handleProfileInputChange}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-                        <option value="">Select Status</option>
-                        <option value="pregnant">Pregnant</option>
-                        <option value="postnatal">Postnatal</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Last Menstrual Period Date</label>
-                      <input type="date" name="lmpDate" value={profileData.lmpDate} onChange={handleProfileInputChange}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Gestational Weeks</label>
-                      <input type="number" name="gestationalWeeks" value={profileData.gestationalWeeks} onChange={handleProfileInputChange}
-                        placeholder="e.g., 28" min="1" max="42"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date *</label>
-                      <input type="date" name="expectedDeliveryDate" value={profileData.expectedDeliveryDate} onChange={handleProfileInputChange}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Current Weight (kg) *</label>
-                      <input type="number" name="currentWeight" value={profileData.currentWeight} onChange={handleProfileInputChange}
-                        placeholder="e.g., 65" step="0.1"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm) *</label>
-                      <input type="number" name="height" value={profileData.height} onChange={handleProfileInputChange}
-                        placeholder="e.g., 160" step="0.1"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact *</label>
-                      <input type="tel" name="emergencyContact" value={profileData.emergencyContact} onChange={handleProfileInputChange}
-                        placeholder="e.g., 0771234567"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">District *</label>
-                      <select name="district" value={profileData.district} onChange={handleProfileInputChange}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-                        <option value="">Select District</option>
-                        <option value="Colombo">Colombo</option>
-                        <option value="Gampaha">Gampaha</option>
-                        <option value="Kalutara">Kalutara</option>
-                        <option value="Kandy">Kandy</option>
-                        <option value="Matale">Matale</option>
-                        <option value="Nuwara Eliya">Nuwara Eliya</option>
-                        <option value="Galle">Galle</option>
-                        <option value="Matara">Matara</option>
-                        <option value="Hambantota">Hambantota</option>
-                        <option value="Jaffna">Jaffna</option>
-                        <option value="Kilinochchi">Kilinochchi</option>
-                        <option value="Mannar">Mannar</option>
-                        <option value="Vavuniya">Vavuniya</option>
-                        <option value="Mullaitivu">Mullaitivu</option>
-                        <option value="Batticaloa">Batticaloa</option>
-                        <option value="Ampara">Ampara</option>
-                        <option value="Trincomalee">Trincomalee</option>
-                        <option value="Kurunegala">Kurunegala</option>
-                        <option value="Puttalam">Puttalam</option>
-                        <option value="Anuradhapura">Anuradhapura</option>
-                        <option value="Polonnaruwa">Polonnaruwa</option>
-                        <option value="Badulla">Badulla</option>
-                        <option value="Moneragala">Moneragala</option>
-                        <option value="Ratnapura">Ratnapura</option>
-                        <option value="Kegalle">Kegalle</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Husband Name</label>
-                      <input type="text" name="husbandName" value={profileData.husbandName} onChange={handleProfileInputChange}
-                        placeholder="e.g., Saman Fernando"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Husband Contact</label>
-                      <input type="tel" name="husbandContact" value={profileData.husbandContact} onChange={handleProfileInputChange}
-                        placeholder="e.g., 0777000100"
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-                    </div>
-                  </div>
+                  </fieldset>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Home Address *</label>
-                    <textarea name="address" value={profileData.address} onChange={handleProfileInputChange} rows="2"
-                      placeholder="Enter your residential address"
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"></textarea>
-                  </div>
+                  {/* ── Section: Pregnancy Details ── */}
+                  <fieldset className="space-y-4">
+                    <legend className="text-sm font-semibold text-pink-700 uppercase tracking-wider pb-1 border-b border-pink-100 w-full">
+                      Pregnancy Details
+                    </legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Status *</label>
+                        <select name="pregnancy_status" value={profileData.pregnancy_status} onChange={handleProfileInputChange}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
+                          <option value="pregnant">Pregnant</option>
+                          <option value="postnatal">Postnatal</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                      <Field label="LMP Date *" name="lmp_date" type="date" value={profileData.lmp_date} onChange={handleProfileInputChange} />
+                      <Field label="Expected Delivery Date *" name="expected_delivery_date" type="date"
+                        value={profileData.expected_delivery_date} onChange={handleProfileInputChange} />
+                      <Field label="Gestational Weeks *" name="weeks" type="number" placeholder="e.g., 28"
+                        min="1" max="42" value={profileData.weeks} onChange={handleProfileInputChange} />
+                      <Field label="Current Weight (kg) *" name="current_weight" type="number" step="0.1" placeholder="e.g., 65"
+                        value={profileData.current_weight} onChange={handleProfileInputChange} />
+                      <Field label="Height (cm) *" name="height" type="number" step="0.1" placeholder="e.g., 160"
+                        value={profileData.height} onChange={handleProfileInputChange} />
+                      <Field label="Gravida (No. of pregnancies) *" name="gravida" type="number"
+                        value={profileData.gravida} onChange={handleProfileInputChange} />
+                      <Field label="Para (No. of deliveries) *" name="para" type="number"
+                        value={profileData.para} onChange={handleProfileInputChange} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Allergies *</label>
+                        <textarea name="allergies" value={profileData.allergies} onChange={handleProfileInputChange} rows="2"
+                          placeholder="List any allergies (or 'None')"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-pink-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Chronic Diseases *</label>
+                        <textarea name="chronic_diseases" value={profileData.chronic_diseases} onChange={handleProfileInputChange} rows="2"
+                          placeholder="List any chronic diseases (or 'None')"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-pink-500" />
+                      </div>
+                    </div>
+                  </fieldset>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <button type="button" onClick={handleSkipProfile} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
+                  {/* ── Section: Family / Emergency ── */}
+                  <fieldset className="space-y-4">
+                    <legend className="text-sm font-semibold text-pink-700 uppercase tracking-wider pb-1 border-b border-pink-100 w-full">
+                      Family &amp; Emergency Contact
+                    </legend>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="Emergency Contact Name *" name="emergency_contact_name" type="text"
+                        placeholder="e.g., Saman Perera" value={profileData.emergency_contact_name} onChange={handleProfileInputChange} />
+                      <Field label="Emergency Contact Phone *" name="emergency_contact_phone" type="tel"
+                        placeholder="e.g., 0771234567" value={profileData.emergency_contact_phone} onChange={handleProfileInputChange} />
+                      <Field label="Emergency Relationship *" name="emergency_relationship" type="text"
+                        placeholder="e.g., Husband, Father, Mother" value={profileData.emergency_relationship} onChange={handleProfileInputChange} />
+                      <Field label="Husband Name *" name="husband_name" type="text"
+                        placeholder="e.g., Saman Fernando" value={profileData.husband_name} onChange={handleProfileInputChange} />
+                      <Field label="Husband Contact *" name="husband_contact" type="tel"
+                        placeholder="e.g., 0777000100" value={profileData.husband_contact} onChange={handleProfileInputChange} />
+                    </div>
+                  </fieldset>
+
+                  {/* ── Footer buttons ── */}
+                  <div className="flex items-center justify-between pt-5 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setShowProfileModal(false)}
+                      className="text-sm text-gray-400 hover:text-gray-600 font-medium"
+                    >
                       Skip for now
                     </button>
                     <div className="flex space-x-3">
-                      <button type="button" onClick={handleSkipProfile}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => setShowProfileModal(false)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         Remind Later
                       </button>
-                      <button type="submit"
-                        className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
-                        Save Profile
+                      <button
+                        type="submit"
+                        disabled={profileLoading}
+                        className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {profileLoading ? (
+                          <><Loader className="h-4 w-4 animate-spin" /> Saving…</>
+                        ) : (
+                          'Save Profile'
+                        )}
                       </button>
                     </div>
                   </div>
@@ -721,8 +878,118 @@ All values within normal range.
           </div>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          Clinic Visit Summary Modal
+      ══════════════════════════════════════════════════════════════════════ */}
+      {showVisitSummary && lastClinicVisit && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Clinic Visit Summary</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {lastClinicVisit.visit_date ? formatDate(lastClinicVisit.visit_date, 'long') : 'Date not recorded'}
+                </p>
+              </div>
+              <button onClick={() => setShowVisitSummary(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {lastClinicVisit.visit_type && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Visit Type</p>
+                  <p className="text-sm text-gray-800 font-medium">{lastClinicVisit.visit_type}</p>
+                </div>
+              )}
+              {(lastClinicVisit.weight_kg || lastClinicVisit.blood_pressure_systolic || lastClinicVisit.fetal_heart_rate || lastClinicVisit.fundal_height_cm) && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Vital Signs</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {lastClinicVisit.weight_kg && <VitalBox label="Weight" value={`${lastClinicVisit.weight_kg} kg`} />}
+                    {lastClinicVisit.blood_pressure_systolic && lastClinicVisit.blood_pressure_diastolic && (
+                      <VitalBox label="Blood Pressure" value={`${lastClinicVisit.blood_pressure_systolic}/${lastClinicVisit.blood_pressure_diastolic} mmHg`} />
+                    )}
+                    {lastClinicVisit.fetal_heart_rate && <VitalBox label="Fetal Heart Rate" value={`${lastClinicVisit.fetal_heart_rate} bpm`} />}
+                    {lastClinicVisit.fundal_height_cm && <VitalBox label="Fundal Height" value={`${lastClinicVisit.fundal_height_cm} cm`} />}
+                  </div>
+                </div>
+              )}
+              {(lastClinicVisit.clinical_notes || lastClinicVisit.patient_complaints) && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Clinical Notes</p>
+                  <p className="text-sm text-gray-700 leading-relaxed bg-pink-50 border border-pink-100 rounded-lg p-3 italic">
+                    "{lastClinicVisit.clinical_notes || lastClinicVisit.patient_complaints}"
+                  </p>
+                </div>
+              )}
+              {lastClinicVisit.next_visit_date && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Next Visit Recommended</p>
+                  <p className="text-sm text-gray-700 font-medium">{formatDate(lastClinicVisit.next_visit_date, 'long')}</p>
+                </div>
+              )}
+              <div className="pt-2">
+                <button onClick={() => setShowVisitSummary(false)}
+                  className="w-full py-2.5 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          YouTube Video Modal
+      ══════════════════════════════════════════════════════════════════════ */}
+      {showVideo && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-3xl">
+            <button onClick={() => setShowVideo(false)}
+              className="absolute -top-10 right-0 text-white hover:text-pink-300 transition-colors flex items-center space-x-1">
+              <X size={20} /><span className="text-sm">Close</span>
+            </button>
+            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                className="absolute top-0 left-0 w-full h-full"
+                src="https://www.youtube.com/embed/8BH7WFmRs-E?autoplay=1&rel=0"
+                title="Gentle Stretching for 3rd Trimester"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <p className="text-white text-center text-sm mt-3 font-medium">Gentle Stretching for 3rd Trimester</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+// ─── Small reusable sub-components ───────────────────────────────────────────
+const Field = ({ label, name, type = 'text', value, onChange, placeholder, ...rest }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      {...rest}
+      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition"
+    />
+  </div>
+);
+
+const VitalBox = ({ label, value }) => (
+  <div className="bg-gray-50 rounded-lg p-3">
+    <p className="text-xs text-gray-500">{label}</p>
+    <p className="text-sm font-semibold text-gray-900">{value}</p>
+  </div>
+);
 
 export default MotherDashboard;

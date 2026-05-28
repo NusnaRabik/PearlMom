@@ -771,7 +771,286 @@ const logout = async (req, res) => {
     });
   }
 };
+// Change password (for authenticated user)
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Old password and new password are required'
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters'
+      });
+    }
+    
+    const user = await User.findByPk(req.user.user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    const isValid = await user.comparePassword(oldPassword);
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await user.update({ 
+      password_hash: hashedPassword,
+      updated_at: new Date()
+    });
+    
+    return res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error changing password: ' + error.message
+    });
+  }
+};
 
+// Update profile (for authenticated user)
+const updateProfile = async (req, res) => {
+  try {
+    const { name, email, phone_no } = req.body;
+    
+    const user = await User.findByPk(req.user.user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Check if email is taken by another user
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ 
+        where: { 
+          email: email,
+          user_id: { [Op.ne]: req.user.user_id }
+        } 
+      });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already in use'
+        });
+      }
+    }
+    
+    // Check if phone is taken by another user
+    if (phone_no && phone_no !== user.phone_no) {
+      const existingUser = await User.findOne({ 
+        where: { 
+          phone_no: phone_no,
+          user_id: { [Op.ne]: req.user.user_id }
+        } 
+      });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phone number already in use'
+        });
+      }
+    }
+    
+    // Update user
+    await user.update({
+      name: name || user.name,
+      email: email || user.email,
+      phone_no: phone_no || user.phone_no,
+      updated_at: new Date()
+    });
+    
+    // If user is mother, also update mother's full_name
+    if (user.role === 'mother' && name) {
+      await Mother.update(
+        { full_name: name },
+        { where: { user_id: user.user_id } }
+      );
+    }
+    
+    // If user is midwife, also update midwife's full_name
+    if (user.role === 'midwife' && name) {
+      await Midwife.update(
+        { full_name: name },
+        { where: { user_id: user.user_id } }
+      );
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user: {
+          user_id: user.user_id,
+          name: user.name,
+          email: user.email,
+          phone_no: user.phone_no,
+          role: user.role,
+          profile_completed: user.profile_completed,
+          profile_picture_url: user.profile_picture_url
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error updating profile: ' + error.message
+    });
+  }
+};
+
+// Forgot password - send reset link
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+    
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email'
+      });
+    }
+    
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour
+    
+    await user.update({
+      reset_token: resetTokenHash,
+      reset_token_expires: resetTokenExpires
+    });
+    
+    // In a real app, send email here
+    console.log(`Password reset token for ${email}: ${resetToken}`);
+    console.log(`Reset link: http://localhost:5173/reset-password?token=${resetToken}`);
+    
+    return res.json({
+      success: true,
+      message: 'Password reset link has been sent to your email'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error sending reset link'
+    });
+  }
+};
+
+// Reset password with token
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and new password are required'
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters'
+      });
+    }
+    
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    
+    const user = await User.findOne({
+      where: {
+        reset_token: tokenHash,
+        reset_token_expires: { [Op.gt]: new Date() }
+      }
+    });
+    
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await user.update({
+      password_hash: hashedPassword,
+      reset_token: null,
+      reset_token_expires: null
+    });
+    
+    return res.json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error resetting password'
+    });
+  }
+};
+
+// Upload profile picture
+const uploadProfilePicture = async (req, res) => {
+  try {
+    const { profile_picture_url } = req.body;
+    
+    const user = await User.findByPk(req.user.user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    await user.update({
+      profile_picture_url: profile_picture_url,
+      updated_at: new Date()
+    });
+    
+    return res.json({
+      success: true,
+      message: 'Profile picture updated successfully',
+      data: { profile_picture_url }
+    });
+  } catch (error) {
+    console.error('Upload profile picture error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error uploading profile picture'
+    });
+  }
+};
 module.exports = {
   register,
   login,
@@ -780,5 +1059,10 @@ module.exports = {
   getMe,
   checkProfileStatus,
   completeProfile,
-  logout
+  logout,
+  changePassword,      // Add this
+  updateProfile,       // Add this
+  forgotPassword,      // Add this
+  resetPassword,       // Add this
+  uploadProfilePicture
 };
