@@ -1,4 +1,3 @@
-// frontend/src/components/common/Sidebar.jsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -7,7 +6,9 @@ import {
   CalendarCheck, 
   Users, 
   Settings,
-  HelpCircle
+  HelpCircle,
+  Package,
+  Syringe
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -21,22 +22,34 @@ const Sidebar = () => {
       description: 'Overview & Analytics'
     },
     {
-      path: '/provider/nutrition',
-      icon: Apple,
-      label: 'Nutrition Program',
-      description: 'Thriposha Management'
-    },
-    {
       path: '/provider/clinic-visit',
       icon: CalendarCheck,
       label: 'Clinic Visit',
       description: 'Visit Management'
     },
     {
+      path: '/provider/nutrition',
+      icon: Apple,
+      label: 'Nutrition Program',
+      description: 'Thriposha Management'
+    },
+    {
       path: '/provider/mothers',
       icon: Users,
       label: 'Assigned Mothers',
       description: 'Patient List'
+    },
+    {
+      path: '/provider/thriposha-stock',
+      icon: Package,
+      label: 'Thriposha Stock',
+      description: 'Track Inventory'
+    },
+    {
+      path: '/provider/vaccine-stock',
+      icon: Syringe,
+      label: 'Vaccine Stock',
+      description: 'Manage Vaccines'
     }
   ];
 

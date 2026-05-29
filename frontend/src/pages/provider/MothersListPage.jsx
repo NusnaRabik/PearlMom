@@ -5,6 +5,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ProviderChatWidget from '../../components/provider/ProviderChatWidget';
 
 const MothersListPage = () => {
   const { user } = useAuth();
@@ -847,6 +848,7 @@ const MothersListPage = () => {
           </div>
         </div>
       )}
+      <ProviderChatWidget />
     </div>
   );
 };

@@ -14,6 +14,7 @@ import heroImage from '../../assets/hero-image.png';
 import doctorTabletImage from '../../assets/doctor_tablet.png';
 import babyHandImage from '../../assets/baby_hand.png';
 import api from '../../services/api';
+import ChatWidget from '../../components/common/ChatWidget';
 
 const LandingPage = () => {
   const [stats, setStats] = useState({
@@ -634,6 +635,7 @@ const LandingPage = () => {
       </main>
 
       <Footer />
+      <ChatWidget />
     </div>
   );
 };

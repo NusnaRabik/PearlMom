@@ -28,6 +28,9 @@ const adminRoutes = require('./routes/admin.routes');
 const clinicVisitRoutes = require('./routes/clinicVisit.routes');
 const supportRoutes = require('./routes/support.routes');
 const publicRoutes = require('./routes/public.routes');
+const chatbotRoutes = require('./routes/chatbot.routes');
+const fitnessRoutes = require('./routes/fitness.routes');
+const stockRoutes = require('./routes/stock.routes');
 
 
 // Initialize express app
@@ -60,6 +63,10 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/clinic-visits', clinicVisitRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/fitness', fitnessRoutes);
+app.use('/api/stock', stockRoutes);
+
 
 // ✅ Health check route
 app.get('/api/health', (req, res) => {

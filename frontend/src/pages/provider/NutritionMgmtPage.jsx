@@ -8,6 +8,7 @@ import ThriposhaCriteria from '../../components/provider/ThriposhaCriteria';
 import api from '../../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ProviderChatWidget from '../../components/provider/ProviderChatWidget';
 
 const NutritionMgmtPage = () => {
   const [pregnancyWeek, setPregnancyWeek] = useState('');
@@ -1062,6 +1063,7 @@ const NutritionMgmtPage = () => {
           </div>
         </div>
       )}
+      <ProviderChatWidget />
     </div>
   );
 };

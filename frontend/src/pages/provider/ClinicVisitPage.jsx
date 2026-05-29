@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import ProviderChatWidget from '../../components/provider/ProviderChatWidget';
 
 const ClinicVisitPage = () => {
   const { user } = useAuth();
@@ -1323,6 +1324,7 @@ const ClinicVisitPage = () => {
           </div>
         </>
       )}
+      <ProviderChatWidget />
     </div>
   );
 };

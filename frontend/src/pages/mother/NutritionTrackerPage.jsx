@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { CheckCircle2, Calendar, Bell, TrendingUp, Package, MapPin, Award, Leaf, Droplets, Sun, AlertCircle, X, Loader, Clock, History, FileText } from 'lucide-react';
+import { CheckCircle2, Calendar, Bell, TrendingUp, Package, MapPin, Award, Leaf, Droplets, Sun, AlertCircle, X, Loader, Clock, History, FileText, Video } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
 import { NUTRITIONAL_GUIDELINES, BMI_CATEGORIES } from '../../constants/thriposhCriteria';
+import ChatWidget from '../../components/common/ChatWidget';
 
 const NutritionTrackerPage = () => {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ const NutritionTrackerPage = () => {
   const [bmiCategory, setBmiCategory] = useState(null);
   const [currentTrimester, setCurrentTrimester] = useState(null);
   const [trimesterAdvice, setTrimesterAdvice] = useState(null);
+  const [showVideo, setShowVideo] = useState(false);
 
   useEffect(() => {
     if (user && user.role === 'mother') {
@@ -205,6 +207,13 @@ const NutritionTrackerPage = () => {
   const maxTargetGain = 16;
   const progressPercentage = Math.max(0, Math.min(100, (totalGainValue / maxTargetGain) * 100));
 
+  // Extract YouTube video ID from URL
+  const getYouTubeEmbedUrl = (url) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? `https://www.youtube.com/embed/${match[2]}?autoplay=1&rel=0` : url;
+  };
+
   if (loading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center">
@@ -246,12 +255,12 @@ const NutritionTrackerPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column (2/3) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 ">
           
           {/* Thriposha Hero - Dynamic based on eligibility */}
           <div className={`rounded-2xl p-8 text-white relative overflow-hidden shadow-sm ${
             eligibility.eligible 
-              ? 'bg-gradient-to-br from-rose-400 to-pink-400' 
+              ? 'bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500' 
               : 'bg-gradient-to-br from-gray-500 to-gray-600'
           }`}>
             {/* Decorative background */}
@@ -486,7 +495,7 @@ const NutritionTrackerPage = () => {
 
         </div>
 
-        {/* Right Column - Distribution History */}
+        {/* Right Column - Distribution History with Video */}
         <div>
           <Card className="bg-white h-full">
             <CardContent className="p-6">
@@ -495,7 +504,7 @@ const NutritionTrackerPage = () => {
                 <Badge className="bg-rose-100 text-rose-700 border-none">{distributionHistory.length} Records</Badge>
               </div>
 
-              <div className="space-y-4 max-h-[500px] overflow-y-auto">
+              <div className="space-y-4 max-h-[280px] overflow-y-auto">
                 {distributionHistory.length > 0 ? (
                   distributionHistory.map((item, i) => (
                     <div 
@@ -542,7 +551,7 @@ const NutritionTrackerPage = () => {
               </div>
 
               {/* Eligibility Reminder */}
-              <div className="mt-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+              <div className="mt-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
                 <div className="flex items-center space-x-3 mb-2">
                   <Award className="h-5 w-5 text-green-600" />
                   <h4 className="font-semibold text-green-900 text-sm">Eligibility Status</h4>
@@ -553,6 +562,25 @@ const NutritionTrackerPage = () => {
                     : 'Please consult with your healthcare provider for eligibility requirements.'
                   }
                 </p>
+              </div>
+
+              {/* Video Guide Section - Exactly matching MotherDashboard style */}
+              <div
+                className="rounded-2xl overflow-hidden relative group cursor-pointer h-48 mt-4 bg-gradient-to-br from-pink-600 to-rose-700"
+                onClick={() => setShowVideo(true)}
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <Badge className="bg-white/20 text-white border-none mb-2 backdrop-blur-sm tracking-wider uppercase text-[10px]">VIDEO GUIDE</Badge>
+                  <h3 className="font-bold text-white text-lg leading-tight group-hover:text-pink-200 transition-colors">
+                    Nutrition During Pregnancy
+                  </h3>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Video className="h-6 w-6 text-white" />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -614,6 +642,33 @@ const NutritionTrackerPage = () => {
         </div>
       )}
 
+      {/* YouTube Video Modal */}
+      {showVideo && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-3xl">
+            <button 
+              onClick={() => setShowVideo(false)}
+              className="absolute -top-10 right-0 text-white hover:text-pink-300 transition-colors flex items-center space-x-1"
+            >
+              <X size={20} />
+              <span className="text-sm">Close</span>
+            </button>
+            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                className="absolute top-0 left-0 w-full h-full"
+                src="https://www.youtube.com/embed/0BrxCY89_uQ?autoplay=1&rel=0"
+                title="Nutrition During Pregnancy"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <p className="text-white text-center text-sm mt-3 font-medium">Nutrition During Pregnancy - Essential Guide</p>
+          </div>
+        </div>
+      )}
+      
+      <ChatWidget />
     </div>
   );
 };

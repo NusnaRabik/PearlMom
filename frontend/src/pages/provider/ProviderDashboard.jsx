@@ -11,6 +11,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ProviderChatWidget from '../../components/provider/ProviderChatWidget';
 
 const ProviderDashboard = () => {
   const { user } = useAuth();
@@ -757,6 +758,7 @@ const ProviderDashboard = () => {
           </div>
         </div>
       )}
+      <ProviderChatWidget />
     </div>
   );
 };

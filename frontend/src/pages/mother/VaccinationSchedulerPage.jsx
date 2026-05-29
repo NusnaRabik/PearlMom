@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import ChatWidget from '../../components/common/ChatWidget';
 
 const VaccinationSchedulerPage = () => {
   const { user } = useAuth();
@@ -921,11 +922,6 @@ const VaccinationSchedulerPage = () => {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <Button onClick={() => handleDownloadReport(selectedAppointment)} className="bg-pink-600 text-white hover:bg-pink-700">
-                <Download className="h-4 w-4 mr-2" /> Download Report
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -986,11 +982,6 @@ const VaccinationSchedulerPage = () => {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <Button onClick={() => handleDownloadVaccinationCertificate(selectedVaccine)} className="bg-pink-600 text-white hover:bg-pink-700">
-                <Download className="h-4 w-4 mr-2" /> Download Certificate
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -1011,6 +1002,7 @@ const VaccinationSchedulerPage = () => {
           background: #ec4899;
         }
       `}</style>
+      <ChatWidget />
     </div>
   );
 };

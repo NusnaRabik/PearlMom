@@ -2,15 +2,19 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, ChevronDown, ChevronUp, Phone, UploadCloud, Asterisk, 
   ExternalLink, GraduationCap, CheckCircle2, FileText, Bug, 
-  MessageSquare, Info, Sparkles 
+  MessageSquare, Info, Sparkles, Loader 
 } from 'lucide-react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import api from '../../services/api';
+import ChatWidget from '../../components/common/ChatWidget';
 
 const HelpSupportPage = () => {
   const [activeTab, setActiveTab] = useState('Mother');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState(0);
+  const [aiAnswer, setAiAnswer] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   
   // Form States
   const [formType, setFormType] = useState('contact');
@@ -47,6 +51,53 @@ const HelpSupportPage = () => {
     faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
     faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Search with OpenAI API
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchError('Please enter a question to search');
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+    setAiAnswer(null);
+
+    try {
+      const response = await api.post('/chatbot/message', {
+        message: searchQuery,
+        motherId: null,
+        conversationHistory: []
+      });
+
+      if (response.data.success) {
+        setAiAnswer({
+          question: searchQuery,
+          answer: response.data.data.reply,
+          timestamp: new Date()
+        });
+      } else {
+        throw new Error('Failed to get response');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchError('Unable to get an answer. Please try again or contact support.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setAiAnswer(null);
+    setSearchError(null);
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -105,11 +156,9 @@ const HelpSupportPage = () => {
       >
         {/* Beautiful Cursor-Following Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Base glows */}
           <div className="absolute top-10 left-10 w-96 h-96 bg-pink-200 rounded-full opacity-30 blur-3xl animate-pulse" />
           <div className="absolute bottom-10 right-10 w-[32rem] h-[32rem] bg-purple-200 rounded-full opacity-25 blur-3xl animate-pulse delay-1000" />
 
-          {/* Interactive cursor orbs */}
           <motion.div
             className="absolute w-[34rem] h-[34rem] bg-gradient-to-br from-pink-400 via-rose-400 to-purple-400 rounded-full blur-3xl opacity-30"
             style={{
@@ -126,7 +175,6 @@ const HelpSupportPage = () => {
             }}
           />
 
-          {/* Accent orbs */}
           <motion.div
             className="absolute w-64 h-64 bg-white/60 rounded-full blur-2xl opacity-40"
             style={{
@@ -135,7 +183,6 @@ const HelpSupportPage = () => {
             }}
           />
 
-          {/* Sparkling particles */}
           {[...Array(7)].map((_, i) => (
             <motion.div
               key={i}
@@ -178,23 +225,126 @@ const HelpSupportPage = () => {
             Search our knowledge base or get personalized support from the Pearl Mom team.
           </motion.p>
 
-          {/* Search Bar */}
+          {/* Search Bar with AI Integration */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="max-w-2xl mx-auto relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-shadow"
+            className="max-w-2xl mx-auto"
           >
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-pink-500 transition-colors" />
+            <div className="relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-shadow">
+              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-pink-500 transition-colors" />
+              </div>
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="block w-full pl-12 pr-24 py-4 border border-slate-200 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 text-slate-800 placeholder-slate-400 text-base transition-all"
+                placeholder="Ask me anything about pregnancy, Thriposha, appointments..."
+              />
+              <div className="absolute right-2 top-2 flex gap-1">
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    ✕
+                  </button>
+                )}
+                <button
+                  onClick={handleSearch}
+                  disabled={isSearching}
+                  className="px-4 py-2 bg-pink-600 text-white rounded-full text-sm font-medium hover:bg-pink-700 transition-colors disabled:opacity-50"
+                >
+                  {isSearching ? <Loader className="animate-spin h-4 w-4" /> : 'Ask'}
+                </button>
+              </div>
             </div>
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-12 pr-6 py-4 border border-slate-200 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 text-slate-800 placeholder-slate-400 text-base transition-all"
-              placeholder="Search for answers, guides, or help topics..."
-            />
+
+            {/* AI Answer Display */}
+            {isSearching && (
+              <div className="mt-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 animate-pulse">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-pink-500" />
+                  </div>
+                  <p className="text-sm font-semibold text-pink-600">PearlMom AI is thinking...</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-slate-200 rounded-full w-3/4"></div>
+                  <div className="h-3 bg-slate-200 rounded-full w-1/2"></div>
+                  <div className="h-3 bg-slate-200 rounded-full w-5/6"></div>
+                </div>
+              </div>
+            )}
+
+            {searchError && (
+              <div className="mt-6 bg-red-50 rounded-2xl p-6 border border-red-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="w-4 h-4 text-red-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-800">Unable to get answer</p>
+                    <p className="text-sm text-red-600 mt-1">{searchError}</p>
+                    <button 
+                      onClick={() => { setSearchQuery(''); setSearchError(null); }}
+                      className="mt-3 text-sm text-red-600 hover:text-red-700 font-medium"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {aiAnswer && !isSearching && !searchError && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 bg-white rounded-2xl p-6 border "
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8  rounded-full flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-pink-500" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-pink-600 uppercase tracking-wide">
+                        PearlMom AI Answer
+                      </p>
+                      <button 
+                        onClick={clearSearch}
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="prose prose-sm max-w-none">
+                      <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                        {aiAnswer.answer}
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-pink-100 flex items-center justify-between">
+                      <p className="text-[10px] text-gray-400">
+                        AI-generated response • Based on maternal health guidelines
+                      </p>
+                      <button 
+                        onClick={() => {
+                          setFormType('contact');
+                          document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className="text-xs text-pink-600 hover:text-pink-700 font-medium"
+                      >
+                        Need more help? Contact us →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </section>
@@ -292,7 +442,7 @@ const HelpSupportPage = () => {
             </div>
 
             {/* Dynamic Support Form Section */}
-            <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-100">
+            <div id="contact-form" className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-100 scroll-mt-20">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                 <div>
@@ -446,10 +596,25 @@ const HelpSupportPage = () => {
               </div>
             </div>
 
+            {/* AI Assistant Card */}
+            <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-3xl p-7 border border-pink-100">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="h-5 w-5 text-pink-600" />
+                <h3 className="text-lg font-bold text-pink-700">PearlMom AI Assistant</h3>
+              </div>
+              <p className="text-sm text-slate-600 mb-4">
+                Get instant answers to your questions using our AI-powered assistant. Ask about pregnancy, Thriposha, vaccinations, and more!
+              </p>
+              <div className="flex items-center gap-2 text-xs text-pink-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                Available 24/7
+              </div>
+            </div>
           </div>
           
         </div>
       </main>
+      <ChatWidget />
     </div>
   );
 };

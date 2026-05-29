@@ -26,6 +26,9 @@ import MotherSidebar from './components/common/MotherSidebar';
 import Footer from './components/common/Footer';
 import Navbar from './components/common/Navbar';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import FitnessGuidePage from './pages/mother/FitnessGuidePage';
+import ThriposhaStockPage from './pages/provider/ThriposhaStockPage';
+import VaccineStockPage from './pages/provider/VaccineStockPage';
 
 function App() {
   return (
@@ -86,6 +89,7 @@ function MotherLayout() {
             <Route path="dashboard" element={<MotherDashboard />} />
             <Route path="emch-card" element={<EMCHCardPage />} />
             <Route path="vaccination" element={<VaccinationSchedulerPage />} />
+            <Route path="fitness-guide" element={<FitnessGuidePage />} />
             <Route path="clinic-locator" element={<ClinicLocatorPage />} />
             <Route path="nutrition" element={<NutritionTrackerPage />} />
             <Route path="settings" element={<MotherProfileSettings />} />
@@ -113,6 +117,8 @@ function ProviderLayout() {
             <Route path="mothers" element={<MothersListPage />} />
             <Route path="clinic-visit" element={<ClinicVisitPage />} />
             <Route path="nutrition" element={<NutritionMgmtPage />} />
+            <Route path="thriposha-stock" element={<ThriposhaStockPage />} />
+            <Route path="vaccine-stock" element={<VaccineStockPage />} />
           </Routes>
           <Footer />
         </main>

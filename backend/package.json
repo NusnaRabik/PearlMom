@@ -24,6 +24,7 @@
     "mysql2": "^3.22.3",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.8",
+    "openai": "^6.39.1",
     "react-leaflet": "^5.0.0",
     "sequelize": "^6.37.8",
     "twilio": "^6.0.2",

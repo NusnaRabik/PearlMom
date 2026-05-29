@@ -8,7 +8,8 @@ import {
   MapPin,
   Apple,
   Settings,
-  HelpCircle
+  HelpCircle,
+  Activity
 } from 'lucide-react';
 
 const MotherSidebar = () => {
@@ -33,17 +34,23 @@ const MotherSidebar = () => {
       label: 'Vaccination',
       description: 'Schedule & Reminders'
     },
+        {
+      path: '/mother/nutrition',
+      icon: Apple,
+      label: 'Nutrition Tracker',
+      description: 'Diet & Wellness'
+    },
+    {
+      path: '/mother/fitness-guide',
+      icon: Activity,
+      label: 'Fitness Guide',
+      description: 'Exercises & Wellness'
+    },
     {
       path: '/mother/clinic-locator',
       icon: MapPin,
       label: 'Clinic Locator',
       description: 'Find Nearby Clinics'
-    },
-    {
-      path: '/mother/nutrition',
-      icon: Apple,
-      label: 'Nutrition Tracker',
-      description: 'Diet & Wellness'
     }
   ];
 

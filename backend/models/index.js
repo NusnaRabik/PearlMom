@@ -12,6 +12,11 @@ const NutritionSupplement = require('./NutritionSupplement');
 const ClinicVisit = require('./ClinicVisit');
 const HealthEducationChecklist = require('./HealthEducationChecklist');
 const LabReport = require('./LabReport');
+const Exercise = require('./Exercise');
+const ExerciseProgress = require('./ExerciseProgress');
+const ThriposhaStock = require('./ThriposhaStock');
+const ThriposhaStockSettings = require('./ThriposhaStockSettings');
+const VaccineStock = require('./VaccineStock');
 
 // Associations
 User.hasOne(Mother, { foreignKey: 'user_id' });
@@ -34,6 +39,12 @@ Appointment.belongsTo(Mother, { foreignKey: 'mother_id' });
 
 Mother.hasMany(Vaccination, { foreignKey: 'mother_id' });
 Vaccination.belongsTo(Mother, { foreignKey: 'mother_id' });
+
+Exercise.hasMany(ExerciseProgress, { foreignKey: 'exercise_id' });
+ExerciseProgress.belongsTo(Exercise, { foreignKey: 'exercise_id' });
+
+Mother.hasMany(ExerciseProgress, { foreignKey: 'mother_id' });
+ExerciseProgress.belongsTo(Mother, { foreignKey: 'mother_id' });
 
 // Lab Report associations
 Mother.hasMany(LabReport, { foreignKey: 'mother_id' });
@@ -78,6 +89,18 @@ Mother.belongsTo(Midwife, { foreignKey: 'assigned_midwife_id' });
 User.hasMany(MaternalRecord, { foreignKey: 'recorded_by', as: 'recorder' });
 MaternalRecord.belongsTo(User, { foreignKey: 'recorded_by', as: 'recorder' });
 
+// NEW: Stock management associations
+// Thriposha Stock - User associations
+User.hasMany(ThriposhaStock, { foreignKey: 'created_by', as: 'thriposha_stock_entries' });
+ThriposhaStock.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+
+// Thriposha Stock Settings - User association
+ThriposhaStockSettings.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
+
+// Vaccine Stock - User associations
+User.hasMany(VaccineStock, { foreignKey: 'created_by', as: 'vaccine_stock_entries' });
+VaccineStock.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+
 module.exports = {
   User,
   Mother,
@@ -92,5 +115,11 @@ module.exports = {
   NutritionSupplement,
   ClinicVisit,
   HealthEducationChecklist,
-  LabReport
+  LabReport,
+  Exercise,
+  ExerciseProgress,
+  // NEW exports
+  ThriposhaStock,
+  ThriposhaStockSettings,
+  VaccineStock
 };

@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ChatWidget from '../../components/common/ChatWidget';
 
 const EMCHCardPage = () => {
   const { user } = useAuth();
@@ -440,7 +441,7 @@ const EMCHCardPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
       
       {/* Main Profile Card */}
-      <Card className="overflow-hidden border-none shadow-sm animate-fadeIn">
+      <Card className="overflow-hidden border-none shadow-sm">
         <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
           <div className="flex items-center space-x-6">
             <div className="h-16 w-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0">
@@ -461,13 +462,13 @@ const EMCHCardPage = () => {
                     <p className="text-xs text-gray-500 mt-1">NIC: {motherData.nic}</p>
                   )}
                 </div>
-                <button onClick={handleEditClick} className="text-pink-600 hover:text-pink-700 transition-transform hover:scale-110">
+                <button onClick={handleEditClick} className="text-pink-600 hover:text-pink-700">
                   <Edit className="h-5 w-5" />
                 </button>
               </div>
             </div>
           </div>
-          <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100 flex-shrink-0 animate-pulse-slow">
+          <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100 flex-shrink-0">
              <p className="text-xs tracking-wider uppercase text-green-700 font-semibold mb-1">Expected Delivery Date</p>
              <p className="text-2xl text-green-800 font-bold">
                {motherData?.expected_delivery_date ? formatDate(motherData.expected_delivery_date, 'long') : 'Not set'}
@@ -478,7 +479,7 @@ const EMCHCardPage = () => {
 
       {/* Edit Modal */}
       {isEditing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
               <h2 className="text-xl font-semibold text-gray-900">Edit Profile</h2>
@@ -627,14 +628,14 @@ const EMCHCardPage = () => {
       <div>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Vital Signs & Trends</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slideInUp" style={{ animationDelay: '0ms' }}>
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Blood Pressure (Avg)</p>
-                <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
+                <Activity className="h-4 w-4 text-blue-500" />
               </div>
               <div className="flex items-baseline mb-4">
-                <span className="text-3xl font-bold text-gray-900 transition-all duration-500 hover:text-blue-600">
+                <span className="text-3xl font-bold text-gray-900">
                   {vitalSigns?.blood_pressure_systolic && vitalSigns?.blood_pressure_diastolic 
                     ? `${vitalSigns.blood_pressure_systolic}/${vitalSigns.blood_pressure_diastolic}`
                     : '--/--'}
@@ -644,37 +645,37 @@ const EMCHCardPage = () => {
                 </span>
               </div>
               <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: '65%' }}></div>
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: '65%' }}></div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slideInUp" style={{ animationDelay: '100ms' }}>
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Weight Progress (kg)</p>
-                <TrendingUp className="h-4 w-4 text-green-500 animate-bounce" />
+                <TrendingUp className="h-4 w-4 text-green-500" />
               </div>
               <div className="flex items-baseline mb-4">
-                <span className="text-3xl font-bold text-gray-900 transition-all duration-500 hover:text-green-600">
+                <span className="text-3xl font-bold text-gray-900">
                   {vitalSigns?.weight_kg || motherData?.current_weight || '--'}
                 </span>
                 <span className="ml-2 text-sm text-gray-500 font-medium">kg</span>
               </div>
               <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-green-500 rounded-full transition-all duration-1000" style={{ width: '45%' }}></div>
+                <div className="h-full bg-green-500 rounded-full" style={{ width: '45%' }}></div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slideInUp" style={{ animationDelay: '200ms' }}>
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Fetal Heart Rate (bpm)</p>
-                <ActivitySquare className="h-4 w-4 text-pink-500 animate-pulse" />
+                <ActivitySquare className="h-4 w-4 text-pink-500" />
               </div>
               <div className="flex items-baseline mb-4">
-                <span className="text-3xl font-bold text-gray-900 transition-all duration-500 hover:text-pink-600">
+                <span className="text-3xl font-bold text-gray-900">
                   {vitalSigns?.fetal_heart_rate || '--'}
                 </span>
                 <span className="ml-2 text-sm text-gray-600 font-medium">
@@ -682,7 +683,7 @@ const EMCHCardPage = () => {
                 </span>
               </div>
               <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-pink-500 rounded-full transition-all duration-1000" style={{ width: '78%' }}></div>
+                <div className="h-full bg-pink-500 rounded-full" style={{ width: '78%' }}></div>
               </div>
             </CardContent>
           </Card>
@@ -691,10 +692,10 @@ const EMCHCardPage = () => {
 
       {/* Next Appointment */}
       {nextAppointment && (
-        <div className="bg-gradient-to-r from-pink-50 to-pink-100 rounded-xl p-5 border border-pink-200 animate-slideInUp">
+        <div className="bg-gradient-to-r from-pink-50 to-pink-100 rounded-xl p-5 border border-pink-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-pink-200 text-pink-700 flex items-center justify-center text-sm font-bold animate-pulse-slow">!</div>
+              <div className="h-10 w-10 rounded-full bg-pink-200 text-pink-700 flex items-center justify-center text-sm font-bold">!</div>
               <div>
                 <h4 className="font-semibold text-pink-900">Next Appointment</h4>
                 <p className="text-sm text-pink-800">
@@ -706,7 +707,7 @@ const EMCHCardPage = () => {
             </div>
             <button 
               onClick={() => setShowAppointmentModal(true)} 
-              className="text-sm font-medium text-pink-600 hover:text-pink-700 flex items-center flex-shrink-0 transition-transform hover:translate-x-1"
+              className="text-sm font-medium text-pink-600 hover:text-pink-700 flex items-center flex-shrink-0"
             >
               View Details <ChevronRight className="h-4 w-4 ml-1" />
             </button>
@@ -716,7 +717,7 @@ const EMCHCardPage = () => {
 
       {/* Appointment Details Modal */}
       {showAppointmentModal && nextAppointment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
               <div className="flex items-center space-x-3">
@@ -801,9 +802,9 @@ const EMCHCardPage = () => {
             {clinicVisits.length > 0 ? (
               <div className="relative border-l border-gray-200 ml-3 space-y-10 py-2">
                 {clinicVisits.map((visit, index) => (
-                  <div key={visit.visit_id} className="relative pl-8 animate-slideInLeft" style={{ animationDelay: `${index * 100}ms` }}>
+                  <div key={visit.visit_id} className="relative pl-8">
                     <div className="absolute left-[-5px] top-1 h-3 w-3 rounded-full bg-[#0369a1] border-2 border-white ring-2 ring-[#0369a1]"></div>
-                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 shadow-sm">
                       <div className="flex justify-between items-start mb-3">
                         <p className="text-xs font-semibold text-[#0369a1] tracking-wider uppercase">
                           Visit #{clinicVisits.length - index} - {visit.gestational_weeks || '?'} Weeks
@@ -883,7 +884,7 @@ const EMCHCardPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Blood Tests */}
               {categorizedReports.firstTrimester.bloodTests.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -915,7 +916,7 @@ const EMCHCardPage = () => {
 
               {/* Urine Tests */}
               {categorizedReports.firstTrimester.urineTests.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -947,7 +948,7 @@ const EMCHCardPage = () => {
 
               {/* Ultrasound Scans */}
               {categorizedReports.firstTrimester.ultrasoundScans.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -995,7 +996,7 @@ const EMCHCardPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Blood Tests */}
               {categorizedReports.secondTrimester.bloodTests.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -1027,7 +1028,7 @@ const EMCHCardPage = () => {
 
               {/* Urine Tests */}
               {categorizedReports.secondTrimester.urineTests.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -1059,7 +1060,7 @@ const EMCHCardPage = () => {
 
               {/* Ultrasound Scans */}
               {categorizedReports.secondTrimester.ultrasoundScans.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -1107,7 +1108,7 @@ const EMCHCardPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Blood Tests */}
               {categorizedReports.thirdTrimester.bloodTests.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -1139,7 +1140,7 @@ const EMCHCardPage = () => {
 
               {/* Urine Tests */}
               {categorizedReports.thirdTrimester.urineTests.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -1171,7 +1172,7 @@ const EMCHCardPage = () => {
 
               {/* Ultrasound Scans */}
               {categorizedReports.thirdTrimester.ultrasoundScans.length > 0 && (
-                <Card className="hover:shadow-lg">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -1217,7 +1218,7 @@ const EMCHCardPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link to="/mother/vaccination" className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between ">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="h-10 w-10 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center">
                 <Syringe className="h-5 w-5" />
               </div>
               <div>
@@ -1225,11 +1226,11 @@ const EMCHCardPage = () => {
                 <p className="text-xs text-gray-500">View upcoming doses</p>
               </div>
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500" />
           </Link>
           <Link to="/mother/nutrition" className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between ">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="h-10 w-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
                 <FileText className="h-5 w-5" />
               </div>
               <div>
@@ -1237,11 +1238,11 @@ const EMCHCardPage = () => {
                 <p className="text-xs text-gray-500">Diet & wellness plans</p>
               </div>
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500" />
           </Link>
           <button onClick={() => setShowEmergencyModal(true)} className="p-5 bg-white rounded-xl border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all group flex items-center justify-between text-left ">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="h-10 w-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
                 <Phone className="h-5 w-5" />
               </div>
               <div>
@@ -1249,18 +1250,18 @@ const EMCHCardPage = () => {
                 <p className="text-xs text-gray-500">Important numbers</p>
               </div>
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-500" />
           </button>
         </div>
       </div>
 
       {/* Emergency Modal */}
       {showEmergencyModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-red-100 rounded-lg animate-pulse"><Phone className="h-5 w-5 text-red-600" /></div>
+                <div className="p-2 bg-red-100 rounded-lg"><Phone className="h-5 w-5 text-red-600" /></div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Emergency Contacts</h2>
                   <p className="text-xs text-gray-500">Important numbers for your care</p>
@@ -1272,17 +1273,17 @@ const EMCHCardPage = () => {
             </div>
             <div className="p-6 space-y-4">
               {emergencyContacts.map((contact, index) => (
-                <div key={index} className={`p-4 rounded-xl border transform transition-all hover:scale-105 animate-slideInUp ${contact.type === 'emergency' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`} style={{ animationDelay: `${index * 100}ms` }}>
+                <div key={index} className={`p-4 rounded-xl border ${contact.type === 'emergency' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-900 text-sm">
                         {contact.name}
-                        {contact.type === 'emergency' && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 animate-pulse">Emergency</span>}
+                        {contact.type === 'emergency' && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Emergency</span>}
                       </h4>
                       <p className="text-xs text-gray-500 mt-0.5">{contact.role}</p>
                       <p className="text-xs text-gray-400 mt-1">{contact.available}</p>
                     </div>
-                    <a href={`tel:${contact.phone}`} className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105 flex items-center space-x-1 ${contact.type === 'emergency' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-pink-600 text-white hover:bg-pink-700'}`}>
+                    <a href={`tel:${contact.phone}`} className={`px-3 py-2 rounded-lg text-sm font-semibold flex items-center space-x-1 ${contact.type === 'emergency' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-pink-600 text-white hover:bg-pink-700'}`}>
                       <Phone className="h-4 w-4" /><span>{contact.phone}</span>
                     </a>
                   </div>
@@ -1290,7 +1291,7 @@ const EMCHCardPage = () => {
               ))}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <p className="text-xs text-gray-500 text-center">In case of life-threatening emergency, call <strong className="text-red-600 animate-pulse">1990</strong> immediately</p>
+              <p className="text-xs text-gray-500 text-center">In case of life-threatening emergency, call <strong className="text-red-600">1990</strong> immediately</p>
             </div>
           </div>
         </div>
@@ -1298,7 +1299,7 @@ const EMCHCardPage = () => {
 
       {/* Report Details Modal for Category */}
       {showReportModal && selectedCategory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
               <div className="flex items-center space-x-3">
@@ -1353,57 +1354,7 @@ const EMCHCardPage = () => {
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes slideInUp {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes slideInLeft {
-          from {
-            transform: translateX(-20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.5s ease-out;
-        }
-        
-        .animate-slideInUp {
-          animation: slideInUp 0.5s ease-out forwards;
-          opacity: 0;
-        }
-        
-        .animate-slideInLeft {
-          animation: slideInLeft 0.5s ease-out forwards;
-          opacity: 0;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse 2s ease-in-out infinite;
-        }
-      `}</style>
+      <ChatWidget />
     </div>
   );
 };
