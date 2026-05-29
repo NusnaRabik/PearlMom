@@ -1,6 +1,7 @@
 // frontend/src/components/common/Footer.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -8,54 +9,50 @@ const Footer = () => {
   return (
     <footer className="bg-white border-t border-gray-200">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div className="col-span-1">
-            <div className="flex items-center space-x-2 mb-3">
-              <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">PM</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Brand Section - Same as Navbar */}
+          <div className="text-center md:text-left">
+            <Link to="/" className="group flex items-center justify-center md:justify-start space-x-2.5 ">
+              <div className="relative">
+                <div className="absolute inset-0 bg-pink-500 rounded-xl blur-md opacity-50  transition-opacity"></div>
+                <div className="relative w-9 h-9 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <Heart className="w-5 h-5 text-white fill-white/20" />
+                </div>
               </div>
-              <span className="font-semibold text-gray-800">Pearl Mom</span>
-            </div>
-            <p className="text-sm text-gray-500">
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-800 text-lg leading-tight tracking-tight">PearlMom</span>
+                <span className="text-[10px] text-gray-400 -mt-0.5">Maternal Health</span>
+              </div>
+            </Link>
+            <p className="text-sm text-gray-500 mt-4">
               Empowering mothers with personalized maternal health insights and clinical-grade monitoring for a safer journey to motherhood.
             </p>
           </div>
 
-          {/* Platform Links */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Platform</h3>
-            <ul className="space-y-2">
-              <li><Link to="/provider/dashboard" className="text-sm text-gray-500 hover:text-gray-900">Patient Dashboard</Link></li>
-              <li><Link to="/provider/mothers" className="text-sm text-gray-500 hover:text-gray-900">Clinical Records</Link></li>
-              <li><Link to="/provider/nutrition" className="text-sm text-gray-500 hover:text-gray-900">Risk Assessment</Link></li>
-              <li><Link to="/help" className="text-sm text-gray-500 hover:text-gray-900">Resources</Link></li>
-            </ul>
-          </div>
-
           {/* Company Links */}
-          <div>
+          <div className="text-center">
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Company</h3>
             <ul className="space-y-2">
-              <li><Link to="/about" className="text-sm text-gray-500 hover:text-gray-900">About Us</Link></li>
-              <li><Link to="/mission" className="text-sm text-gray-500 hover:text-gray-900">Our Mission</Link></li>
-              <li><Link to="/careers" className="text-sm text-gray-500 hover:text-gray-900">Careers</Link></li>
-              <li><Link to="/contact" className="text-sm text-gray-500 hover:text-gray-900">Contact</Link></li>
+              <li><Link to="/about" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">About Us</Link></li>
+              <li><Link to="/mission" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Our Mission</Link></li>
+              <li><Link to="/careers" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Careers</Link></li>
+              <li><Link to="/contact" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Contact</Link></li>
             </ul>
           </div>
 
           {/* Legal Links */}
-          <div>
+          <div className="text-center">
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Legal</h3>
             <ul className="space-y-2">
-              <li><Link to="/privacy" className="text-sm text-gray-500 hover:text-gray-900">Privacy Policy</Link></li>
-              <li><Link to="/terms" className="text-sm text-gray-500 hover:text-gray-900">Terms of Service</Link></li>
-              <li><Link to="/hipaa" className="text-sm text-gray-500 hover:text-gray-900">HIPAA Compliance</Link></li>
-              <li><Link to="/security" className="text-sm text-gray-500 hover:text-gray-900">Data Security</Link></li>
+              <li><Link to="/privacy" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Terms of Service</Link></li>
+              <li><Link to="/hipaa" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">HIPAA Compliance</Link></li>
+              <li><Link to="/security" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Data Security</Link></li>
             </ul>
           </div>
         </div>
 
+        {/* Copyright - Centered */}
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-center text-sm text-gray-400">
             © {currentYear} PEARL MOM. All rights reserved.

@@ -507,31 +507,6 @@ const ProviderDashboard = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border">
-          <p className="text-sm text-gray-500">Today's Appointments</p>
-          <h3 className="text-2xl font-bold text-gray-900">24</h3>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border">
-          <p className="text-sm text-gray-500">Emergency Cases</p>
-          <h3 className="text-2xl font-bold text-red-500">3</h3>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border">
-          <p className="text-sm text-gray-500">Upcoming Deliveries</p>
-          <h3 className="text-2xl font-bold text-pink-600">
-            {getTotalDeliveries()}
-          </h3>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border">
-          <p className="text-sm text-gray-500">Vaccination Progress</p>
-          <h3 className="text-2xl font-bold text-green-600">
-            {vaccinationRate}%
-          </h3>
-        </div>
-      </div>
 
       {/* Profile Completion Reminder Banner - Only show if not completed and modal not open */}
       {!profileCompleted && !showProfileModal && (

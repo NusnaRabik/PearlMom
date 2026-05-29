@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, ChevronDown, ChevronUp, Phone, UploadCloud, Asterisk, 
   ExternalLink, GraduationCap, CheckCircle2, FileText, Bug, 
-  MessageSquare, Info 
+  MessageSquare, Info, Sparkles 
 } from 'lucide-react';
-import api from '../../services/api'; // Add this import
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import api from '../../services/api';
 
 const HelpSupportPage = () => {
   const [activeTab, setActiveTab] = useState('Mother');
@@ -17,44 +18,28 @@ const HelpSupportPage = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [attachment, setAttachment] = useState(null);
 
+  // Mouse tracking for hero background animation
+  const heroRef = useRef(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springConfig = { damping: 25, stiffness: 200 };
+  const smoothMouseX = useSpring(mouseX, springConfig);
+  const smoothMouseY = useSpring(mouseY, springConfig);
+
   const faqs = {
     Mother: [
-      {
-        question: "How do I register for an account?",
-        answer: "You can register by clicking the 'Register' button on the top right, selecting 'Mother' as your role, and filling in your details. You will need your assigned Mother ID from your PHM."
-      },
-      {
-        question: "How do I view my E-MCH card?",
-        answer: "Once logged in, navigate to the 'My Health' section and click on 'E-MCH Card'. You can view, share, and download a digital copy of your maternity records."
-      },
-      {
-        question: "How do I track my prenatal appointments?",
-        answer: "You can access your appointment calendar directly from the 'My Care' dashboard. Pearl Mom syncs automatically with your assigned PHM's schedule so you never miss a visit."
-      },
-      {
-        question: "How do I check Thriposha eligibility?",
-        answer: "Your Thriposha eligibility is displayed on your main dashboard under 'Nutrition Alerts'. It is automatically updated based on your BMI and pregnancy stage recorded by your PHM."
-      }
+      { question: "How do I register for an account?", answer: "You can register by clicking the 'Register' button on the top right, selecting 'Mother' as your role, and filling in your details. You will need your assigned Mother ID from your PHM." },
+      { question: "How do I view my E-MCH card?", answer: "Once logged in, navigate to the 'My Health' section and click on 'E-MCH Card'. You can view, share, and download a digital copy of your maternity records." },
+      { question: "How do I track my prenatal appointments?", answer: "You can access your appointment calendar directly from the 'My Care' dashboard. Pearl Mom syncs automatically with your assigned PHM's schedule so you never miss a visit." },
+      { question: "How do I check Thriposha eligibility?", answer: "Your Thriposha eligibility is displayed on your main dashboard under 'Nutrition Alerts'. It is automatically updated based on your BMI and pregnancy stage recorded by your PHM." }
     ],
     Provider: [
-      {
-        question: "How do I record a clinic visit?",
-        answer: "Navigate to the 'Patient Records' tab, search for the Mother ID, and click 'New Clinic Visit'. Enter the examination details (blood pressure, weight, etc.) and click save to update the E-MCH card."
-      },
-      {
-        question: "How do I flag a high-risk pregnancy?",
-        answer: "In the mother's profile, go to the 'Health Metrics' section. If a metric falls outside the safe range, the system will automatically prompt you to flag the record for Medical Officer review."
-      }
+      { question: "How do I record a clinic visit?", answer: "Navigate to the 'Patient Records' tab, search for the Mother ID, and click 'New Clinic Visit'. Enter the examination details and click save." },
+      { question: "How do I flag a high-risk pregnancy?", answer: "In the mother's profile, go to the 'Health Metrics' section. The system will automatically prompt you to flag if needed." }
     ],
     Admin: [
-      {
-        question: "How do I add a new PHM to the system?",
-        answer: "Go to 'User Management', click 'Add New User', select the 'Provider' role, and fill in their official employee ID and assigned clinic/area."
-      },
-      {
-        question: "How can I view region-wide health reports?",
-        answer: "The 'Analytics' dashboard provides aggregate, anonymized data on clinic attendances, common risk factors, and resource distribution across your managed MOH area."
-      }
+      { question: "How do I add a new PHM to the system?", answer: "Go to 'User Management', click 'Add New User', select 'Provider' role, and fill in their details." },
+      { question: "How can I view region-wide health reports?", answer: "The 'Analytics' dashboard provides aggregate data across your MOH area." }
     ]
   };
 
@@ -65,9 +50,16 @@ const HelpSupportPage = () => {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setAttachment(file);
-    }
+    if (file) setAttachment(file);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!heroRef.current) return;
+    const rect = heroRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    mouseX.set(e.clientX - centerX);
+    mouseY.set(e.clientY - centerY);
   };
 
   const handleFormSubmit = async (e) => {
@@ -75,45 +67,27 @@ const HelpSupportPage = () => {
     setIsSubmitting(true);
     setSubmitSuccess(false);
     
-    // Get form values using name attributes
-    const formValues = {
-      subject: e.target.subject?.value,
-      page_url: e.target.page_url?.value,
-      browser_info: e.target.browser_info?.value,
-      steps_to_reproduce: e.target.steps_to_reproduce?.value,
-      message: e.target.message?.value
-    };
-    
-    // Get browser info automatically
-    const browserInfo = `${navigator.userAgent} | ${navigator.platform} | Screen: ${window.screen.width}x${window.screen.height}`;
-    
-    // Get current page URL
+    const browserInfo = `${navigator.userAgent} | ${navigator.platform} | ${window.screen.width}x${window.screen.height}`;
     const pageUrl = window.location.href;
-    
-    // Prepare payload
+
     const payload = {
       ticket_type: formType,
-      subject: formType === 'contact' ? formValues.subject : null,
+      subject: formType === 'contact' ? e.target.subject?.value : null,
       page_url: pageUrl,
       browser_info: browserInfo,
-      steps_to_reproduce: formType === 'bug' ? formValues.steps_to_reproduce : null,
-      message: formValues.message,
-      attachment_url: null
+      steps_to_reproduce: formType === 'bug' ? e.target.steps_to_reproduce?.value : null,
+      message: e.target.message?.value,
     };
-    
+
     try {
       const response = await api.post('/support/ticket', payload);
-      
       if (response.data.success) {
         setSubmitSuccess(true);
         e.target.reset();
         setAttachment(null);
         setTimeout(() => setSubmitSuccess(false), 5000);
-      } else {
-        alert('Failed to submit: ' + (response.data.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error submitting ticket:', error);
       alert(error.response?.data?.message || 'Failed to submit. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -122,23 +96,95 @@ const HelpSupportPage = () => {
 
   return (
     <div className="flex-grow">
-      {/* Hero Section - Pink Theme */}
-      <section className="relative pt-20 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-pink-50 via-white to-rose-50 border-b border-pink-100 overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-pink-200/40 to-rose-200/30 rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-pink-100/40 to-transparent rounded-full blur-3xl opacity-40 -translate-x-1/3 translate-y-1/2 pointer-events-none"></div>
-        
+      {/* Enhanced Hero Section - Matching Landing Page Style */}
+      <section
+        ref={heroRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => { mouseX.set(0); mouseY.set(0); }}
+        className="relative pt-20 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-pink-50 via-white to-rose-50 border-b border-pink-100 overflow-hidden min-h-[85vh] flex items-center"
+      >
+        {/* Beautiful Cursor-Following Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Base glows */}
+          <div className="absolute top-10 left-10 w-96 h-96 bg-pink-200 rounded-full opacity-30 blur-3xl animate-pulse" />
+          <div className="absolute bottom-10 right-10 w-[32rem] h-[32rem] bg-purple-200 rounded-full opacity-25 blur-3xl animate-pulse delay-1000" />
+
+          {/* Interactive cursor orbs */}
+          <motion.div
+            className="absolute w-[34rem] h-[34rem] bg-gradient-to-br from-pink-400 via-rose-400 to-purple-400 rounded-full blur-3xl opacity-30"
+            style={{
+              left: useTransform(smoothMouseX, [-600, 600], ['10%', '55%']),
+              top: useTransform(smoothMouseY, [-600, 600], ['20%', '65%']),
+            }}
+          />
+
+          <motion.div
+            className="absolute w-[28rem] h-[28rem] bg-gradient-to-br from-violet-400 to-purple-500 rounded-full blur-3xl opacity-25"
+            style={{
+              left: useTransform(smoothMouseX, [-600, 600], ['65%', '25%']),
+              top: useTransform(smoothMouseY, [-600, 600], ['55%', '15%']),
+            }}
+          />
+
+          {/* Accent orbs */}
+          <motion.div
+            className="absolute w-64 h-64 bg-white/60 rounded-full blur-2xl opacity-40"
+            style={{
+              left: useTransform(smoothMouseX, [-700, 700], ['25%', '50%']),
+              top: useTransform(smoothMouseY, [-700, 700], ['35%', '70%']),
+            }}
+          />
+
+          {/* Sparkling particles */}
+          {[...Array(7)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1.5 h-1.5 bg-white rounded-full"
+              style={{
+                left: useTransform(smoothMouseX, [-700, 700], [`${20 + i * 8}%`, `${38 + i * 7}%`]),
+                top: useTransform(smoothMouseY, [-700, 700], [`${30 + i * 9}%`, `${48 + i * 6}%`]),
+              }}
+              animate={{ scale: [0.7, 1.3, 0.7], opacity: [0.4, 0.85, 0.4] }}
+              transition={{ duration: 2.8 + i * 0.2, repeat: Infinity, delay: i * 0.1 }}
+            />
+          ))}
+        </div>
+
         <div className="relative max-w-4xl mx-auto text-center z-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-pink-100 rounded-2xl mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center justify-center w-16 h-16 bg-pink-100 rounded-2xl mb-6"
+          >
             <Info className="h-8 w-8 text-pink-600" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight"
+          >
             How can we help you today?
-          </h1>
-          <p className="text-lg text-slate-600 mb-10">
-            Search our knowledge base or browse help topics below.
-          </p>
-          
-          <div className="max-w-2xl mx-auto relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full group transition-shadow hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)]">
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-lg text-slate-600 mb-10 max-w-2xl mx-auto"
+          >
+            Search our knowledge base or get personalized support from the Pearl Mom team.
+          </motion.p>
+
+          {/* Search Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="max-w-2xl mx-auto relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-shadow"
+          >
             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400 group-focus-within:text-pink-500 transition-colors" />
             </div>
@@ -149,7 +195,7 @@ const HelpSupportPage = () => {
               className="block w-full pl-12 pr-6 py-4 border border-slate-200 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 text-slate-800 placeholder-slate-400 text-base transition-all"
               placeholder="Search for answers, guides, or help topics..."
             />
-          </div>
+          </motion.div>
         </div>
       </section>
 

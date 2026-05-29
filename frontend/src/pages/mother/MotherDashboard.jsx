@@ -961,7 +961,7 @@ const MotherDashboard = () => {
                 allowFullScreen
               />
             </div>
-            <p className="text-white text-center text-sm mt-3 font-medium">Gentle Stretching for 3rd Trimester</p>
+            <p className="text-white text-center text-sm mt-3 font-medium">Pregnancy: A Month-By-Month Guide</p>
           </div>
         </div>
       )}
