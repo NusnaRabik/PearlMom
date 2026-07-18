@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Calendar, ChevronDown, User, Briefcase, Heart, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Calendar, ChevronDown, User, Briefcase, Heart, CheckCircle2, Stethoscope } from 'lucide-react';
+import PregnantWoman from '../../components/common/PregnantWoman';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthHook } from '../../hooks/useAuth';
 import motherImage from '../../assets/mother.png';
@@ -162,12 +163,12 @@ const RegisterPage = () => {
                     <div className="flex gap-3 bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100/80">
                       <button type="button" onClick={() => setJoinAs('Mother')}
                         className={`flex-1 min-w-[100px] py-3.5 px-4 rounded-xl flex flex-col items-center justify-center transition-all duration-300 ${joinAs === 'Mother' ? 'bg-white shadow-sm border border-pink-200 text-pink-600 scale-[1.02]' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}>
-                        <User className={`h-5 w-5 mb-2 transition-colors ${joinAs === 'Mother' ? 'text-pink-600' : 'text-slate-400'}`} />
+                        <PregnantWoman className={`h-5 w-5 mb-2 transition-colors ${joinAs === 'Mother' ? 'text-pink-600' : 'text-slate-400'}`} />
                         <span className="text-[13px] font-semibold tracking-wide">Mother</span>
                       </button>
                       <button type="button" onClick={() => setJoinAs('Provider')}
                         className={`flex-1 min-w-[100px] py-3.5 px-4 rounded-xl flex flex-col items-center justify-center transition-all duration-300 ${joinAs === 'Provider' ? 'bg-white shadow-sm border border-pink-200 text-pink-600 scale-[1.02]' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}>
-                        <Briefcase className={`h-5 w-5 mb-2 transition-colors ${joinAs === 'Provider' ? 'text-pink-600' : 'text-slate-400'}`} />
+                        <Stethoscope className={`h-5 w-5 mb-2 transition-colors ${joinAs === 'Provider' ? 'text-pink-600' : 'text-slate-400'}`} />
                         <span className="text-[13px] font-semibold tracking-wide">Provider</span>
                       </button>
                     </div>

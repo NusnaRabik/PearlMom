@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Info, User, Briefcase, UserCog, UserCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Info, User, Briefcase, UserCog, UserCircle, Stethoscope } from 'lucide-react';
+import PregnantWoman from '../../components/common/PregnantWoman';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthHook } from '../../hooks/useAuth';
 import babyHandImage from '../../assets/baby_hand.png';
@@ -134,7 +135,7 @@ const LoginPage = () => {
                 {['mother', 'provider', 'admin'].map((role) => (
                   <button key={role} type="button" onClick={() => { setLoginAs(role); setError(''); }}
                     className={`flex-1 py-2.5 px-3 rounded-lg flex items-center justify-center space-x-2 text-sm font-medium transition-all ${loginAs === role ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                    {role === 'mother' ? <User size={16} /> : role === 'provider' ? <Briefcase size={16} /> : <UserCog size={16} />}
+                    {role === 'mother' ? <PregnantWoman size={16} /> : role === 'provider' ? <Stethoscope size={16} /> : <UserCog size={16} />}
                     <span>{role.charAt(0).toUpperCase() + role.slice(1)}</span>
                   </button>
                 ))}
