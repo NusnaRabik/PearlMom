@@ -10,6 +10,7 @@ import {
   Utensils, Calendar, ArrowRight, ShieldCheck,
   Heart, Sparkles
 } from 'lucide-react';
+import PregnantWoman from '../../components/common/PregnantWoman';
 import heroImage from '../../assets/hero-image.png';
 import doctorTabletImage from '../../assets/doctor_tablet.png';
 import babyHandImage from '../../assets/baby_hand.png';
@@ -443,8 +444,8 @@ const LandingPage = () => {
 
             <div className="flex flex-col md:flex-row justify-center gap-8">
               {[
-                { icon: User, title: "Mother", description: "Access clinics, track growth, and receive reminders for your wellness journey.", link: "/register" },
-                { icon: Briefcase, title: "Provider", description: "Midwives and doctors can manage clinics, patient records, and vitals securely.", link: "/register" }
+                { icon: PregnantWoman, title: "Mother", description: "Access clinics, track growth, and receive reminders for your wellness journey.", link: "/register" },
+                { icon: Stethoscope, title: "Provider", description: "Midwives and doctors can manage clinics, patient records, and vitals securely.", link: "/register" }
               ].map((role, idx) => (
                 <motion.div
                   key={idx}
