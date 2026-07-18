@@ -75,6 +75,7 @@ router.post('/refresh-token', authController.refreshAccessToken);
 router.put('/change-password', protect, authController.changePassword);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
+router.get('/verify-reset-token', authController.verifyResetToken);
 
 // Profile management routes
 router.get('/me', protect, authController.getMe);

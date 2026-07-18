@@ -617,7 +617,6 @@ const MotherDashboard = () => {
                 </div>
                 <div className="text-left flex-1">
                   <p className="font-bold">Find Hospital</p>
-                  <p className="text-xs text-gray-500">Nearest: 1.2km</p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-400" />
               </button>

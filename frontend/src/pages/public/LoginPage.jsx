@@ -22,57 +22,57 @@ const LoginPage = () => {
   };
 
   const handleLoginSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setLoading(true);
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  if (!formData.fullName || !formData.password) {
-    setError('Please fill in all fields');
-    setLoading(false);
-    return;
-  }
-
-  try {
-    const normalizedFullName = formData.fullName.trim();
-    console.log('Attempting login with:', { fullName: normalizedFullName, role: loginAs });
-    
-    const result = await handleLogin(
-      { fullName: normalizedFullName, password: formData.password, role: loginAs },
-      login
-    );
-
-    console.log('Login result in component:', result);
-
-    if (result.success) {
-      console.log('Login successful, role:', result.role);
-      
-      // Get user from localStorage to verify role
-      const storedUser = localStorage.getItem('pearlmom_user');
-      const userData = storedUser ? JSON.parse(storedUser) : null;
-      const userRole = result.role || userData?.role;
-      
-      console.log('Navigating with role:', userRole);
-      
-      // Navigate based on role - DO THIS HERE, not in hook
-      if (userRole === 'mother') {
-        navigate('/mother/dashboard');
-      } else if (userRole === 'midwife' || userRole === 'doctor') {
-        navigate('/provider/dashboard');
-      } else if (userRole === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/');
-      }
-    } else {
-      setError(result.message || 'Login failed');
+    if (!formData.fullName || !formData.password) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
     }
-  } catch (err) {
-    console.error('Login error:', err);
-    setError('An error occurred during login');
-  } finally {
-    setLoading(false);
-  }
-};
+
+    try {
+      const normalizedFullName = formData.fullName.trim();
+      console.log('Attempting login with:', { fullName: normalizedFullName, role: loginAs });
+      
+      const result = await handleLogin(
+        { fullName: normalizedFullName, password: formData.password, role: loginAs },
+        login
+      );
+
+      console.log('Login result in component:', result);
+
+      if (result.success) {
+        console.log('Login successful, role:', result.role);
+        
+        // Get user from localStorage to verify role
+        const storedUser = localStorage.getItem('pearlmom_user');
+        const userData = storedUser ? JSON.parse(storedUser) : null;
+        const userRole = result.role || userData?.role;
+        
+        console.log('Navigating with role:', userRole);
+        
+        // Navigate based on role - DO THIS HERE, not in hook
+        if (userRole === 'mother') {
+          navigate('/mother/dashboard');
+        } else if (userRole === 'midwife' || userRole === 'doctor') {
+          navigate('/provider/dashboard');
+        } else if (userRole === 'admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/');
+        }
+      } else {
+        setError(result.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An error occurred during login');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDemoLogin = async (role) => {
     setLoading(true);
@@ -161,7 +161,12 @@ const LoginPage = () => {
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="block text-sm font-medium text-slate-700">Password</label>
-                  <button type="button" className="text-sm font-semibold text-pink-600 hover:text-pink-700">Forgot password?</button>
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-sm font-semibold text-pink-600 hover:text-pink-700"
+                  >
+                    Forgot password?
+                  </Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />

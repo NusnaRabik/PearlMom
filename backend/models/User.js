@@ -15,7 +15,8 @@ const User = sequelize.define('User', {
   },
   email: {
     type: DataTypes.STRING(100),
-    unique: true
+    unique: true,
+    allowNull: false
   },
   profile_picture_url: {
     type: DataTypes.STRING(500)
@@ -50,7 +51,6 @@ const User = sequelize.define('User', {
   deleted_at: {
     type: DataTypes.DATE
   },
-  // Add alert_preferences field
   alert_preferences: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -60,7 +60,7 @@ const User = sequelize.define('User', {
       newUserRegistration: true
     })
   },
-  // Add reset token fields for password reset
+  // Password reset fields - FIXED: removed duplicates
   reset_token: {
     type: DataTypes.STRING(255),
     allowNull: true
@@ -68,24 +68,7 @@ const User = sequelize.define('User', {
   reset_token_expires: {
     type: DataTypes.DATE,
     allowNull: true
-  },
-  reset_token: {
-  type: DataTypes.STRING(255),
-  allowNull: true
-},
-reset_token_expires: {
-  type: DataTypes.DATE,
-  allowNull: true
-},
-alert_preferences: {
-  type: DataTypes.TEXT,
-  allowNull: true,
-  defaultValue: JSON.stringify({
-    criticalSystemAlerts: true,
-    securityLoginAlerts: true,
-    newUserRegistration: true
-  })
-}
+  }
 }, {
   tableName: 'users',
   timestamps: true,
@@ -94,6 +77,12 @@ alert_preferences: {
   hooks: {
     beforeCreate: async (user) => {
       if (user.password_hash) {
+        const salt = await bcrypt.genSalt(10);
+        user.password_hash = await bcrypt.hash(user.password_hash, salt);
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('password_hash')) {
         const salt = await bcrypt.genSalt(10);
         user.password_hash = await bcrypt.hash(user.password_hash, salt);
       }

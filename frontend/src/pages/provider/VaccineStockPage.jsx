@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
+import ProviderChatWidget from '../../components/provider/ProviderChatWidget';
 
 const VaccineStockPage = () => {
   const [loading, setLoading] = useState(true);
@@ -578,6 +579,7 @@ const VaccineStockPage = () => {
           animation: slideInRight 0.3s ease-out;
         }
       `}</style>
+      <ProviderChatWidget />
     </div>
   );
 };

@@ -295,8 +295,7 @@ const loginByName = async (req, res) => {
       });
     }
 
-    // Verify password - Enhanced with better error handling
-        // Verify password
+    // Verify password
     let isPasswordValid = false;
     
     try {
@@ -308,14 +307,6 @@ const loginByName = async (req, res) => {
 
     if (!isPasswordValid) {
       console.log('❌ Password verification failed');
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid full name or password'
-      });
-    }
-    
-    if (!isPasswordValid) {
-      console.log('Password validation FAILED for user:', user.name);
       return res.status(401).json({
         success: false,
         message: 'Invalid full name or password'
@@ -771,6 +762,7 @@ const logout = async (req, res) => {
     });
   }
 };
+
 // Change password (for authenticated user)
 const changePassword = async (req, res) => {
   try {
@@ -930,11 +922,18 @@ const forgotPassword = async (req, res) => {
       });
     }
     
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ 
+      where: { 
+        email: email.trim().toLowerCase(),
+        is_deleted: false 
+      } 
+    });
+    
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'No account found with this email'
+      // For security, don't reveal if email exists
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a password reset link has been sent.'
       });
     }
     
@@ -949,18 +948,25 @@ const forgotPassword = async (req, res) => {
     });
     
     // In a real app, send email here
-    console.log(`Password reset token for ${email}: ${resetToken}`);
-    console.log(`Reset link: http://localhost:5173/reset-password?token=${resetToken}`);
+    // For development, log the token
+    console.log(`========================================`);
+    console.log(`🔐 PASSWORD RESET REQUEST`);
+    console.log(`📧 Email: ${email}`);
+    console.log(`🔑 Reset Token: ${resetToken}`);
+    console.log(`🔗 Reset Link: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`);
+    console.log(`⏰ Expires: ${resetTokenExpires}`);
+    console.log(`========================================`);
     
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: 'Password reset link has been sent to your email'
+      message: 'If an account exists with this email, a password reset link has been sent.'
     });
+    
   } catch (error) {
     console.error('Forgot password error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error sending reset link'
+      message: 'Error sending reset link. Please try again.'
     });
   }
 };
@@ -1011,11 +1017,55 @@ const resetPassword = async (req, res) => {
       success: true,
       message: 'Password reset successfully'
     });
+    
   } catch (error) {
     console.error('Reset password error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error resetting password'
+      message: 'Error resetting password. Please try again.'
+    });
+  }
+};
+
+// Verify reset token
+const verifyResetToken = async (req, res) => {
+  try {
+    const { token } = req.query;
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token is required'
+      });
+    }
+    
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    
+    const user = await User.findOne({
+      where: {
+        reset_token: tokenHash,
+        reset_token_expires: { [Op.gt]: new Date() }
+      }
+    });
+    
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Token is valid',
+      data: { email: user.email }
+    });
+    
+  } catch (error) {
+    console.error('Verify token error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error verifying token'
     });
   }
 };
@@ -1051,6 +1101,7 @@ const uploadProfilePicture = async (req, res) => {
     });
   }
 };
+
 module.exports = {
   register,
   login,
@@ -1060,9 +1111,10 @@ module.exports = {
   checkProfileStatus,
   completeProfile,
   logout,
-  changePassword,      // Add this
-  updateProfile,       // Add this
-  forgotPassword,      // Add this
-  resetPassword,       // Add this
+  changePassword,
+  updateProfile,
+  forgotPassword,
+  resetPassword,
+  verifyResetToken,
   uploadProfilePicture
 };
