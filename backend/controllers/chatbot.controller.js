@@ -4,7 +4,7 @@ const { successResponse, errorResponse } = require('../utils/response');
 
 // Initialize OpenAI with your API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY || 'sk-dummy-key-replace-this-later'
 });
 
 // System prompt for the maternal health assistant (Mothers)
