@@ -778,50 +778,7 @@ const MotherDashboard = () => {
                     </div>
                   </fieldset>
 
-                  {/* ── Section: Pregnancy Details ── */}
-                  <fieldset className="space-y-4">
-                    <legend className="text-sm font-semibold text-pink-700 uppercase tracking-wider pb-1 border-b border-pink-100 w-full">
-                      Pregnancy Details
-                    </legend>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Status *</label>
-                        <select name="pregnancy_status" value={profileData.pregnancy_status} onChange={handleProfileInputChange}
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
-                          <option value="pregnant">Pregnant</option>
-                          <option value="postnatal">Postnatal</option>
-                          <option value="completed">Completed</option>
-                        </select>
-                      </div>
-                      <Field label="LMP Date *" name="lmp_date" type="date" value={profileData.lmp_date} onChange={handleProfileInputChange} />
-                      <Field label="Expected Delivery Date *" name="expected_delivery_date" type="date"
-                        value={profileData.expected_delivery_date} onChange={handleProfileInputChange} />
-                      <Field label="Gestational Weeks *" name="weeks" type="number" placeholder="e.g., 28"
-                        min="1" max="42" value={profileData.weeks} onChange={handleProfileInputChange} />
-                      <Field label="Current Weight (kg) *" name="current_weight" type="number" step="0.1" placeholder="e.g., 65"
-                        value={profileData.current_weight} onChange={handleProfileInputChange} />
-                      <Field label="Height (cm) *" name="height" type="number" step="0.1" placeholder="e.g., 160"
-                        value={profileData.height} onChange={handleProfileInputChange} />
-                      <Field label="Gravida (No. of pregnancies) *" name="gravida" type="number"
-                        value={profileData.gravida} onChange={handleProfileInputChange} />
-                      <Field label="Para (No. of deliveries) *" name="para" type="number"
-                        value={profileData.para} onChange={handleProfileInputChange} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Allergies *</label>
-                        <textarea name="allergies" value={profileData.allergies} onChange={handleProfileInputChange} rows="2"
-                          placeholder="List any allergies (or 'None')"
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-pink-500" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Chronic Diseases *</label>
-                        <textarea name="chronic_diseases" value={profileData.chronic_diseases} onChange={handleProfileInputChange} rows="2"
-                          placeholder="List any chronic diseases (or 'None')"
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-pink-500" />
-                      </div>
-                    </div>
-                  </fieldset>
+
 
                   {/* ── Section: Family / Emergency ── */}
                   <fieldset className="space-y-4">
