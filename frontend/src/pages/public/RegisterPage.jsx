@@ -111,8 +111,17 @@ const RegisterPage = () => {
   return (
     <div className="min-h-screen flex flex-col font-sans bg-[#fbfbfd]">
       <div className="absolute top-6 left-8 z-10 md:top-8 md:left-12">
-        <Link to="/" className="flex items-center space-x-2">
-          <span className="text-pink-900 font-bold text-xl tracking-tight">PEARL MOM</span>
+        <Link to="/" className="group flex items-center space-x-2.5">
+          <div className="relative">
+            <div className="absolute inset-0 bg-pink-500 rounded-xl blur-md opacity-50 transition-opacity"></div>
+            <div className="relative w-9 h-9 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Heart className="w-5 h-5 text-white fill-white/20" />
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-gray-800 text-lg leading-tight tracking-tight">PearlMom</span>
+            <span className="text-[10px] text-gray-400 -mt-0.5">Maternal Health</span>
+          </div>
         </Link>
       </div>
 
@@ -129,7 +138,7 @@ const RegisterPage = () => {
               Begin your journey<br />to radiant<br />motherhood.
             </h1>
             <p className="text-slate-600 text-base lg:text-lg mb-10 leading-relaxed max-w-[90%] font-light">
-              Whether you are an expectant mother seeking care or a provider offering expertise, PEARL MOM is your digital home for maternal health excellence.
+              Whether you are an expectant mother seeking care or a provider offering expertise, PearlMom is your digital home for maternal health excellence.
             </p>
             <div className="mt-4">
               <img 
