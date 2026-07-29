@@ -98,9 +98,9 @@ const LoginPage = () => {
   const passwordStrength = formData.password ? checkPasswordStrength(formData.password) : null;
 
   return (
-    <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden bg-[#fafafa]">
+    <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden bg-pink-50/50">
       <main className="flex-grow flex items-center justify-center p-4 sm:p-8 pt-10">
-        <div className="max-w-5xl w-full bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+        <div className="max-w-5xl w-full bg-white/90 backdrop-blur-sm rounded-[2rem] shadow-xl shadow-pink-100/50 border border-pink-100 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
 
           <div className="md:w-1/2 relative p-10 md:p-14 lg:p-16 text-white overflow-hidden flex flex-col justify-between">
             <div className="absolute inset-0 z-0"
@@ -140,16 +140,16 @@ const LoginPage = () => {
             </div>
           </div>
 
-          <div className="md:w-1/2 p-8 md:p-14 lg:p-16 flex flex-col justify-center bg-white">
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Login</h2>
-            <p className="text-slate-500 mb-8 text-sm">Secure access to your maternal health journey</p>
+          <div className="md:w-1/2 p-8 md:p-14 lg:p-16 flex flex-col justify-center bg-white/80">
+            <h2 className="text-3xl font-bold text-pink-900 mb-2">Login</h2>
+            <p className="text-pink-600/70 mb-8 text-sm">Secure access to your maternal health journey</p>
 
             <div className="mb-6">
               <p className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wider">Login as:</p>
-              <div className="flex bg-slate-50 p-1 rounded-full border border-slate-100">
+              <div className="flex bg-pink-50/50 p-1 rounded-full border border-pink-100">
                 {['mother', 'provider', 'admin'].map((role) => (
                   <button key={role} type="button" onClick={() => { setLoginAs(role); setError(''); }}
-                    className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center space-x-2 text-sm font-medium transition-all ${loginAs === role ? 'bg-white text-pink-600 shadow-sm border border-pink-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                    className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center space-x-2 text-sm font-medium transition-all ${loginAs === role ? 'bg-white text-pink-600 shadow-md shadow-pink-100 border border-pink-200' : 'text-pink-400 hover:text-pink-600 hover:bg-pink-50/50'}`}>
                     {role === 'mother' ? <User size={15} /> : role === 'provider' ? <Briefcase size={15} /> : <UserCog size={15} />}
                     <span>{role.charAt(0).toUpperCase() + role.slice(1)}</span>
                   </button>
@@ -168,9 +168,9 @@ const LoginPage = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1.5">Email or Full Name</label>
                 <div className="relative">
-                  <UserCircle className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                  <UserCircle className="absolute left-4 top-3.5 h-5 w-5 text-pink-400" />
                   <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange}
-                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-full bg-[#fcfcfc] focus:bg-white focus:ring-1 focus:ring-pink-300 focus:border-pink-300 transition-all text-slate-900 placeholder-slate-400 text-sm outline-none"
+                    className="block w-full pl-11 pr-4 py-3 border border-pink-100 rounded-full bg-pink-50/30 focus:bg-white focus:ring-2 focus:ring-pink-300 focus:border-pink-300 transition-all text-slate-900 placeholder-pink-300 text-sm outline-none hover:border-pink-200"
                     placeholder="Enter your email or full name" />
                 </div>
               </div>
@@ -185,11 +185,11 @@ const LoginPage = () => {
                   </Link>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                  <Lock className="absolute left-4 top-3.5 h-5 w-5 text-pink-400" />
                   <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange}
-                    className="block w-full pl-11 pr-11 py-3 border border-slate-200 rounded-full bg-[#fcfcfc] focus:bg-white focus:ring-1 focus:ring-pink-300 focus:border-pink-300 transition-all text-slate-900 tracking-widest text-sm outline-none"
+                    className="block w-full pl-11 pr-11 py-3 border border-pink-100 rounded-full bg-pink-50/30 focus:bg-white focus:ring-2 focus:ring-pink-300 focus:border-pink-300 transition-all text-slate-900 tracking-widest text-sm outline-none hover:border-pink-200 placeholder-pink-300"
                     placeholder="•••••••••••" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-pink-400 hover:text-pink-600">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
