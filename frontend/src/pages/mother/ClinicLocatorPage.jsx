@@ -69,10 +69,42 @@ const ClinicLocatorPage = () => {
     try {
       setLoading(true);
       const response = await api.get('/clinics');
+      
       if (response.data.success) {
         const clinicsData = response.data.data?.clinics || [];
         setClinics(clinicsData);
-        setFilteredClinics(clinicsData);
+        
+        let initialFilter = '';
+        
+        // Try to fetch mother's profile to get her district
+        if (user && user.role === 'mother') {
+          try {
+            const profileResponse = await api.get('/mothers/profile');
+            if (profileResponse.data.success && profileResponse.data.data?.mother?.district) {
+              initialFilter = profileResponse.data.data.mother.district;
+            }
+          } catch (e) {
+            console.error('Error fetching mother profile for district:', e);
+          }
+        }
+        
+        if (initialFilter) {
+          const filtered = clinicsData.filter(clinic => 
+            clinic.district?.toLowerCase().includes(initialFilter.toLowerCase()) ||
+            clinic.address?.toLowerCase().includes(initialFilter.toLowerCase()) ||
+            clinic.name?.toLowerCase().includes(initialFilter.toLowerCase())
+          );
+          
+          if (filtered.length > 0) {
+            setFilteredClinics(filtered);
+            setTempSearchTerm(initialFilter);
+            setSearchTerm(initialFilter);
+          } else {
+            setFilteredClinics(clinicsData);
+          }
+        } else {
+          setFilteredClinics(clinicsData);
+        }
       }
     } catch (error) {
       console.error('Error fetching clinics:', error);
