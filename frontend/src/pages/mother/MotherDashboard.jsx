@@ -22,10 +22,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const REQUIRED_FIELDS = [
   'full_name', 'nic', 'dob', 'address', 'district', 'blood_group',
-  'pregnancy_status', 'lmp_date', 'expected_delivery_date',
-  'current_weight', 'height', 'gravida', 'emergency_contact_name',
+  'pregnancy_status', 'gravida', 'emergency_contact_name',
   'emergency_contact_phone', 'husband_name', 'husband_contact',
-  'para', 'allergies', 'chronic_diseases', 'emergency_relationship', 'weeks',
+  'para', 'emergency_relationship',
 ];
 
 const EMPTY_PROFILE = {
