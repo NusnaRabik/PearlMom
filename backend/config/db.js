@@ -2,6 +2,14 @@ const { Sequelize } = require('sequelize');
 const mysql2 = require('mysql2');
 require('dotenv').config();
 
+// Optional: Add SSL config if connecting to remote like Aiven
+const dialectOptions = process.env.DB_SSL === 'true' ? {
+  ssl: {
+    require: true,
+    rejectUnauthorized: false
+  }
+} : {};
+
 // Create Sequelize instance
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'pearl_mom_db',
@@ -13,6 +21,7 @@ const sequelize = new Sequelize(
     dialect: 'mysql',
     dialectModule: mysql2,
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    dialectOptions, // Added SSL support
     pool: {
       max: 10,
       min: 0,

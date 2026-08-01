@@ -1,0 +1,44 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: pearl-mom-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DB_HOST
+        value: mysql-291eb437-ms-c217.f.aivencloud.com
+      - key: DB_PORT
+        value: 21290
+      - key: DB_NAME
+        value: defaultdb
+      - key: DB_USER
+        value: avnadmin
+      - key: DB_PASSWORD
+        sync: false # Set this manually in Render dashboard for security
+      - key: DB_SSL
+        value: true
+      - key: JWT_SECRET
+        generateValue: true # Render will generate a strong secret automatically
+      - key: FRONTEND_URL
+        value: https://pearl-mom-frontend.onrender.com # Change this if you use a custom domain
+
+  # Frontend Static Site
+  - type: web
+    name: pearl-mom-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://pearl-mom-backend.onrender.com/api # Connects to the backend service above
