@@ -169,18 +169,25 @@ const ClinicLocatorPage = () => {
     }
   };
 
-  // Cleanup effect
+  // Initial data fetch
   useEffect(() => {
     fetchClinics();
-    
-    const timer = setTimeout(() => {
-      if (!mapRef.current && !mapInitialized) {
+  }, []);
+
+  // Initialize map when loading finishes and container is ready
+  useEffect(() => {
+    if (!loading && mapContainerRef.current && !mapInitialized) {
+      // Small timeout to ensure DOM is fully painted
+      const timer = setTimeout(() => {
         initializeMap();
-      }
-    }, 100);
-    
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, mapInitialized]);
+
+  // Cleanup effect for unmounting
+  useEffect(() => {
     return () => {
-      clearTimeout(timer);
       // Clean up map and event listeners
       if (mapContainerRef.current) {
         if (mapContainerRef.current._mapClickHandler) {
@@ -196,7 +203,7 @@ const ClinicLocatorPage = () => {
       }
       setMapInitialized(false);
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   // Add user location marker
   const addUserMarker = () => {
@@ -657,20 +664,6 @@ const ClinicLocatorPage = () => {
       delete window.viewClinicDetails;
     };
   }, [clinics]);
-
-  // Initialize map and fetch data
-  useEffect(() => {
-    fetchClinics();
-    setTimeout(() => {
-      initializeMap();
-    }, 100);
-    
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
-    };
-  }, []);
 
   // Add user marker when location is available
   useEffect(() => {
