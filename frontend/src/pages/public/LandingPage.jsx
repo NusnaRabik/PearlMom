@@ -157,9 +157,9 @@ const LandingPage = () => {
     if (num >= 1000) {
       const k = Math.floor(num / 1000);
       const remainder = num % 1000;
-      if (remainder === 0) return `${k}K+`;
-      if (remainder >= 100) return `${k}.${Math.floor(remainder / 100)}K+`;
-      return `${k}K+`;
+      if (remainder === 0) return `${k}K`;
+      if (remainder >= 100) return `${k}.${Math.floor(remainder / 100)}K`;
+      return `${k}K`;
     }
     return num.toString();
   };
