@@ -70,13 +70,65 @@ const getAssignedMothers = async (req, res) => {
   }
 };
 
+// Helper to sanitize incoming visit payload for database integrity
+const sanitizeVisitData = (data) => {
+  const parseNum = (val) => (val !== undefined && val !== null && val !== '' && !isNaN(val) ? Number(val) : null);
+  const parseStr = (val) => (val !== undefined && val !== null && String(val).trim() !== '' ? String(val).trim() : null);
+
+  let formattedTime = null;
+  if (data.visit_time) {
+    const timeStr = String(data.visit_time).trim();
+    const match12 = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+    if (match12) {
+      let hours = parseInt(match12[1], 10);
+      const minutes = match12[2];
+      const seconds = match12[3] || '00';
+      const modifier = match12[4];
+      if (modifier) {
+        if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+        if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      }
+      formattedTime = `${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
+    } else if (/^\d{2}:\d{2}(:\d{2})?$/.test(timeStr)) {
+      formattedTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+    }
+  }
+
+  return {
+    visit_date: data.visit_date || new Date().toISOString().split('T')[0],
+    visit_time: formattedTime,
+    gestational_weeks: parseNum(data.gestational_weeks),
+    blood_pressure_systolic: parseNum(data.blood_pressure_systolic),
+    blood_pressure_diastolic: parseNum(data.blood_pressure_diastolic),
+    weight_kg: parseNum(data.weight_kg),
+    fetal_heart_rate: parseNum(data.fetal_heart_rate),
+    fundal_height_cm: parseNum(data.fundal_height_cm),
+    edema: ['none', 'mild', 'moderate', 'severe'].includes(data.edema) ? data.edema : 'none',
+    fetal_movement: ['normal', 'decreased', 'increased', 'absent'].includes(data.fetal_movement) ? data.fetal_movement : 'normal',
+    hemoglobin_level: parseNum(data.hemoglobin_level),
+    urine_albumin: parseStr(data.urine_albumin) || 'Normal',
+    urine_sugar: parseStr(data.urine_sugar) || 'Normal',
+    patient_complaints: parseStr(data.patient_complaints),
+    clinical_notes: parseStr(data.clinical_notes),
+    referrals: parseStr(data.referrals),
+    next_visit_date: parseStr(data.next_visit_date),
+    visit_type: data.visit_type || 'antenatal'
+  };
+};
+
 // Get mother details for clinic visit (no midwife validation)
 const getMotherForVisit = async (req, res) => {
   try {
     const { motherId } = req.params;
     
     const mother = await Mother.findOne({
-      where: { mother_code: motherId, is_deleted: false },
+      where: {
+        [Op.or]: [
+          { mother_code: motherId },
+          { mother_id: isNaN(motherId) ? 0 : Number(motherId) }
+        ],
+        is_deleted: false
+      },
       include: [
         { model: User, attributes: ['name', 'email', 'phone_no'] }
       ]
@@ -178,9 +230,19 @@ const saveDraftVisit = async (req, res) => {
   
   try {
     const { motherId } = req.params;
-    const visitData = req.body;
+    const sanitizedData = sanitizeVisitData(req.body);
+    const { health_education_checklist } = req.body;
     
-    const mother = await Mother.findOne({ where: { mother_code: motherId, is_deleted: false } });
+    const mother = await Mother.findOne({
+      where: {
+        [Op.or]: [
+          { mother_code: motherId },
+          { mother_id: isNaN(motherId) ? 0 : Number(motherId) }
+        ],
+        is_deleted: false
+      }
+    });
+
     if (!mother) {
       await transaction.rollback();
       return errorResponse(res, 'Mother not found', 404);
@@ -193,14 +255,30 @@ const saveDraftVisit = async (req, res) => {
     });
     
     if (draft) {
-      await draft.update(visitData, { transaction });
-    } else {
-      draft = await ClinicVisit.create({
-        mother_id: mother.mother_id,
-        ...visitData,
+      await draft.update({
+        ...sanitizedData,
         status: 'draft',
         recorded_by: req.user.user_id
       }, { transaction });
+    } else {
+      draft = await ClinicVisit.create({
+        mother_id: mother.mother_id,
+        ...sanitizedData,
+        status: 'draft',
+        recorded_by: req.user.user_id
+      }, { transaction });
+    }
+
+    // Update health education checklist if provided
+    if (Array.isArray(health_education_checklist) && health_education_checklist.length > 0) {
+      for (const item of health_education_checklist) {
+        if (item.id) {
+          await HealthEducationChecklist.update(
+            { is_completed: !!item.completed, completed_at: item.completed ? new Date() : null },
+            { where: { mother_id: mother.mother_id, checklist_id: item.id }, transaction }
+          );
+        }
+      }
     }
     
     await transaction.commit();
@@ -219,17 +297,19 @@ const completeVisit = async (req, res) => {
   
   try {
     const { motherId } = req.params;
-    const { 
-      visit_date, visit_time, gestational_weeks,
-      blood_pressure_systolic, blood_pressure_diastolic,
-      weight_kg, fetal_heart_rate, fundal_height_cm,
-      edema, fetal_movement, hemoglobin_level,
-      urine_albumin, urine_sugar, patient_complaints,
-      clinical_notes, referrals, next_visit_date,
-      health_education_checklist 
-    } = req.body;
+    const sanitizedData = sanitizeVisitData(req.body);
+    const { health_education_checklist } = req.body;
     
-    const mother = await Mother.findOne({ where: { mother_code: motherId, is_deleted: false } });
+    const mother = await Mother.findOne({
+      where: {
+        [Op.or]: [
+          { mother_code: motherId },
+          { mother_id: isNaN(motherId) ? 0 : Number(motherId) }
+        ],
+        is_deleted: false
+      }
+    });
+
     if (!mother) {
       await transaction.rollback();
       return errorResponse(res, 'Mother not found', 404);
@@ -238,56 +318,42 @@ const completeVisit = async (req, res) => {
     // Create completed visit record
     const visit = await ClinicVisit.create({
       mother_id: mother.mother_id,
-      visit_date: visit_date || new Date(),
-      visit_time,
-      gestational_weeks: gestational_weeks || mother.weeks,
-      blood_pressure_systolic,
-      blood_pressure_diastolic,
-      weight_kg,
-      fetal_heart_rate,
-      fundal_height_cm,
-      edema: edema || 'none',
-      fetal_movement: fetal_movement || 'normal',
-      hemoglobin_level,
-      urine_albumin: urine_albumin || 'Normal',
-      urine_sugar: urine_sugar || 'Normal',
-      patient_complaints,
-      clinical_notes,
-      referrals,
-      next_visit_date,
+      ...sanitizedData,
       status: 'completed',
       recorded_by: req.user.user_id
     }, { transaction });
     
-    // Update mother's current weight and weeks
-    if (weight_kg) {
-      await Mother.update({ current_weight: weight_kg }, { where: { mother_id: mother.mother_id }, transaction });
+    // Update mother's current weight and weeks if provided
+    if (sanitizedData.weight_kg !== null) {
+      await Mother.update({ current_weight: sanitizedData.weight_kg }, { where: { mother_id: mother.mother_id }, transaction });
     }
-    if (gestational_weeks) {
-      await Mother.update({ weeks: gestational_weeks }, { where: { mother_id: mother.mother_id }, transaction });
+    if (sanitizedData.gestational_weeks !== null) {
+      await Mother.update({ weeks: sanitizedData.gestational_weeks }, { where: { mother_id: mother.mother_id }, transaction });
     }
     
     // Update health education checklist
-    if (health_education_checklist && health_education_checklist.length > 0) {
+    if (Array.isArray(health_education_checklist) && health_education_checklist.length > 0) {
       for (const item of health_education_checklist) {
-        await HealthEducationChecklist.update(
-          { is_completed: item.completed, completed_at: item.completed ? new Date() : null },
-          { where: { mother_id: mother.mother_id, checklist_id: item.id }, transaction }
-        );
+        if (item.id) {
+          await HealthEducationChecklist.update(
+            { is_completed: !!item.completed, completed_at: item.completed ? new Date() : null },
+            { where: { mother_id: mother.mother_id, checklist_id: item.id }, transaction }
+          );
+        }
       }
     }
     
-    // Delete any draft visits
+    // Delete/Cancel any draft visits
     await ClinicVisit.update(
       { status: 'cancelled' },
       { where: { mother_id: mother.mother_id, status: 'draft' }, transaction }
     );
     
     // Schedule next appointment if next_visit_date provided
-    if (next_visit_date) {
+    if (sanitizedData.next_visit_date) {
       await Appointment.create({
         mother_id: mother.mother_id,
-        appointment_date: next_visit_date,
+        appointment_date: sanitizedData.next_visit_date,
         appointment_type: 'checkup',
         status: 'scheduled',
         notes: 'Follow-up visit scheduled during clinic visit'
