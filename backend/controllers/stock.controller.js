@@ -3,6 +3,7 @@ const ThriposhaStockSettings = require('../models/ThriposhaStockSettings');
 const VaccineStock = require('../models/VaccineStock');
 const { successResponse, errorResponse } = require('../utils/response');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/db');
 
 // ==================== THRIPOSHA STOCK ====================
 
@@ -14,10 +15,10 @@ const getThriposhaStock = async (req, res) => {
       order: [['expiry_date', 'ASC']]
     });
 
-    const totalReceived = batches.reduce((sum, b) => sum + b.packets_received, 0);
-    const totalDistributed = batches.reduce((sum, b) => sum + b.packets_distributed, 0);
-    const totalDamaged = batches.reduce((sum, b) => sum + b.packets_damaged, 0);
-    const totalExpired = batches.reduce((sum, b) => sum + b.packets_expired, 0);
+    const totalReceived = batches.reduce((sum, b) => sum + (Number(b.packets_received) || 0), 0);
+    const totalDistributed = batches.reduce((sum, b) => sum + (Number(b.packets_distributed) || 0), 0);
+    const totalDamaged = batches.reduce((sum, b) => sum + (Number(b.packets_damaged) || 0), 0);
+    const totalExpired = batches.reduce((sum, b) => sum + (Number(b.packets_expired) || 0), 0);
     const remainingStock = totalReceived - totalDistributed - totalDamaged - totalExpired;
 
     const settings = await ThriposhaStockSettings.findOne();
@@ -37,7 +38,7 @@ const getThriposhaStock = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching Thriposha stock:', error);
-    return errorResponse(res, 'Failed to fetch stock data');
+    return errorResponse(res, 'Failed to fetch stock data: ' + error.message);
   }
 };
 
@@ -46,6 +47,10 @@ const addThriposhaBatch = async (req, res) => {
   try {
     const { batch_number, packets_received, received_date, expiry_date, supplier, batch_notes } = req.body;
 
+    if (!batch_number) {
+      return errorResponse(res, 'Batch number is required', 400);
+    }
+
     const existingBatch = await ThriposhaStock.findOne({ where: { batch_number } });
     if (existingBatch) {
       return errorResponse(res, 'Batch number already exists', 400);
@@ -53,22 +58,22 @@ const addThriposhaBatch = async (req, res) => {
 
     const batch = await ThriposhaStock.create({
       batch_number,
-      packets_received,
+      packets_received: parseInt(packets_received, 10) || 0,
       packets_distributed: 0,
       packets_damaged: 0,
       packets_expired: 0,
-      received_date,
-      expiry_date,
-      supplier,
-      batch_notes,
+      received_date: received_date || new Date(),
+      expiry_date: expiry_date || null,
+      supplier: supplier || null,
+      batch_notes: batch_notes || null,
       status: 'active',
       created_by: req.user.user_id
     });
 
-    return successResponse(res, { batch }, 'Stock batch added successfully');
+    return successResponse(res, { batch }, 'Stock batch added successfully', 201);
   } catch (error) {
     console.error('Error adding Thriposha batch:', error);
-    return errorResponse(res, 'Failed to add stock batch');
+    return errorResponse(res, 'Failed to add stock batch: ' + error.message);
   }
 };
 
@@ -189,6 +194,10 @@ const addVaccineBatch = async (req, res) => {
       storage_temperature, purchase_order_number, supplier, lot_number, notes
     } = req.body;
 
+    if (!batch_number) {
+      return errorResponse(res, 'Batch number is required', 400);
+    }
+
     const existingBatch = await VaccineStock.findOne({ where: { batch_number } });
     if (existingBatch) {
       return errorResponse(res, 'Batch number already exists', 400);
@@ -196,28 +205,28 @@ const addVaccineBatch = async (req, res) => {
 
     const batch = await VaccineStock.create({
       vaccine_name,
-      vaccine_type,
+      vaccine_type: vaccine_type || 'other',
       batch_number,
-      manufacturer,
-      doses_received,
+      manufacturer: manufacturer || null,
+      doses_received: parseInt(doses_received, 10) || 0,
       doses_used: 0,
       doses_damaged: 0,
       doses_expired: 0,
-      received_date,
-      expiry_date,
-      storage_temperature,
-      purchase_order_number,
-      supplier,
-      lot_number,
-      notes,
+      received_date: received_date || new Date(),
+      expiry_date: expiry_date || null,
+      storage_temperature: storage_temperature || null,
+      purchase_order_number: purchase_order_number || null,
+      supplier: supplier || null,
+      lot_number: lot_number || null,
+      notes: notes || null,
       status: 'active',
       created_by: req.user.user_id
     });
 
-    return successResponse(res, { batch }, 'Vaccine batch added successfully');
+    return successResponse(res, { batch }, 'Vaccine batch added successfully', 201);
   } catch (error) {
     console.error('Error adding vaccine batch:', error);
-    return errorResponse(res, 'Failed to add vaccine batch');
+    return errorResponse(res, 'Failed to add vaccine batch: ' + error.message);
   }
 };
 
@@ -231,8 +240,9 @@ const recordVaccineUsage = async (req, res) => {
       return errorResponse(res, 'Batch not found', 404);
     }
 
-    const newUsed = batch.doses_used + doses_used;
-    const remaining = batch.doses_received - newUsed - batch.doses_damaged - batch.doses_expired;
+    const safeDoses = parseInt(doses_used, 10) || 0;
+    const newUsed = (batch.doses_used || 0) + safeDoses;
+    const remaining = (batch.doses_received || 0) - newUsed - (batch.doses_damaged || 0) - (batch.doses_expired || 0);
 
     await batch.update({ doses_used: newUsed });
 
@@ -244,7 +254,7 @@ const recordVaccineUsage = async (req, res) => {
     return successResponse(res, { batch, remaining }, 'Usage recorded successfully');
   } catch (error) {
     console.error('Error recording vaccine usage:', error);
-    return errorResponse(res, 'Failed to record usage');
+    return errorResponse(res, 'Failed to record usage: ' + error.message);
   }
 };
 

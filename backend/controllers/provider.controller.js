@@ -362,23 +362,29 @@ const recordClinicVisit = async (req, res) => {
     const { mother_id, visit_date, blood_pressure_systolic, blood_pressure_diastolic, 
             weight_kg, fetal_heart_rate, fundal_height_cm, notes } = req.body;
 
+    const toNum = (v) => (v !== '' && v !== undefined && v !== null && !isNaN(Number(v))) ? Number(v) : null;
+    const toInt = (v) => (v !== '' && v !== undefined && v !== null && !isNaN(parseInt(v, 10))) ? parseInt(v, 10) : null;
+    const safeWeight = toNum(weight_kg);
+
     const record = await MaternalRecord.create({
       mother_id,
-      visit_date: visit_date || new Date(),
+      visit_date: (visit_date && String(visit_date).trim() !== '') ? visit_date : new Date(),
       visit_type: 'antenatal',
-      blood_pressure_systolic,
-      blood_pressure_diastolic,
-      weight_kg,
-      fetal_heart_rate,
-      fundal_height_cm,
-      doctors_notes: notes,
+      blood_pressure_systolic: toInt(blood_pressure_systolic),
+      blood_pressure_diastolic: toInt(blood_pressure_diastolic),
+      weight_kg: safeWeight,
+      fetal_heart_rate: toInt(fetal_heart_rate),
+      fundal_height_cm: toNum(fundal_height_cm),
+      doctors_notes: notes || null,
       recorded_by: req.user.user_id
     }, { transaction });
 
-    await Mother.update({ current_weight: weight_kg }, { 
-      where: { mother_id },
-      transaction 
-    });
+    if (safeWeight !== null) {
+      await Mother.update({ current_weight: safeWeight }, { 
+        where: { mother_id },
+        transaction 
+      });
+    }
 
     await transaction.commit();
 
@@ -386,7 +392,7 @@ const recordClinicVisit = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error('Error recording clinic visit:', error);
-    return errorResponse(res, 'Error recording clinic visit');
+    return errorResponse(res, 'Error recording clinic visit: ' + error.message);
   }
 };
 

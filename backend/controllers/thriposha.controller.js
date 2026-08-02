@@ -110,6 +110,11 @@ const assessEligibility = async (req, res) => {
       recommendedPackets = 1;
     }
 
+    // Parse safe gestational week
+    const safeGestationalWeek = (gestational_week !== '' && gestational_week !== undefined && gestational_week !== null && !isNaN(parseInt(gestational_week, 10))) 
+      ? parseInt(gestational_week, 10) 
+      : (mother.weeks || 20);
+
     // Check if already has an eligibility record
     const existingEligibility = await ThriposhaEligibility.findOne({
       where: { mother_id: mother.mother_id },
@@ -120,26 +125,26 @@ const assessEligibility = async (req, res) => {
     if (existingEligibility) {
       await existingEligibility.update({
         assessed_date: new Date(),
-        gestational_week: gestational_week || mother.weeks || 20,
+        gestational_week: safeGestationalWeek,
         mother_weight_kg: mother.current_weight,
         bmi: bmi,
         is_eligible: isEligible,
         ineligibility_reason: null,
         assessed_by: req.user.user_id,
-        notes: notes || `BMI: ${bmi}, Week: ${gestational_week || mother.weeks || 20}`
+        notes: notes || `BMI: ${bmi}, Week: ${safeGestationalWeek}`
       });
       eligibility = existingEligibility;
     } else {
       eligibility = await ThriposhaEligibility.create({
         mother_id: mother.mother_id,
         assessed_date: new Date(),
-        gestational_week: gestational_week || mother.weeks || 20,
+        gestational_week: safeGestationalWeek,
         mother_weight_kg: mother.current_weight,
         bmi: bmi,
         is_eligible: isEligible,
         ineligibility_reason: null,
         assessed_by: req.user.user_id,
-        notes: notes || `BMI: ${bmi}, Week: ${gestational_week || mother.weeks || 20}`
+        notes: notes || `BMI: ${bmi}, Week: ${safeGestationalWeek}`
       });
     }
 
