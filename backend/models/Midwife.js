@@ -49,6 +49,14 @@ const Midwife = sequelize.define('Midwife', {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  work_preferences: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  notification_preferences: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
