@@ -2,6 +2,27 @@ const { Appointment, Mother, Clinic } = require('../models');
 const { success, error } = require('../utils/response');
 const { Op } = require('sequelize');
 
+const formatTime24 = (timeStr) => {
+  if (!timeStr || String(timeStr).trim() === '') return null;
+  const str = String(timeStr).trim();
+  const match12 = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (match12) {
+    let hours = parseInt(match12[1], 10);
+    const minutes = match12[2];
+    const seconds = match12[3] || '00';
+    const modifier = match12[4];
+    if (modifier) {
+      if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+      if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    }
+    return `${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
+  }
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+    return str.length === 5 ? `${str}:00` : str;
+  }
+  return null;
+};
+
 const getMyAppointments = async (req, res) => {
   try {
     const mother = await Mother.findOne({
@@ -51,11 +72,16 @@ const createAppointment = async (req, res) => {
 
     if (!mother) return error(res, 'Mother profile not found', 404);
 
-    const appointment = await Appointment.create({
+    const payload = {
+      ...req.body,
       mother_id: mother.mother_id,
-      status: 'scheduled',
-      ...req.body
-    });
+      status: req.body.status || 'scheduled',
+      appointment_time: formatTime24(req.body.appointment_time),
+      clinic_id: (req.body.clinic_id !== '' && req.body.clinic_id !== undefined && req.body.clinic_id !== null) ? Number(req.body.clinic_id) : null,
+      notes: req.body.notes || null
+    };
+
+    const appointment = await Appointment.create(payload);
 
     const createdAppointment = await Appointment.findByPk(appointment.appointment_id, {
       include: [{ model: Clinic, attributes: ['name', 'address', 'contact_number'] }]
@@ -70,7 +96,15 @@ const createAppointment = async (req, res) => {
 
 const updateAppointment = async (req, res) => {
   try {
-    await Appointment.update(req.body, {
+    const updates = { ...req.body };
+    if (updates.appointment_time !== undefined) {
+      updates.appointment_time = formatTime24(updates.appointment_time);
+    }
+    if (updates.clinic_id !== undefined) {
+      updates.clinic_id = (updates.clinic_id !== '' && updates.clinic_id !== null) ? Number(updates.clinic_id) : null;
+    }
+
+    await Appointment.update(updates, {
       where: { appointment_id: req.params.id }
     });
 
@@ -164,7 +198,7 @@ const getAppointmentsByMotherId = async (req, res) => {
 const addAppointmentForMother = async (req, res) => {
   try {
     const { motherId } = req.params;
-    const { appointment_date, appointment_time, appointment_type, notes } = req.body;
+    const { appointment_date, appointment_time, appointment_type, notes, clinic_id } = req.body;
     
     let mother = null;
     if (motherId) {
@@ -185,9 +219,10 @@ const addAppointmentForMother = async (req, res) => {
     
     const appointment = await Appointment.create({
       mother_id: mother.mother_id,
-      appointment_date,
-      appointment_time: appointment_time || null,
+      appointment_date: appointment_date || new Date().toISOString().split('T')[0],
+      appointment_time: formatTime24(appointment_time),
       appointment_type: appointment_type || 'antenatal',
+      clinic_id: (clinic_id !== '' && clinic_id !== undefined && clinic_id !== null) ? Number(clinic_id) : null,
       status: 'scheduled',
       notes: notes || null
     });

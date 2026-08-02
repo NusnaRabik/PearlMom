@@ -246,15 +246,10 @@ const addMother = async (req, res) => {
       chronic_diseases
     } = req.body;
 
-    // Get the logged-in midwife
+    // Get the logged-in midwife (optional if created by doctor/admin)
     const midwife = await Midwife.findOne({
       where: { user_id: req.user.user_id }
     });
-
-    if (!midwife) {
-      await transaction.rollback();
-      return errorResponse(res, 'Provider profile not found', 404);
-    }
 
     // Generate mother_code using the same function as registration
     let finalMotherCode = mother_code;
@@ -274,7 +269,7 @@ const addMother = async (req, res) => {
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     
     const user = await User.create({
-      phone_no: phone_no,
+      phone_no: phone_no || `MOTH${Date.now().toString().slice(-8)}`,
       email: email || `${full_name.toLowerCase().replace(/\s/g, '')}@pearlmom.lk`,
       name: full_name,
       password_hash: hashedPassword,
@@ -300,29 +295,29 @@ const addMother = async (req, res) => {
       user_id: user.user_id,
       mother_code: finalMotherCode,
       full_name: full_name,
-      nic: nic,
-      dob: dob,
-      address: address,
-      district: district,
-      gs_division: gs_division,
-      blood_group: blood_group,
-      lmp_date: lmp_date,
-      expected_delivery_date: expected_delivery_date,
-      current_weight: current_weight,
-      height: height,
+      nic: nic || null,
+      dob: dob ? dob : null,
+      address: address || null,
+      district: district || null,
+      gs_division: gs_division || null,
+      blood_group: blood_group || null,
+      lmp_date: lmp_date ? lmp_date : null,
+      expected_delivery_date: expected_delivery_date ? expected_delivery_date : null,
+      current_weight: (current_weight !== '' && current_weight !== undefined && current_weight !== null) ? Number(current_weight) : null,
+      height: (height !== '' && height !== undefined && height !== null) ? Number(height) : null,
       pregnancy_status: pregnancy_status || 'pregnant',
-      gravida: gravida || 1,
-      para: para || 0,
-      is_high_risk: is_high_risk || false,
+      gravida: (gravida !== '' && gravida !== undefined && gravida !== null) ? Number(gravida) : 1,
+      para: (para !== '' && para !== undefined && para !== null) ? Number(para) : 0,
+      is_high_risk: is_high_risk === true || is_high_risk === 'true',
       weeks: weeks,
-      emergency_contact_name: emergency_contact_name,
-      emergency_contact_phone: emergency_contact_phone,
-      emergency_relationship: emergency_relationship,
-      husband_name: husband_name,
-      husband_contact: husband_contact,
-      allergies: allergies,
-      chronic_diseases: chronic_diseases,
-      assigned_midwife_id: midwife.midwife_id,
+      emergency_contact_name: emergency_contact_name || null,
+      emergency_contact_phone: emergency_contact_phone || null,
+      emergency_relationship: emergency_relationship || null,
+      husband_name: husband_name || null,
+      husband_contact: husband_contact || null,
+      allergies: allergies || null,
+      chronic_diseases: chronic_diseases || null,
+      assigned_midwife_id: midwife ? midwife.midwife_id : null,
       registered_date: new Date(),
       profile_completed: true
     }, { transaction });
