@@ -28,7 +28,9 @@ async function importDatabase() {
   try {
     await sequelize.authenticate();
     console.log('✅ Connected to Sequelize.');
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
     await sequelize.sync({ force: true });
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
     console.log('✅ All tables created fresh with valid schemas and primary keys!\n');
   } catch (err) {
     console.error('❌ Sequelize sync failed:', err.message);
