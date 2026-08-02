@@ -142,14 +142,14 @@ const LoginPage = () => {
 
           <div className="md:w-1/2 p-8 md:p-14 lg:p-16 flex flex-col justify-center bg-white/80">
             <h2 className="text-3xl font-bold text-pink-900 mb-2">Login</h2>
-            <p className="text-pink-600/70 mb-8 text-sm">Secure access to your maternal health journey</p>
+            <p className="text-black mb-8 text-sm">Secure access to your maternal health journey</p>
 
             <div className="mb-6">
-              <p className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wider">Login as:</p>
+              <p className="text-[10px] font-bold text-black mb-3 uppercase tracking-wider">Login as:</p>
               <div className="flex bg-pink-50/50 p-1 rounded-full border border-pink-100">
                 {['mother', 'provider', 'admin'].map((role) => (
                   <button key={role} type="button" onClick={() => { setLoginAs(role); setError(''); }}
-                    className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center space-x-2 text-sm font-medium transition-all ${loginAs === role ? 'bg-white text-pink-600 shadow-md shadow-pink-100 border border-pink-200' : 'text-pink-400 hover:text-pink-600 hover:bg-pink-50/50'}`}>
+                    className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center space-x-2 text-sm font-medium transition-all ${loginAs === role ? 'bg-white text-black shadow-md shadow-pink-100 border border-pink-200' : 'text-black/60 hover:text-black hover:bg-pink-50/50'}`}>
                     {role === 'mother' ? <User size={15} /> : role === 'provider' ? <Briefcase size={15} /> : <UserCog size={15} />}
                     <span>{role.charAt(0).toUpperCase() + role.slice(1)}</span>
                   </button>
@@ -166,30 +166,30 @@ const LoginPage = () => {
 
             <form onSubmit={handleLoginSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">Email or Full Name</label>
+                <label className="block text-xs font-bold text-black mb-1.5">Email or Full Name</label>
                 <div className="relative">
-                  <UserCircle className="absolute left-4 top-3.5 h-5 w-5 text-pink-400" />
+                  <UserCircle className="absolute left-4 top-3.5 h-5 w-5 text-black/60" />
                   <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange}
-                    className="block w-full pl-11 pr-4 py-3 border border-pink-100 rounded-full bg-pink-50/30 focus:bg-white focus:ring-2 focus:ring-pink-300 focus:border-pink-300 transition-all text-slate-900 placeholder-pink-300 text-sm outline-none hover:border-pink-200"
+                    className="block w-full pl-11 pr-4 py-3 border border-pink-100 rounded-full bg-pink-50/30 focus:bg-white focus:ring-2 focus:ring-pink-300 focus:border-pink-300 transition-all text-black placeholder-black/50 text-sm outline-none hover:border-pink-200"
                     placeholder="Enter your email or full name" />
                 </div>
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-xs font-bold text-slate-800">Password</label>
+                  <label className="block text-xs font-bold text-black">Password</label>
                   <Link
                     to="/forgot-password"
-                    className="text-xs font-semibold text-pink-600 hover:text-pink-700"
+                    className="text-xs font-semibold text-black hover:text-black/80"
                   >
                     Forgot password?
                   </Link>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-3.5 h-5 w-5 text-pink-400" />
+                  <Lock className="absolute left-4 top-3.5 h-5 w-5 text-black/60" />
                   <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange}
-                    className="block w-full pl-11 pr-11 py-3 border border-pink-100 rounded-full bg-pink-50/30 focus:bg-white focus:ring-2 focus:ring-pink-300 focus:border-pink-300 transition-all text-slate-900 tracking-widest text-sm outline-none hover:border-pink-200 placeholder-pink-300"
+                    className="block w-full pl-11 pr-11 py-3 border border-pink-100 rounded-full bg-pink-50/30 focus:bg-white focus:ring-2 focus:ring-pink-300 focus:border-pink-300 transition-all text-black tracking-widest text-sm outline-none hover:border-pink-200 placeholder-black/50"
                     placeholder="•••••••••••" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-pink-400 hover:text-pink-600">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-black/60 hover:text-black">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -207,7 +207,7 @@ const LoginPage = () => {
               <div className="flex items-center pt-2">
                 <input id="remember-me" name="rememberMe" type="checkbox" checked={formData.rememberMe} onChange={handleInputChange}
                   className="h-4 w-4 text-pink-500 focus:ring-pink-400 border-slate-300 rounded-full cursor-pointer appearance-none checked:bg-pink-500 checked:border-transparent bg-white border" />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-500 cursor-pointer select-none">Remember me for 30 days</label>
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-black cursor-pointer select-none">Remember me for 30 days</label>
               </div>
 
               <button type="submit" disabled={loading}
@@ -217,7 +217,7 @@ const LoginPage = () => {
             </form>
 
             <div className="mt-8 text-center">
-              <p className="text-xs text-slate-500">Need an account? <Link to="/register" className="font-bold text-pink-500 hover:text-pink-600">Register Here</Link></p>
+              <p className="text-xs text-black">Need an account? <Link to="/register" className="font-bold text-black hover:text-black/80">Register Here</Link></p>
             </div>
           </div>
         </div>
