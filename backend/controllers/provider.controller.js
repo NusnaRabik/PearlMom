@@ -121,6 +121,59 @@ const getDashboard = async (req, res) => {
       console.error('Error fetching recent alerts:', err);
     }
 
+    // Monthly registrations for past 6 months
+    const monthlyData = [];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const today = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
+      try {
+        const count = await Mother.count({
+          where: {
+            created_at: { [Op.gte]: monthDate, [Op.lt]: nextMonth },
+            is_deleted: false
+          }
+        });
+        monthlyData.push({ month: months[monthDate.getMonth()], total: count });
+      } catch (e) {
+        monthlyData.push({ month: months[monthDate.getMonth()], total: 0 });
+      }
+    }
+
+    // Appointment status breakdown
+    let completedAppointments = 0;
+    let scheduledAppointments = 0;
+    let missedAppointments = 0;
+
+    try {
+      completedAppointments = await Appointment.count({
+        where: { status: 'completed', is_deleted: false }
+      });
+      scheduledAppointments = await Appointment.count({
+        where: { status: 'scheduled', is_deleted: false }
+      });
+      missedAppointments = await Appointment.count({
+        where: { status: { [Op.in]: ['cancelled', 'missed'] }, is_deleted: false }
+      });
+    } catch (err) {
+      console.error('Error counting appointment status:', err);
+    }
+
+    const appointmentData = [
+      { name: 'Completed', value: completedAppointments, color: '#10B981' },
+      { name: 'Scheduled', value: scheduledAppointments, color: '#F59E0B' },
+      { name: 'No-show / Cancelled', value: missedAppointments, color: '#EF4444' }
+    ];
+
+    // Maternal Risk distribution
+    const routineCount = Math.max(0, totalMothers - highRiskMothers);
+    const riskDistribution = [
+      { name: 'Stable Routine', value: routineCount, color: '#3B82F6' },
+      { name: 'High Risk', value: highRiskMothers, color: '#EF4444' }
+    ];
+
     // Ensure employee_id is never null
     const employeeId = midwife.employee_id || `TEMP-${midwife.midwife_id}`;
 
@@ -133,6 +186,9 @@ const getDashboard = async (req, res) => {
         todayAppointments, 
         pendingVaccinations 
       },
+      monthlyData,
+      appointmentData,
+      riskDistribution,
       recentAppointments: recentAppointments || [],
       recentAlerts: recentAlerts || [],
       weeklyDeliveries: weeklyDeliveries || [],
@@ -156,6 +212,9 @@ const getDashboard = async (req, res) => {
         todayAppointments: 0, 
         pendingVaccinations: 0 
       },
+      monthlyData: [],
+      appointmentData: [],
+      riskDistribution: [],
       recentAppointments: [],
       recentAlerts: [],
       weeklyDeliveries: [],
