@@ -59,10 +59,15 @@ const ClinicVisitPage = () => {
   const [existingAppointments, setExistingAppointments] = useState([]);
   const [showAppointmentHistory, setShowAppointmentHistory] = useState(true);
 
+  const getCurrentTime24 = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
+
   // Form state for new visit
   const [visitForm, setVisitForm] = useState({
     visit_date: new Date().toISOString().split('T')[0],
-    visit_time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    visit_time: getCurrentTime24(),
     gestational_weeks: '',
     blood_pressure_systolic: '',
     blood_pressure_diastolic: '',
@@ -147,7 +152,7 @@ const ClinicVisitPage = () => {
         setShowNewVisitForm(false);
         setVisitForm({
           visit_date: new Date().toISOString().split('T')[0],
-          visit_time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          visit_time: getCurrentTime24(),
           gestational_weeks: data.mother?.weeks || '',
           blood_pressure_systolic: '',
           blood_pressure_diastolic: '',
@@ -259,7 +264,10 @@ const ClinicVisitPage = () => {
   };
 
   const handleSaveDraft = async () => {
-    if (!selectedPatient) return;
+    if (!selectedPatient) {
+      alert('Please select a patient first.');
+      return;
+    }
     setIsSaving(true);
     
     try {
@@ -270,14 +278,17 @@ const ClinicVisitPage = () => {
       }
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert('Failed to save draft');
+      alert(error.response?.data?.message || 'Failed to save draft');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleCompleteVisit = async () => {
-    if (!selectedPatient) return;
+    if (!selectedPatient) {
+      alert('Please select a patient first.');
+      return;
+    }
     setIsSaving(true);
     
     try {
@@ -290,7 +301,7 @@ const ClinicVisitPage = () => {
       }
     } catch (error) {
       console.error('Error completing visit:', error);
-      alert('Failed to complete visit');
+      alert(error.response?.data?.message || 'Failed to complete visit');
     } finally {
       setIsSaving(false);
     }
