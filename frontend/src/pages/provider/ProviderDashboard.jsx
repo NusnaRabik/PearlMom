@@ -391,17 +391,18 @@ const ProviderDashboard = () => {
     { id: 1, type: 'info', message: 'No recent alerts', time: 'All good', action: 'View Dashboard' }
   ];
 
-  const appointmentData = [
-    { name: 'Completed', value: 70, color: '#10B981' },
-    { name: 'Rescheduled', value: 15, color: '#F59E0B' },
-    { name: 'No-show', value: 15, color: '#EF4444' }
+  const appointmentData = dashboardData?.appointmentData || [
+    { name: 'Completed', value: 0, color: '#10B981' },
+    { name: 'Scheduled', value: 0, color: '#F59E0B' },
+    { name: 'No-show / Cancelled', value: 0, color: '#EF4444' }
   ];
 
-  const riskDistribution = [
-    { name: 'Stable Routine', value: 62, color: '#3B82F6' },
-    { name: 'Observation', value: 28, color: '#F59E0B' },
-    { name: 'Urgent', value: 10, color: '#EF4444' }
+  const riskDistribution = dashboardData?.riskDistribution || [
+    { name: 'Stable Routine', value: 0, color: '#3B82F6' },
+    { name: 'High Risk', value: 0, color: '#EF4444' }
   ];
+
+  const monthlyData = dashboardData?.monthlyData || [];
 
   // Group deliveries by day
   const weeklyDeliveries = {
@@ -536,7 +537,7 @@ const ProviderDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold mb-4">Registered Mothers by Month</h2>
-          <LineChart />
+          <LineChart data={monthlyData} />
         </div>
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold mb-4">Appointment Attendance Status</h2>
