@@ -9,7 +9,7 @@ import newBabyLoginImage from '../../assets/newbabylogin.png';
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { handleLogin, checkPasswordStrength } = useAuthHook();
+  const { handleLogin } = useAuthHook();
   const [showPassword, setShowPassword] = useState(false);
   const [loginAs, setLoginAs] = useState('mother');
   const [formData, setFormData] = useState({ fullName: '', password: '', rememberMe: false });
@@ -94,8 +94,6 @@ const LoginPage = () => {
     setLoading(false);
   };
 
-  // Password strength for display
-  const passwordStrength = formData.password ? checkPasswordStrength(formData.password) : null;
 
   return (
     <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden bg-pink-50/50">
@@ -193,16 +191,7 @@ const LoginPage = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {passwordStrength && (
-                  <div className="mt-2.5">
-                    <div className="flex gap-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-300`} style={{ width: '80%', backgroundColor: '#22c55e' }}></div>
-                    </div>
-                    <p className={`text-[9px] font-bold uppercase tracking-widest mt-1.5 text-green-500`}>
-                      STRENGTH: STRONG
-                    </p>
-                  </div>
-                )}
+
               </div>
               <div className="flex items-center pt-2">
                 <input id="remember-me" name="rememberMe" type="checkbox" checked={formData.rememberMe} onChange={handleInputChange}
