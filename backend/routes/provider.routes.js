@@ -10,6 +10,7 @@ router.get('/profile', protect, authorize('midwife', 'doctor'), providerControll
 router.put('/profile', protect, authorize('midwife', 'doctor'), providerController.updateProfile);
 router.get('/mothers', protect, authorize('midwife', 'doctor'), providerController.getMyMothers);
 router.get('/mothers/:motherId', protect, authorize('midwife', 'doctor'), providerController.getMotherDetails);
+router.put('/mothers/:motherId', protect, authorize('midwife', 'doctor'), providerController.updateMotherDetails);
 router.post('/clinic-visit', protect, authorize('midwife', 'doctor'), providerController.recordClinicVisit);
 router.put('/change-password', protect, authorize('midwife', 'doctor'), providerController.changePassword);
 router.get('/work-preferences', protect, authorize('midwife', 'doctor'), providerController.getWorkPreferences);

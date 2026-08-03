@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2, Download } from 'lucide-react';
+import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2, Download, Edit2, Save } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +20,38 @@ const MothersListPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [addSuccessData, setAddSuccessData] = useState(null);
+
+  // Edit Mother State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [updateSuccessMsg, setUpdateSuccessMsg] = useState('');
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    nic: '',
+    dob: '',
+    phone_no: '',
+    email: '',
+    address: '',
+    district: '',
+    gs_division: '',
+    blood_group: '',
+    lmp_date: '',
+    expected_delivery_date: '',
+    weeks: '',
+    current_weight: '',
+    height: '',
+    pregnancy_status: 'pregnant',
+    gravida: '1',
+    para: '0',
+    is_high_risk: false,
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+    emergency_relationship: '',
+    husband_name: '',
+    husband_contact: '',
+    allergies: '',
+    chronic_diseases: ''
+  });
 
   const [newMother, setNewMother] = useState({
     mother_code: '',
@@ -242,9 +274,153 @@ const MothersListPage = () => {
     }
   };
 
+  const populateEditForm = (mother) => {
+    const formatDateForInput = (d) => {
+      if (!d) return '';
+      try {
+        const dt = new Date(d);
+        if (isNaN(dt.getTime())) return '';
+        return dt.toISOString().split('T')[0];
+      } catch {
+        return '';
+      }
+    };
+
+    setEditForm({
+      full_name: mother.name || '',
+      nic: mother.nic || '',
+      dob: formatDateForInput(mother.dob),
+      phone_no: mother.phone_no || (mother.phone !== 'N/A' ? mother.phone : '') || '',
+      email: mother.email || '',
+      address: mother.address !== 'N/A' ? mother.address : '',
+      district: mother.district || '',
+      gs_division: mother.gs_division || '',
+      blood_group: mother.bloodGroup !== 'N/A' ? mother.bloodGroup : (mother.blood_group || ''),
+      lmp_date: formatDateForInput(mother.lmp_date),
+      expected_delivery_date: formatDateForInput(mother.expected_delivery_date),
+      weeks: (mother.weeks !== undefined && mother.weeks !== null) ? mother.weeks : '',
+      current_weight: (mother.current_weight !== undefined && mother.current_weight !== null) ? mother.current_weight : '',
+      height: mother.height || '',
+      pregnancy_status: mother.pregnancy_status || 'pregnant',
+      gravida: (mother.gravida !== undefined && mother.gravida !== null) ? mother.gravida : '1',
+      para: (mother.para !== undefined && mother.para !== null) ? mother.para : '0',
+      is_high_risk: Boolean(mother.is_high_risk || mother.statusType === 'high-risk'),
+      emergency_contact_name: mother.emergency_contact_name || '',
+      emergency_contact_phone: mother.emergency_contact_phone || '',
+      emergency_relationship: mother.emergency_relationship || '',
+      husband_name: mother.husband_name || '',
+      husband_contact: mother.husband_contact || '',
+      allergies: mother.allergies || '',
+      chronic_diseases: mother.chronic_diseases || ''
+    });
+  };
+
   const handleViewProfile = (mother) => {
     setSelectedMother(mother);
+    populateEditForm(mother);
+    setIsEditingProfile(false);
+    setUpdateSuccessMsg('');
     setShowProfileModal(true);
+  };
+
+  const handleOpenEdit = (mother) => {
+    setSelectedMother(mother);
+    populateEditForm(mother);
+    setIsEditingProfile(true);
+    setUpdateSuccessMsg('');
+    setShowProfileModal(true);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    let updatedVal = type === 'checkbox' ? checked : value;
+    
+    setEditForm(prev => {
+      const updated = { ...prev, [name]: updatedVal };
+
+      // If LMP date changes, auto-calculate EDD and Gestational Weeks
+      if (name === 'lmp_date' && value) {
+        const lmp = new Date(value);
+        if (!isNaN(lmp.getTime())) {
+          // EDD = LMP + 280 days
+          const edd = new Date(lmp.getTime() + 280 * 24 * 60 * 60 * 1000);
+          updated.expected_delivery_date = edd.toISOString().split('T')[0];
+
+          // Current gestational weeks
+          const now = new Date();
+          const diffWeeks = Math.max(0, Math.floor((now - lmp) / (7 * 24 * 60 * 60 * 1000)));
+          updated.weeks = Math.min(42, diffWeeks);
+        }
+      }
+
+      return updated;
+    });
+  };
+
+  const handleSaveMotherDetails = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedMother) return;
+
+    try {
+      setUpdatingProfile(true);
+      const motherId = selectedMother.mother_id || selectedMother.id;
+      const response = await api.put(`/providers/mothers/${motherId}`, editForm);
+
+      if (response.data.success) {
+        const updated = response.data.data.mother;
+        const formatted = {
+          ...selectedMother,
+          name: updated.full_name,
+          pregnancy: `${updated.gravida}${getOrdinal(updated.gravida)} Pregnancy`,
+          age: calculateAge(updated.dob),
+          edd: updated.expected_delivery_date ? formatDate(updated.expected_delivery_date, 'short') : '—',
+          status: updated.is_high_risk ? 'High-risk' : (updated.pregnancy_status === 'postnatal' ? 'Postnatal' : 'Normal'),
+          statusType: updated.is_high_risk ? 'high-risk' : (updated.pregnancy_status === 'postnatal' ? 'postnatal' : 'normal'),
+          color: updated.is_high_risk ? 'red' : (updated.pregnancy_status === 'postnatal' ? 'blue' : 'green'),
+          bloodGroup: updated.blood_group || 'N/A',
+          blood_group: updated.blood_group,
+          phone: updated.phone_no || (updated.User && updated.User.phone_no) || selectedMother.phone,
+          address: updated.address || 'N/A',
+          weeks: updated.weeks || 0,
+          weight: updated.current_weight ? `${updated.current_weight} kg` : 'N/A',
+          mother_id: updated.mother_id,
+          nic: updated.nic,
+          dob: updated.dob,
+          height: updated.height,
+          lmp_date: updated.lmp_date,
+          gravida: updated.gravida,
+          para: updated.para,
+          is_high_risk: updated.is_high_risk,
+          emergency_contact_name: updated.emergency_contact_name,
+          emergency_contact_phone: updated.emergency_contact_phone,
+          emergency_relationship: updated.emergency_relationship,
+          husband_name: updated.husband_name,
+          husband_contact: updated.husband_contact,
+          allergies: updated.allergies,
+          chronic_diseases: updated.chronic_diseases,
+          district: updated.district,
+          gs_division: updated.gs_division,
+          email: updated.email || (updated.User && updated.User.email),
+          phone_no: updated.phone_no || (updated.User && updated.User.phone_no),
+          current_weight: updated.current_weight,
+          expected_delivery_date: updated.expected_delivery_date,
+          pregnancy_status: updated.pregnancy_status
+        };
+
+        setSelectedMother(formatted);
+        setMothers(prev => prev.map(m => (m.mother_id === formatted.mother_id || m.id === formatted.id) ? formatted : m));
+        setUpdateSuccessMsg('Mother details updated successfully!');
+        setTimeout(() => {
+          setUpdateSuccessMsg('');
+          setIsEditingProfile(false);
+        }, 1200);
+      }
+    } catch (error) {
+      console.error('Error updating mother:', error);
+      alert(error.response?.data?.message || 'Failed to update mother details');
+    } finally {
+      setUpdatingProfile(false);
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -571,9 +747,22 @@ const MothersListPage = () => {
                     </div>
                    </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button onClick={() => handleViewProfile(mother)} className="text-pink-600 hover:text-pink-900 font-medium text-sm transition-colors">
-                      View Profile
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      <button 
+                        onClick={() => handleViewProfile(mother)} 
+                        className="text-pink-600 hover:text-pink-900 font-medium text-sm transition-colors flex items-center space-x-1"
+                      >
+                        <Eye size={14} />
+                        <span>View</span>
+                      </button>
+                      <button 
+                        onClick={() => handleOpenEdit(mother)} 
+                        className="text-indigo-600 hover:text-indigo-900 font-medium text-sm transition-colors flex items-center space-x-1"
+                      >
+                        <Edit2 size={14} />
+                        <span>Edit</span>
+                      </button>
+                    </div>
                    </td>
                  </tr>
               )) : (
@@ -793,58 +982,557 @@ const MothersListPage = () => {
         </div>
       )}
 
-      {/* View Profile Modal */}
+      {/* View & Edit Profile Modal */}
       {showProfileModal && selectedMother && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-semibold text-gray-900">Mother Profile</h2>
-              <button onClick={() => setShowProfileModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} className="text-gray-500" /></button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-pink-600">{selectedMother.name?.split(' ').map(n => n[0]).join('')}</span>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-lg ${isEditingProfile ? 'bg-indigo-100 text-indigo-600' : 'bg-pink-100 text-pink-600'}`}>
+                  {isEditingProfile ? <Edit2 size={20} /> : <User size={20} />}
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{selectedMother.name}</h3>
-                  <p className="text-sm text-gray-500">{selectedMother.id}</p>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${selectedMother.color === 'red' ? 'bg-red-100 text-red-800' : selectedMother.color === 'green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>{selectedMother.status}</span>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {isEditingProfile ? 'Edit Mother Profile' : 'Mother Profile'}
+                  </h2>
+                  <p className="text-xs text-gray-500 font-mono">{selectedMother.id} • {selectedMother.name}</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><Calendar size={16} className="text-gray-400" /><span className="text-xs text-gray-500">EDD</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.edd}</p></div>
-                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><Droplet size={16} className="text-gray-400" /><span className="text-xs text-gray-500">Blood Group</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.bloodGroup}</p></div>
-                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><User size={16} className="text-gray-400" /><span className="text-xs text-gray-500">Age</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.age} years</p></div>
-                <div className="p-3 bg-gray-50 rounded-lg"><div className="flex items-center space-x-2 mb-1"><Activity size={16} className="text-gray-400" /><span className="text-xs text-gray-500">Pregnancy Week</span></div><p className="text-sm font-semibold text-gray-900">{selectedMother.weeks} Weeks</p></div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingProfile(!isEditingProfile);
+                    setUpdateSuccessMsg('');
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
+                    isEditingProfile 
+                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
+                      : 'bg-pink-50 text-pink-600 border border-pink-200 hover:bg-pink-100'
+                  }`}
+                >
+                  {isEditingProfile ? (
+                    <>
+                      <Eye size={14} />
+                      <span>View Mode</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit2 size={14} />
+                      <span>Edit Details</span>
+                    </>
+                  )}
+                </button>
+                <button 
+                  onClick={() => setShowProfileModal(false)} 
+                  className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <X size={20} />
+                </button>
               </div>
-
-              <div><h4 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h4><div className="space-y-2"><div className="flex items-center space-x-3"><Phone size={16} className="text-gray-400" /><span className="text-sm text-gray-900">{selectedMother.phone}</span></div><div className="flex items-center space-x-3"><MapPin size={16} className="text-gray-400" /><span className="text-sm text-gray-900">{selectedMother.address}</span></div></div></div>
-
-              <div><h4 className="text-sm font-semibold text-gray-700 mb-3">Emergency Contact</h4><div className="space-y-1"><p className="text-sm text-gray-900"><strong>Name:</strong> {selectedMother.emergency_contact_name || 'N/A'}</p><p className="text-sm text-gray-900"><strong>Phone:</strong> {selectedMother.emergency_contact_phone || 'N/A'}</p><p className="text-sm text-gray-900"><strong>Relationship:</strong> {selectedMother.emergency_relationship || 'N/A'}</p></div></div>
-
-              {(selectedMother.husband_name || selectedMother.husband_contact) && (<div><h4 className="text-sm font-semibold text-gray-700 mb-3">Family Information</h4><div className="space-y-1"><p className="text-sm text-gray-900"><strong>Husband:</strong> {selectedMother.husband_name || 'N/A'}</p><p className="text-sm text-gray-900"><strong>Contact:</strong> {selectedMother.husband_contact || 'N/A'}</p></div></div>)}
-
-              {(selectedMother.allergies || selectedMother.chronic_diseases) && (<div><h4 className="text-sm font-semibold text-gray-700 mb-3">Medical History</h4><div className="space-y-1"><p className="text-sm text-gray-900"><strong>Allergies:</strong> {selectedMother.allergies || 'None'}</p><p className="text-sm text-gray-900"><strong>Chronic Diseases:</strong> {selectedMother.chronic_diseases || 'None'}</p></div></div>)}
             </div>
 
-            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={handleDownloadPDF}
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2"
-              >
-                <Download size={16} />
-                <span>Download PDF</span>
-              </button>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
-              >
-                Close
-              </button>
-            </div>
+            {/* Success message banner */}
+            {updateSuccessMsg && (
+              <div className="mx-6 mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2 text-green-800 text-sm">
+                <CheckCircle2 size={18} className="text-green-600 flex-shrink-0" />
+                <span className="font-medium">{updateSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Modal Body */}
+            {isEditingProfile ? (
+              /* EDIT MODE */
+              <form onSubmit={handleSaveMotherDetails} className="p-6 space-y-6">
+                {/* Clinical & Pregnancy Information */}
+                <div className="bg-pink-50/50 border border-pink-100 rounded-xl p-4 space-y-4">
+                  <h3 className="text-sm font-semibold text-pink-900 flex items-center">
+                    <Heart className="mr-2 text-pink-500" size={16} />
+                    Pregnancy & Clinical Details
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Blood Group */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Blood Group <span className="text-pink-600 font-bold">*</span>
+                      </label>
+                      <select
+                        name="blood_group"
+                        value={editForm.blood_group}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      >
+                        <option value="">Select Blood Group</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                      </select>
+                    </div>
+
+                    {/* LMP Date */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        LMP Date (Last Menstrual Period)
+                      </label>
+                      <input
+                        type="date"
+                        name="lmp_date"
+                        value={editForm.lmp_date}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      />
+                      <p className="text-[11px] text-pink-600 mt-1">Auto-updates EDD & Weeks when changed</p>
+                    </div>
+
+                    {/* EDD (Expected Delivery Date) */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Expected Delivery Date (EDD)
+                      </label>
+                      <input
+                        type="date"
+                        name="expected_delivery_date"
+                        value={editForm.expected_delivery_date}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      />
+                    </div>
+
+                    {/* Gestational Weeks */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Pregnancy Weeks (Gestational)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="45"
+                        name="weeks"
+                        value={editForm.weeks}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 28"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      />
+                    </div>
+
+                    {/* Weight & Height */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Current Weight (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        name="current_weight"
+                        value={editForm.current_weight}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 62.5"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Height (cm)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        name="height"
+                        value={editForm.height}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 160"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      />
+                    </div>
+
+                    {/* Pregnancy Status */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Pregnancy Status</label>
+                      <select
+                        name="pregnancy_status"
+                        value={editForm.pregnancy_status}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      >
+                        <option value="pregnant">Pregnant</option>
+                        <option value="postnatal">Postnatal</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+
+                    {/* Gravida & Para */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Gravida</label>
+                        <input
+                          type="number"
+                          name="gravida"
+                          value={editForm.gravida}
+                          onChange={handleEditChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Para</label>
+                        <input
+                          type="number"
+                          name="para"
+                          value={editForm.para}
+                          onChange={handleEditChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* High Risk Checkbox */}
+                  <div className="pt-2 border-t border-pink-100 flex items-center">
+                    <input
+                      type="checkbox"
+                      id="edit_is_high_risk"
+                      name="is_high_risk"
+                      checked={editForm.is_high_risk}
+                      onChange={handleEditChange}
+                      className="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500"
+                    />
+                    <label htmlFor="edit_is_high_risk" className="ml-2 text-sm font-medium text-gray-900 cursor-pointer">
+                      Mark as High-Risk Clinical Case
+                    </label>
+                  </div>
+                </div>
+
+                {/* Personal & Contact Information */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+                    <User className="mr-2 text-indigo-500" size={16} />
+                    Personal & Contact Information
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        name="full_name"
+                        value={editForm.full_name}
+                        onChange={handleEditChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">NIC Number</label>
+                      <input
+                        type="text"
+                        name="nic"
+                        value={editForm.nic}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Date of Birth</label>
+                      <input
+                        type="date"
+                        name="dob"
+                        value={editForm.dob}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Phone Number</label>
+                      <input
+                        type="tel"
+                        name="phone_no"
+                        value={editForm.phone_no}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+                      <textarea
+                        rows="2"
+                        name="address"
+                        value={editForm.address}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
+                      <input
+                        type="text"
+                        name="district"
+                        value={editForm.district}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">GS Division</label>
+                      <input
+                        type="text"
+                        name="gs_division"
+                        value={editForm.gs_division}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Emergency Contact & Family */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+                    <Phone className="mr-2 text-rose-500" size={16} />
+                    Emergency Contact & Family
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Emergency Contact Name</label>
+                      <input
+                        type="text"
+                        name="emergency_contact_name"
+                        value={editForm.emergency_contact_name}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Emergency Phone</label>
+                      <input
+                        type="tel"
+                        name="emergency_contact_phone"
+                        value={editForm.emergency_contact_phone}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Relationship</label>
+                      <input
+                        type="text"
+                        name="emergency_relationship"
+                        value={editForm.emergency_relationship}
+                        onChange={handleEditChange}
+                        placeholder="e.g. Husband / Mother"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-200">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Husband Name</label>
+                      <input
+                        type="text"
+                        name="husband_name"
+                        value={editForm.husband_name}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Husband Contact Phone</label>
+                      <input
+                        type="tel"
+                        name="husband_contact"
+                        value={editForm.husband_contact}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Medical History */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+                    <Activity className="mr-2 text-emerald-500" size={16} />
+                    Medical History & Allergies
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Allergies</label>
+                      <textarea
+                        rows="2"
+                        name="allergies"
+                        value={editForm.allergies}
+                        onChange={handleEditChange}
+                        placeholder="List any known allergies or drug reactions..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Chronic Diseases / Conditions</label>
+                      <textarea
+                        rows="2"
+                        name="chronic_diseases"
+                        value={editForm.chronic_diseases}
+                        onChange={handleEditChange}
+                        placeholder="e.g. Gestational Diabetes, Hypertension..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save / Cancel Bar */}
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updatingProfile}
+                    className="px-6 py-2 bg-pink-600 text-white rounded-lg text-sm font-semibold hover:bg-pink-700 transition-colors shadow-sm flex items-center space-x-2 disabled:opacity-50"
+                  >
+                    {updatingProfile ? (
+                      <>
+                        <Loader size={16} className="animate-spin" />
+                        <span>Saving Changes...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        <span>Save Changes</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* VIEW MODE */
+              <div className="p-6 space-y-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
+                    <span className="text-2xl font-semibold text-pink-600">{selectedMother.name?.split(' ').map(n => n[0]).join('')}</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900">{selectedMother.name}</h3>
+                      <button
+                        onClick={() => setIsEditingProfile(true)}
+                        className="text-xs font-semibold text-pink-600 hover:text-pink-700 bg-pink-50 hover:bg-pink-100 border border-pink-200 px-2.5 py-1 rounded-md transition-colors flex items-center space-x-1"
+                      >
+                        <Edit2 size={12} />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-500 font-mono">{selectedMother.id}</p>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${selectedMother.color === 'red' ? 'bg-red-100 text-red-800' : selectedMother.color === 'green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {selectedMother.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Calendar size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-500">EDD</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMother.edd}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Droplet size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-500">Blood Group</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMother.bloodGroup || selectedMother.blood_group || 'N/A'}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <User size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-500">Age</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMother.age} years</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Activity size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-500">Pregnancy Week</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMother.weeks ? `${selectedMother.weeks} Weeks` : 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-3">
+                      <Phone size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-900">{selectedMother.phone || selectedMother.phone_no || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <MapPin size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-900">{selectedMother.address || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Emergency Contact</h4>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-900"><strong>Name:</strong> {selectedMother.emergency_contact_name || 'N/A'}</p>
+                    <p className="text-sm text-gray-900"><strong>Phone:</strong> {selectedMother.emergency_contact_phone || 'N/A'}</p>
+                    <p className="text-sm text-gray-900"><strong>Relationship:</strong> {selectedMother.emergency_relationship || 'N/A'}</p>
+                  </div>
+                </div>
+
+                {(selectedMother.husband_name || selectedMother.husband_contact) && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Family Information</h4>
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-900"><strong>Husband:</strong> {selectedMother.husband_name || 'N/A'}</p>
+                      <p className="text-sm text-gray-900"><strong>Contact:</strong> {selectedMother.husband_contact || 'N/A'}</p>
+                    </div>
+                  </div>
+                )}
+
+                {(selectedMother.allergies || selectedMother.chronic_diseases) && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Medical History</h4>
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-900"><strong>Allergies:</strong> {selectedMother.allergies || 'None'}</p>
+                      <p className="text-sm text-gray-900"><strong>Chronic Diseases:</strong> {selectedMother.chronic_diseases || 'None'}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-6 border-t border-gray-200 bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-2xl">
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center space-x-2 shadow-sm"
+                  >
+                    <Download size={16} />
+                    <span>Download PDF</span>
+                  </button>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => setIsEditingProfile(true)}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center space-x-1.5 shadow-sm"
+                    >
+                      <Edit2 size={16} />
+                      <span>Edit Details</span>
+                    </button>
+                    <button
+                      onClick={() => setShowProfileModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
