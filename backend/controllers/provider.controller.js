@@ -622,14 +622,127 @@ const changePassword = async (req, res) => {
   }
 };
 
+// @desc    Update mother details by provider (EDD, blood group, pregnancy weeks, LMP, vitals, etc.)
+// @route   PUT /api/providers/mothers/:motherId
+const updateMotherDetails = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { motherId } = req.params;
+    let mother = null;
+
+    if (isNaN(parseInt(motherId, 10))) {
+      mother = await Mother.findOne({
+        where: { mother_code: motherId, is_deleted: false },
+        transaction
+      });
+    } else {
+      mother = await Mother.findOne({
+        where: {
+          [Op.or]: [
+            { mother_id: parseInt(motherId, 10) },
+            { mother_code: motherId }
+          ],
+          is_deleted: false
+        },
+        transaction
+      });
+    }
+
+    if (!mother) {
+      await transaction.rollback();
+      return errorResponse(res, 'Mother not found', 404);
+    }
+
+    const {
+      full_name,
+      nic,
+      dob,
+      phone_no,
+      email,
+      address,
+      district,
+      gs_division,
+      blood_group,
+      lmp_date,
+      expected_delivery_date,
+      current_weight,
+      height,
+      pregnancy_status,
+      gravida,
+      para,
+      is_high_risk,
+      weeks,
+      emergency_contact_name,
+      emergency_contact_phone,
+      emergency_relationship,
+      husband_name,
+      husband_contact,
+      allergies,
+      chronic_diseases
+    } = req.body;
+
+    const updates = {};
+    if (full_name !== undefined) updates.full_name = full_name;
+    if (nic !== undefined) updates.nic = nic;
+    if (dob !== undefined) updates.dob = (dob && dob !== '') ? dob : null;
+    if (address !== undefined) updates.address = address;
+    if (district !== undefined) updates.district = district;
+    if (gs_division !== undefined) updates.gs_division = gs_division;
+    if (blood_group !== undefined) updates.blood_group = (blood_group && blood_group !== '') ? blood_group : null;
+    if (lmp_date !== undefined) updates.lmp_date = (lmp_date && lmp_date !== '') ? lmp_date : null;
+    if (expected_delivery_date !== undefined) updates.expected_delivery_date = (expected_delivery_date && expected_delivery_date !== '') ? expected_delivery_date : null;
+    if (current_weight !== undefined) updates.current_weight = (current_weight !== '' && current_weight !== null) ? Number(current_weight) : null;
+    if (height !== undefined) updates.height = (height !== '' && height !== null) ? Number(height) : null;
+    if (pregnancy_status !== undefined) updates.pregnancy_status = pregnancy_status;
+    if (gravida !== undefined) updates.gravida = (gravida !== '' && gravida !== null) ? parseInt(gravida, 10) : 1;
+    if (para !== undefined) updates.para = (para !== '' && para !== null) ? parseInt(para, 10) : 0;
+    if (is_high_risk !== undefined) updates.is_high_risk = Boolean(is_high_risk);
+    if (weeks !== undefined) updates.weeks = (weeks !== '' && weeks !== null) ? parseInt(weeks, 10) : null;
+    if (emergency_contact_name !== undefined) updates.emergency_contact_name = emergency_contact_name;
+    if (emergency_contact_phone !== undefined) updates.emergency_contact_phone = emergency_contact_phone;
+    if (emergency_relationship !== undefined) updates.emergency_relationship = emergency_relationship;
+    if (husband_name !== undefined) updates.husband_name = husband_name;
+    if (husband_contact !== undefined) updates.husband_contact = husband_contact;
+    if (allergies !== undefined) updates.allergies = allergies;
+    if (chronic_diseases !== undefined) updates.chronic_diseases = chronic_diseases;
+
+    await mother.update(updates, { transaction });
+
+    // Also update User record if phone_no, email, or name changed
+    if (phone_no || full_name || email) {
+      const userUpdates = {};
+      if (phone_no) userUpdates.phone_no = phone_no;
+      if (full_name) userUpdates.name = full_name;
+      if (email) userUpdates.email = email;
+      await User.update(userUpdates, {
+        where: { user_id: mother.user_id },
+        transaction
+      });
+    }
+
+    await transaction.commit();
+
+    const updatedMother = await Mother.findByPk(mother.mother_id, {
+      include: [{ model: User, attributes: ['name', 'email', 'phone_no'] }]
+    });
+
+    return successResponse(res, { mother: updatedMother }, 'Mother details updated successfully');
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Update mother error:', error);
+    return errorResponse(res, 'Error updating mother details: ' + error.message);
+  }
+};
+
 module.exports = { 
   getDashboard, 
   getMyProfile, 
   updateProfile, 
-  addMidwife,  // Added this
+  addMidwife,
   getMyMothers, 
   recordClinicVisit,
   getMotherDetails,
+  updateMotherDetails,
   getWorkPreferences,
   updateWorkPreferences,
   getNotificationPreferences,
