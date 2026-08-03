@@ -311,10 +311,10 @@ const AdminDashboard = () => {
     }
   ] : [];
 
-  const deliveryStats = [
-    { name: 'Safe Deliveries', value: 98.2, color: '#EC4899' },
-    { name: 'Referred Cases', value: 1.5, color: '#F472B6' },
-    { name: 'Complications', value: 0.3, color: '#FBCFE8' }
+  const deliveryStats = dashboardData?.deliveryStats || [
+    { name: 'Safe Deliveries', value: 100, color: '#EC4899' },
+    { name: 'Referred Cases', value: 0, color: '#F472B6' },
+    { name: 'Complications', value: 0, color: '#FBCFE8' }
   ];
 
   const monthlyData = dashboardData?.monthlyData || [
@@ -328,21 +328,12 @@ const AdminDashboard = () => {
 
   const motherMonthlyData = dashboardData?.monthlyData || monthlyData;
   
-  const providerMonthlyData = [
-    { month: 'Jan', total: 300 },
-    { month: 'Feb', total: 330 },
-    { month: 'Mar', total: 350 },
-    { month: 'Apr', total: 350 },
-    { month: 'May', total: 350 },
-    { month: 'Jun', total: dashboardData?.providersThisMonth || 382 }
-  ];
-
-  const regionalData = [
-    { name: 'Central Province', value: 4102, color: '#EC4899' },
-    { name: 'Eastern Province', value: 2840, color: '#F472B6' },
-    { name: 'Northern Province', value: 1920, color: '#FB923C' },
-    { name: 'Southern Province', value: 1650, color: '#FBBF24' },
-    { name: 'Western Province', value: 3770, color: '#A78BFA' }
+  const regionalData = dashboardData?.regionalData || [
+    { name: 'Central Province', value: 0, color: '#EC4899' },
+    { name: 'Eastern Province', value: 0, color: '#F472B6' },
+    { name: 'Northern Province', value: 0, color: '#FB923C' },
+    { name: 'Southern Province', value: 0, color: '#FBBF24' },
+    { name: 'Western Province', value: 0, color: '#A78BFA' }
   ];
 
   const recentActivity = dashboardData?.recentActivity || [];
@@ -379,7 +370,7 @@ const AdminDashboard = () => {
           
           {/* Center Text */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-bold text-gray-900">98.2%</span>
+            <span className="text-4xl font-bold text-gray-900">{deliveryStats[0]?.value || 100}%</span>
             <span className="text-sm text-gray-500 mt-1">Safe</span>
             <span className="text-sm text-gray-500">Deliveries</span>
           </div>
