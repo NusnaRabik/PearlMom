@@ -298,25 +298,21 @@ const distributeSupplement = async (req, res) => {
     const distDate = distribution_date || new Date().toISOString().split('T')[0];
     const packetCount = parseInt(packets) || 1;
     
-    // Insert distribution record
-    await sequelize.query(
-      `INSERT INTO nutrition_supplements 
-       (mother_id, supplement_type, distribution_date, quantity, packets, is_eligible, distributed_by, notes)
-       VALUES (?, 'thriposha', ?, ?, ?, 1, ?, ?)`,
-      {
-        replacements: [
-          mother.mother_id,
-          distDate,
-          `${packetCount} packet(s)`,
-          packetCount,
-          req.user.user_id,
-          notes || `Thriposha distribution - ${packetCount} packet(s)`
-        ]
-      }
-    );
+    // Insert distribution record via Sequelize ORM (automatically handles timestamps)
+    const distribution = await NutritionSupplement.create({
+      mother_id: mother.mother_id,
+      supplement_type: 'thriposha',
+      distribution_date: distDate,
+      quantity: `${packetCount} packet(s)`,
+      packets: packetCount,
+      is_eligible: true,
+      distributed_by: req.user.user_id,
+      notes: notes || `Thriposha distribution - ${packetCount} packet(s)`
+    });
     
     return success(res, { 
       distribution: {
+        supplement_id: distribution.supplement_id,
         mother_name: mother.full_name,
         mother_code: mother.mother_code,
         packets: packetCount,
