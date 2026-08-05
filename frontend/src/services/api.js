@@ -38,19 +38,25 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       // Server responded with error status
-      const { status, data } = error.response;
+      const { status, data, config } = error.response;
       
-      if (status === 401) {
-        // Unauthorized - clear token and redirect to login
+      const isAuthEndpoint = config?.url?.includes('/auth/login') || 
+                             config?.url?.includes('/auth/register') || 
+                             config?.url?.includes('/auth/login-by-name');
+      const isAlreadyOnAuthPage = typeof window !== 'undefined' && 
+                                  (window.location.pathname === '/login' || window.location.pathname === '/register');
+
+      if (status === 401 && !isAuthEndpoint && !isAlreadyOnAuthPage) {
+        // Expired/unauthorized session on a protected route - clear token and redirect to login
         localStorage.removeItem('pearlmom_token');
         localStorage.removeItem('pearlmom_user');
         window.location.href = '/login';
       } else if (status === 403) {
-        console.error('Access forbidden:', data.message);
+        console.error('Access forbidden:', data?.message);
       } else if (status === 404) {
-        console.error('Resource not found:', data.message);
+        console.error('Resource not found:', data?.message);
       } else if (status === 500) {
-        console.error('Server error:', data.message);
+        console.error('Server error:', data?.message);
       }
     } else if (error.request) {
       // Request made but no response
