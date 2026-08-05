@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2, Download, Edit2, Save, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2, Download, Edit2, Save, Lock, CalendarCheck } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +10,7 @@ import ProviderChatWidget from '../../components/provider/ProviderChatWidget';
 
 const MothersListPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -748,9 +750,17 @@ const MothersListPage = () => {
                    </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => navigate('/provider/clinic-visit', { state: { motherId: mother.id, motherCode: mother.id, motherName: mother.name } })}
+                        className="bg-pink-50 hover:bg-pink-100 text-pink-600 font-semibold px-2.5 py-1 rounded-lg text-xs transition-colors flex items-center space-x-1 border border-pink-200"
+                        title="Start clinical visit for this patient"
+                      >
+                        <CalendarCheck size={13} />
+                        <span>Start Visit</span>
+                      </button>
                       <button 
                         onClick={() => handleViewProfile(mother)} 
-                        className="text-pink-600 hover:text-pink-900 font-medium text-sm transition-colors flex items-center space-x-1"
+                        className="text-gray-600 hover:text-pink-600 font-medium text-sm transition-colors flex items-center space-x-1"
                       >
                         <Eye size={14} />
                         <span>View</span>
@@ -1023,6 +1033,17 @@ const MothersListPage = () => {
                       <span>Edit Details</span>
                     </>
                   )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    navigate('/provider/clinic-visit', { state: { motherId: selectedMother.id, motherCode: selectedMother.id, motherName: selectedMother.name } });
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-pink-600 hover:bg-pink-700 text-white flex items-center space-x-1.5 transition-colors shadow-sm"
+                >
+                  <CalendarCheck size={14} />
+                  <span>Start Visit</span>
                 </button>
                 <button 
                   onClick={() => setShowProfileModal(false)} 

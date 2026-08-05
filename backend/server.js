@@ -78,8 +78,26 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
+// Static files (for frontend build if present)
+const path = require('path');
+const fs = require('fs');
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+}
+
+// 404 handler & SPA fallback
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/uploads')) {
+    return res.status(404).json({
+      success: false,
+      message: `Route ${req.originalUrl} not found`
+    });
+  }
+  const indexPath = path.join(frontendDist, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`
