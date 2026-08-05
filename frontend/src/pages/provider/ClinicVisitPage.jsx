@@ -153,20 +153,20 @@ const ClinicVisitPage = () => {
     });
   };
 
-  const fetchMotherDetails = async (motherId) => {
+  const fetchMotherDetails = async (motherId, fallbackPatient = null) => {
     try {
       setLoading(true);
       const response = await api.get(`/clinic-visits/mother/${encodeURIComponent(motherId)}`);
-      if (response.data && response.data.success) {
+      if (response.data && response.data.success && response.data.data) {
         const data = response.data.data;
         setPatientDetails(data);
         setPreviousVisits(data.visitHistory || []);
 
         // Fetch existing vaccinations for this mother
-        await fetchMotherVaccinations(motherId);
+        await fetchMotherVaccinations(data.mother?.mother_id || data.mother?.id || motherId);
 
         // Fetch existing appointments for this mother
-        await fetchMotherAppointments(motherId);
+        await fetchMotherAppointments(data.mother?.mother_id || data.mother?.id || motherId);
 
         if (!data.visitHistory || data.visitHistory.length === 0) {
           setSelectedPreviousVisit(null);
@@ -178,7 +178,7 @@ const ClinicVisitPage = () => {
         setVisitForm({
           visit_date: new Date().toISOString().split('T')[0],
           visit_time: getCurrentTime24(),
-          gestational_weeks: data.mother?.weeks || '',
+          gestational_weeks: data.mother?.weeks || fallbackPatient?.weeks || '',
           blood_pressure_systolic: '',
           blood_pressure_diastolic: '',
           weight_kg: data.vitals?.weight !== '--' ? data.vitals.weight : '',
@@ -199,12 +199,43 @@ const ClinicVisitPage = () => {
         if (data.draftVisit) {
           setDraftVisit(data.draftVisit);
         }
+      } else if (fallbackPatient) {
+        // Use fallback if response was not success
+        initFallbackDetails(fallbackPatient);
       }
     } catch (error) {
       console.error('Error fetching mother details:', error);
+      if (fallbackPatient) {
+        initFallbackDetails(fallbackPatient);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const initFallbackDetails = (patient) => {
+    const fallback = {
+      mother: {
+        id: patient.id,
+        mother_id: patient.mother_id,
+        mother_code: patient.mother_code,
+        name: patient.name,
+        weeks: patient.weeks || 0,
+        bloodType: patient.bloodType || 'Not specified',
+        edd: patient.edd
+      },
+      vitals: { bp: '--/--', weight: '--', fetalHeartRate: '--' },
+      labTests: { hbLevel: '--', urineProtein: 'Normal', urineSugar: 'Normal' },
+      healthEducation: [
+        { id: 1, title: 'Nutrition & Supplements', completed: false },
+        { id: 2, title: 'Breastfeeding Preparation', completed: false },
+        { id: 3, title: 'Signs of Labor', completed: false },
+        { id: 4, title: 'Warning Signs (PIH/Eclampsia)', completed: false }
+      ],
+      visitHistory: [],
+      draftVisit: null
+    };
+    setPatientDetails(fallback);
   };
 
   const fetchMotherVaccinations = async (motherId) => {
@@ -214,7 +245,7 @@ const ClinicVisitPage = () => {
         setExistingVaccinations(response.data.data.vaccinations || []);
       }
     } catch (error) {
-      console.error('Error fetching vaccinations:', error);
+      console.warn('Vaccinations not available:', error.message);
     }
   };
 
@@ -225,8 +256,17 @@ const ClinicVisitPage = () => {
         setExistingAppointments(response.data.data.appointments || []);
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      console.warn('Appointments not available:', error.message);
     }
+  };
+
+  const handlePatientSelect = async (patient) => {
+    if (!patient) return;
+    setSelectedPatient(patient);
+    setSearchTerm(patient.name || patient.id);
+    setHasSearched(true);
+    initFallbackDetails(patient);
+    await fetchMotherDetails(patient.mother_id || patient.id, patient);
   };
 
   const handleSearch = async () => {
@@ -241,17 +281,16 @@ const ClinicVisitPage = () => {
     const found = assignedMothers.find(p =>
       (p.id && String(p.id).toLowerCase() === term.toLowerCase()) ||
       (p.name && String(p.name).toLowerCase() === term.toLowerCase()) ||
+      (p.mother_id && String(p.mother_id) === term) ||
+      (p.mother_code && String(p.mother_code).toLowerCase() === term.toLowerCase()) ||
       (p.id && String(p.id).toLowerCase().includes(term.toLowerCase())) ||
       (p.name && String(p.name).toLowerCase().includes(term.toLowerCase())) ||
       (p.nic && String(p.nic).toLowerCase().includes(term.toLowerCase())) ||
-      (p.phone && String(p.phone).toLowerCase().includes(term.toLowerCase())) ||
-      (p.mother_id && String(p.mother_id) === term) ||
-      (p.mother_code && String(p.mother_code).toLowerCase().includes(term.toLowerCase()))
+      (p.phone && String(p.phone).toLowerCase().includes(term.toLowerCase()))
     );
 
     if (found) {
-      setSelectedPatient(found);
-      await fetchMotherDetails(found.id || found.mother_id);
+      await handlePatientSelect(found);
     } else {
       // Fallback: direct backend search if not found in preloaded list
       try {
@@ -260,8 +299,9 @@ const ClinicVisitPage = () => {
         if (response.data && response.data.success && response.data.data) {
           const data = response.data.data;
           const patientObj = {
-            id: data.mother?.id || term,
+            id: data.mother?.id || data.mother?.mother_code || `MOM-${data.mother?.mother_id}` || term,
             mother_id: data.mother?.mother_id,
+            mother_code: data.mother?.mother_code,
             name: data.mother?.name || 'Patient',
             weeks: data.mother?.weeks || 0,
             bloodType: data.mother?.bloodType || 'Not specified',
@@ -273,8 +313,9 @@ const ClinicVisitPage = () => {
           setSelectedPatient(patientObj);
           setPatientDetails(data);
           setPreviousVisits(data.visitHistory || []);
-          await fetchMotherVaccinations(patientObj.id);
-          await fetchMotherAppointments(patientObj.id);
+          if (data.draftVisit) setDraftVisit(data.draftVisit);
+          await fetchMotherVaccinations(patientObj.mother_id || patientObj.id);
+          await fetchMotherAppointments(patientObj.mother_id || patientObj.id);
         } else {
           setSelectedPatient(null);
           setPatientDetails(null);
@@ -305,13 +346,6 @@ const ClinicVisitPage = () => {
     setHasSearched(false);
     setShowNewVisitForm(false);
     setSelectedPreviousVisit(null);
-  };
-
-  const handlePatientSelect = async (patient) => {
-    setSelectedPatient(patient);
-    setSearchTerm(patient.name || patient.id);
-    setHasSearched(true);
-    await fetchMotherDetails(patient.id || patient.mother_id);
   };
 
   const handleFormChange = (e) => {

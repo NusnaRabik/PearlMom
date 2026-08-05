@@ -132,96 +132,181 @@ const sanitizeVisitData = (data) => {
   };
 };
 
-// Get mother details for clinic visit (no midwife validation)
-const getMotherForVisit = async (req, res) => {
-  try {
-    const { motherId } = req.params;
-    const cleanId = decodeURIComponent(String(motherId || '')).trim();
-    
-    let mother = await Mother.findOne({
-      where: {
-        [Op.or]: [
-          { mother_code: cleanId },
-          { mother_id: isNaN(cleanId) ? 0 : Number(cleanId) }
-        ],
-        is_deleted: false
-      },
-      include: [
-        { model: User, attributes: ['name', 'email', 'phone_no'] }
-      ]
-    });
+// Helper to find mother by any identifier (id, code, name, nic, phone)
+const findMotherByIdOrQuery = async (queryStr) => {
+  if (!queryStr) return null;
+  const clean = decodeURIComponent(String(queryStr)).trim();
+  if (!clean) return null;
 
-    // Fallback search by partial code, name, or NIC if exact match not found
-    if (!mother) {
-      mother = await Mother.findOne({
+  try {
+    // 1. Try exact mother_id if numeric
+    if (!isNaN(clean) && Number(clean) > 0) {
+      const byId = await Mother.findOne({
+        where: { mother_id: Number(clean), is_deleted: false },
+        include: [{ model: User, attributes: ['name', 'email', 'phone_no'] }]
+      });
+      if (byId) return byId;
+    }
+
+    // 2. Try extract ID if formatted as MOM-123 or MOM-26-0009
+    const momMatch = clean.match(/^MOM-(?:2\d-)?0*(\d+)$/i);
+    if (momMatch && momMatch[1]) {
+      const num = Number(momMatch[1]);
+      const byNum = await Mother.findOne({
         where: {
           [Op.or]: [
-            { mother_code: { [Op.like]: `%${cleanId}%` } },
-            { full_name: { [Op.like]: `%${cleanId}%` } },
-            { nic: { [Op.like]: `%${cleanId}%` } }
+            { mother_id: num },
+            { mother_code: clean }
           ],
           is_deleted: false
         },
-        include: [
-          { model: User, attributes: ['name', 'email', 'phone_no'] }
-        ]
+        include: [{ model: User, attributes: ['name', 'email', 'phone_no'] }]
       });
+      if (byNum) return byNum;
     }
+
+    // 3. Try exact mother_code
+    let mother = await Mother.findOne({
+      where: { mother_code: clean, is_deleted: false },
+      include: [{ model: User, attributes: ['name', 'email', 'phone_no'] }]
+    });
+    if (mother) return mother;
+
+    // 4. Try exact or partial NIC
+    mother = await Mother.findOne({
+      where: {
+        [Op.or]: [
+          { nic: clean },
+          { nic: { [Op.like]: `%${clean}%` } }
+        ],
+        is_deleted: false
+      },
+      include: [{ model: User, attributes: ['name', 'email', 'phone_no'] }]
+    });
+    if (mother) return mother;
+
+    // 5. Try full_name or mother_code partial match
+    mother = await Mother.findOne({
+      where: {
+        [Op.or]: [
+          { mother_code: { [Op.like]: `%${clean}%` } },
+          { full_name: { [Op.like]: `%${clean}%` } }
+        ],
+        is_deleted: false
+      },
+      include: [{ model: User, attributes: ['name', 'email', 'phone_no'] }]
+    });
+    if (mother) return mother;
+
+    // 6. Try User name or phone search
+    mother = await Mother.findOne({
+      where: { is_deleted: false },
+      include: [{
+        model: User,
+        attributes: ['name', 'email', 'phone_no'],
+        where: {
+          [Op.or]: [
+            { name: { [Op.like]: `%${clean}%` } },
+            { phone_no: { [Op.like]: `%${clean}%` } }
+          ]
+        }
+      }]
+    });
+
+    return mother;
+  } catch (err) {
+    console.error('Error in findMotherByIdOrQuery:', err);
+    return null;
+  }
+};
+
+// Get mother details for clinic visit
+const getMotherForVisit = async (req, res) => {
+  try {
+    const { motherId } = req.params;
+    const mother = await findMotherByIdOrQuery(motherId);
 
     if (!mother) {
       return errorResponse(res, 'Mother not found', 404);
     }
 
     // Get health education checklist
-    let healthEducation = await HealthEducationChecklist.findAll({
-      where: { mother_id: mother.mother_id }
-    });
-
-    // If no checklist exists, create default ones
-    if (!healthEducation || healthEducation.length === 0) {
-      const defaultTopics = [
-        'Nutrition & Supplements',
-        'Breastfeeding Preparation',
-        'Signs of Labor',
-        'Warning Signs (PIH/Eclampsia)'
-      ];
-      
-      for (const topic of defaultTopics) {
-        await HealthEducationChecklist.create({
-          mother_id: mother.mother_id,
-          topic_title: topic,
-          is_completed: false
-        });
-      }
-      
-      // Fetch again after creation
+    let healthEducation = [];
+    try {
       healthEducation = await HealthEducationChecklist.findAll({
         where: { mother_id: mother.mother_id }
       });
+
+      // If no checklist exists, create default ones
+      if (!healthEducation || healthEducation.length === 0) {
+        const defaultTopics = [
+          'Nutrition & Supplements',
+          'Breastfeeding Preparation',
+          'Signs of Labor',
+          'Warning Signs (PIH/Eclampsia)'
+        ];
+        
+        for (const topic of defaultTopics) {
+          await HealthEducationChecklist.create({
+            mother_id: mother.mother_id,
+            topic_title: topic,
+            is_completed: false
+          });
+        }
+        
+        healthEducation = await HealthEducationChecklist.findAll({
+          where: { mother_id: mother.mother_id }
+        });
+      }
+    } catch (err) {
+      console.warn('Checklist fetch error:', err.message);
+      healthEducation = [];
     }
 
     // Get draft visit if exists
-    const draftVisit = await ClinicVisit.findOne({
-      where: { mother_id: mother.mother_id, status: 'draft' },
-      order: [['created_at', 'DESC']]
-    });
+    let draftVisit = null;
+    try {
+      draftVisit = await ClinicVisit.findOne({
+        where: { mother_id: mother.mother_id, status: 'draft' },
+        order: [['created_at', 'DESC']]
+      });
+    } catch (err) {
+      console.warn('Draft visit fetch error:', err.message);
+    }
 
-    const latestVisit = await ClinicVisit.findOne({
-      where: { mother_id: mother.mother_id, status: 'completed' },
-      order: [['visit_date', 'DESC']]
-    });
+    let latestVisit = null;
+    try {
+      latestVisit = await ClinicVisit.findOne({
+        where: { mother_id: mother.mother_id, status: 'completed' },
+        order: [['visit_date', 'DESC']]
+      });
+    } catch (err) {
+      console.warn('Latest visit fetch error:', err.message);
+    }
 
     // Get visit history
-    const visitHistory = await ClinicVisit.findAll({
-      where: { mother_id: mother.mother_id, status: 'completed', is_deleted: false },
-      order: [['visit_date', 'DESC']],
-      limit: 5
-    });
+    let visitHistory = [];
+    try {
+      visitHistory = await ClinicVisit.findAll({
+        where: { mother_id: mother.mother_id, status: 'completed', is_deleted: false },
+        order: [['visit_date', 'DESC']],
+        limit: 5
+      });
+    } catch (err) {
+      console.warn('Visit history fetch error:', err.message);
+      visitHistory = [];
+    }
+
+    const displayId = mother.mother_code || `MOM-${mother.mother_id}`;
 
     const result = {
       mother: {
-        id: mother.mother_code,
-        name: mother.full_name,
+        id: displayId,
+        mother_id: mother.mother_id,
+        mother_code: mother.mother_code,
+        name: mother.full_name || mother.User?.name || 'Unnamed Patient',
+        nic: mother.nic || '',
+        phone: mother.emergency_contact_phone || mother.User?.phone_no || '',
         weeks: mother.weeks || 0,
         bloodType: mother.blood_group || 'Not specified',
         edd: mother.expected_delivery_date
@@ -236,12 +321,12 @@ const getMotherForVisit = async (req, res) => {
         urineProtein: latestVisit?.urine_albumin || 'Normal',
         urineSugar: latestVisit?.urine_sugar || 'Normal'
       },
-      healthEducation: healthEducation.map(item => ({
+      healthEducation: (healthEducation || []).map(item => ({
         id: item.checklist_id,
         title: item.topic_title,
         completed: item.is_completed
       })),
-      visitHistory: visitHistory.map(visit => ({
+      visitHistory: (visitHistory || []).map(visit => ({
         date: new Date(visit.visit_date).toLocaleDateString(),
         bp: `${visit.blood_pressure_systolic}/${visit.blood_pressure_diastolic}`,
         weight: `${visit.weight_kg}kg`,
@@ -267,15 +352,7 @@ const saveDraftVisit = async (req, res) => {
     const sanitizedData = sanitizeVisitData(req.body);
     const { health_education_checklist } = req.body;
     
-    const mother = await Mother.findOne({
-      where: {
-        [Op.or]: [
-          { mother_code: motherId },
-          { mother_id: isNaN(motherId) ? 0 : Number(motherId) }
-        ],
-        is_deleted: false
-      }
-    });
+    const mother = await findMotherByIdOrQuery(motherId);
 
     if (!mother) {
       await transaction.rollback();
@@ -334,15 +411,7 @@ const completeVisit = async (req, res) => {
     const sanitizedData = sanitizeVisitData(req.body);
     const { health_education_checklist } = req.body;
     
-    const mother = await Mother.findOne({
-      where: {
-        [Op.or]: [
-          { mother_code: motherId },
-          { mother_id: isNaN(motherId) ? 0 : Number(motherId) }
-        ],
-        is_deleted: false
-      }
-    });
+    const mother = await findMotherByIdOrQuery(motherId);
 
     if (!mother) {
       await transaction.rollback();
