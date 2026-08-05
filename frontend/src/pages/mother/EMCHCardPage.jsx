@@ -55,15 +55,15 @@ const EMCHCardPage = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('Fetching EMCH card data...');
       const response = await api.get('/mothers/emch-card-data');
-      
+
       console.log('API Response:', response);
-      
+
       if (response.data && response.data.success) {
         const data = response.data.data;
-        
+
         if (data.mother) {
           setMotherData(data.mother);
           setEditFormData({
@@ -80,19 +80,19 @@ const EMCHCardPage = () => {
             husband_contact: data.mother.husband_contact || ''
           });
         }
-        
+
         if (data.vitalSigns) {
           setVitalSigns(data.vitalSigns);
         }
-        
+
         if (data.clinicVisits && data.clinicVisits.length > 0) {
           setClinicVisits(data.clinicVisits.slice(0, 2));
         }
-        
+
         if (data.nextAppointment) {
           setNextAppointment(data.nextAppointment);
         }
-        
+
         if (data.labReports && data.labReports.length > 0) {
           setLabReports(data.labReports);
         }
@@ -110,7 +110,7 @@ const EMCHCardPage = () => {
   const updateMotherProfile = async (profileData) => {
     try {
       const response = await api.put('/mothers/profile', profileData);
-      
+
       if (response.data.success) {
         setIsEditing(false);
         await fetchEMCHCardData();
@@ -178,7 +178,7 @@ const EMCHCardPage = () => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const primaryColor = [219, 39, 119];
-      
+
       // Header
       doc.setFillColor(253, 242, 248);
       doc.rect(0, 0, pageWidth, 45, 'F');
@@ -193,16 +193,16 @@ const EMCHCardPage = () => {
       doc.setTextColor(107, 114, 128);
       doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 45, 20);
       doc.line(20, 45, pageWidth - 20, 45);
-      
+
       let yPos = 60;
-      
+
       // Report Details
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(31, 41, 55);
       doc.text('Report Details', 20, yPos);
       yPos += 10;
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(75, 85, 99);
@@ -218,7 +218,7 @@ const EMCHCardPage = () => {
         doc.text(`Notes: ${report.notes}`, 20, yPos);
         yPos += 7;
       }
-      
+
       // Footer
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
@@ -227,7 +227,7 @@ const EMCHCardPage = () => {
         doc.setTextColor(156, 163, 175);
         doc.text(`Pearl Mom Lab Report - Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
       }
-      
+
       doc.save(`${report.test_name?.replace(/\s/g, '_') || 'Report'}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error downloading report:', error);
@@ -241,7 +241,7 @@ const EMCHCardPage = () => {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const primaryColor = [219, 39, 119];
-      
+
       // Header
       doc.setFillColor(253, 242, 248);
       doc.rect(0, 0, pageWidth, 45, 'F');
@@ -256,9 +256,9 @@ const EMCHCardPage = () => {
       doc.setTextColor(107, 114, 128);
       doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 45, 20);
       doc.line(20, 45, pageWidth - 20, 45);
-      
+
       let yPos = 60;
-      
+
       // Table of reports
       const tableData = categoryReports.map(report => [
         report.test_name || 'N/A',
@@ -266,7 +266,7 @@ const EMCHCardPage = () => {
         report.test_value || 'N/A',
         report.unit || ''
       ]);
-      
+
       autoTable(doc, {
         startY: yPos,
         head: [['Test Name', 'Date', 'Result', 'Unit']],
@@ -277,7 +277,7 @@ const EMCHCardPage = () => {
         margin: { left: 20 },
         width: pageWidth - 40
       });
-      
+
       // Footer
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
@@ -286,7 +286,7 @@ const EMCHCardPage = () => {
         doc.setTextColor(156, 163, 175);
         doc.text(`Pearl Mom Report - Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
       }
-      
+
       doc.save(`${categoryName.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error downloading reports:', error);
@@ -305,7 +305,7 @@ const EMCHCardPage = () => {
   };
 
   const getStatusColor = (status) => {
-    switch(status?.toUpperCase()) {
+    switch (status?.toUpperCase()) {
       case 'NORMAL':
       case 'COMPLETE':
       case 'COMPLETED':
@@ -337,14 +337,14 @@ const EMCHCardPage = () => {
     const firstTrimester = [];
     const secondTrimester = [];
     const thirdTrimester = [];
-    
+
     labReports.forEach(report => {
       const collectedDate = new Date(report.collected_date);
       const lmpDate = motherData?.lmp_date ? new Date(motherData.lmp_date) : null;
-      
+
       if (lmpDate && collectedDate) {
         const weeksDiff = Math.floor((collectedDate - lmpDate) / (1000 * 60 * 60 * 24 * 7));
-        
+
         if (weeksDiff <= 12) {
           firstTrimester.push(report);
         } else if (weeksDiff <= 27) {
@@ -356,11 +356,11 @@ const EMCHCardPage = () => {
         thirdTrimester.push(report);
       }
     });
-    
+
     const categorizeByType = (reports) => {
       return {
-        bloodTests: reports.filter(r => 
-          r.test_name?.toLowerCase().includes('blood') || 
+        bloodTests: reports.filter(r =>
+          r.test_name?.toLowerCase().includes('blood') ||
           r.test_name?.toLowerCase().includes('cbc') ||
           r.test_name?.toLowerCase().includes('group') ||
           r.test_name?.toLowerCase().includes('rubella') ||
@@ -370,14 +370,14 @@ const EMCHCardPage = () => {
           r.test_name?.toLowerCase().includes('iron') ||
           r.test_name?.toLowerCase().includes('vitamin')
         ),
-        urineTests: reports.filter(r => 
+        urineTests: reports.filter(r =>
           r.test_name?.toLowerCase().includes('urine')
         ),
-        ultrasoundScans: reports.filter(r => 
+        ultrasoundScans: reports.filter(r =>
           r.test_name?.toLowerCase().includes('ultrasound') ||
           r.test_name?.toLowerCase().includes('scan')
         ),
-        otherTests: reports.filter(r => 
+        otherTests: reports.filter(r =>
           !r.test_name?.toLowerCase().includes('blood') &&
           !r.test_name?.toLowerCase().includes('urine') &&
           !r.test_name?.toLowerCase().includes('ultrasound') &&
@@ -385,7 +385,7 @@ const EMCHCardPage = () => {
         )
       };
     };
-    
+
     return {
       firstTrimester: categorizeByType(firstTrimester),
       secondTrimester: categorizeByType(secondTrimester),
@@ -414,8 +414,8 @@ const EMCHCardPage = () => {
       <div className="p-6 min-h-screen">
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
           <p className="text-red-600 mb-3">{error}</p>
-          <button 
-            onClick={() => fetchEMCHCardData()} 
+          <button
+            onClick={() => fetchEMCHCardData()}
             className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
           >
             Retry
@@ -439,7 +439,7 @@ const EMCHCardPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
-      
+
       {/* Main Profile Card */}
       <Card className="overflow-hidden border-none shadow-sm">
         <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
@@ -469,9 +469,9 @@ const EMCHCardPage = () => {
             </div>
           </div>
           <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100 flex-shrink-0">
-             <p className="text-xs tracking-wider uppercase text-green-700 font-semibold mb-1">Expected Delivery Date</p>
-             <p className="text-2xl text-green-800 font-bold">
-               {motherData?.expected_delivery_date ? formatDate(motherData.expected_delivery_date, 'long') : 'Not set'}
+            <p className="text-xs tracking-wider uppercase text-green-700 font-semibold mb-1">Expected Delivery Date</p>
+            <p className="text-2xl text-green-800 font-bold">
+              {motherData?.expected_delivery_date ? formatDate(motherData.expected_delivery_date, 'long') : 'Not set'}
             </p>
           </div>
         </CardContent>
@@ -636,7 +636,7 @@ const EMCHCardPage = () => {
               </div>
               <div className="flex items-baseline mb-4">
                 <span className="text-3xl font-bold text-gray-900">
-                  {vitalSigns?.blood_pressure_systolic && vitalSigns?.blood_pressure_diastolic 
+                  {vitalSigns?.blood_pressure_systolic && vitalSigns?.blood_pressure_diastolic
                     ? `${vitalSigns.blood_pressure_systolic}/${vitalSigns.blood_pressure_diastolic}`
                     : '--/--'}
                 </span>
@@ -705,8 +705,8 @@ const EMCHCardPage = () => {
                 </p>
               </div>
             </div>
-            <button 
-              onClick={() => setShowAppointmentModal(true)} 
+            <button
+              onClick={() => setShowAppointmentModal(true)}
               className="text-sm font-medium text-pink-600 hover:text-pink-700 flex items-center flex-shrink-0"
             >
               View Details <ChevronRight className="h-4 w-4 ml-1" />
@@ -818,7 +818,7 @@ const EMCHCardPage = () => {
                         <div className="bg-white p-3 rounded-lg border border-gray-100 text-center">
                           <p className="text-xs text-gray-500 mb-1">BP</p>
                           <p className="font-semibold text-gray-900">
-                            {visit.blood_pressure_systolic && visit.blood_pressure_diastolic 
+                            {visit.blood_pressure_systolic && visit.blood_pressure_diastolic
                               ? `${visit.blood_pressure_systolic}/${visit.blood_pressure_diastolic}`
                               : '--/--'}
                           </p>
@@ -868,342 +868,342 @@ const EMCHCardPage = () => {
             <p className="text-xs text-gray-500">Recent clinical findings and screenings organized by trimester</p>
           </div>
         </div>
-        
+
         {/* First Trimester */}
-        {(categorizedReports.firstTrimester.bloodTests.length > 0 || 
-          categorizedReports.firstTrimester.urineTests.length > 0 || 
+        {(categorizedReports.firstTrimester.bloodTests.length > 0 ||
+          categorizedReports.firstTrimester.urineTests.length > 0 ||
           categorizedReports.firstTrimester.ultrasoundScans.length > 0) && (
-          <div className="mb-8">
-            <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
-                <span className="text-xs font-bold text-green-600">1</span>
+            <div className="mb-8">
+              <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                  <span className="text-xs font-bold text-green-600">1</span>
+                </div>
+                First Trimester Investigations (0–12 Weeks)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Blood Tests */}
+                {categorizedReports.firstTrimester.bloodTests.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Droplet className="h-5 w-5 text-red-500" />
+                          <h5 className="font-semibold text-gray-900">Blood Tests</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.firstTrimester.bloodTests.length} tests</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.firstTrimester.bloodTests.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'} {test.unit || ''}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.firstTrimester.bloodTests)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.firstTrimester.bloodTests, 'First_Trimester_Blood_Tests')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Urine Tests */}
+                {categorizedReports.firstTrimester.urineTests.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Flask className="h-5 w-5 text-yellow-500" />
+                          <h5 className="font-semibold text-gray-900">Urine Tests</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.firstTrimester.urineTests.length} tests</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.firstTrimester.urineTests.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.firstTrimester.urineTests)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.firstTrimester.urineTests, 'First_Trimester_Urine_Tests')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Ultrasound Scans */}
+                {categorizedReports.firstTrimester.ultrasoundScans.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Microscope className="h-5 w-5 text-purple-500" />
+                          <h5 className="font-semibold text-gray-900">Ultrasound Scans</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.firstTrimester.ultrasoundScans.length} scans</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.firstTrimester.ultrasoundScans.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Normal'}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.firstTrimester.ultrasoundScans)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.firstTrimester.ultrasoundScans, 'First_Trimester_Ultrasound_Scans')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-              First Trimester Investigations (0–12 Weeks)
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Blood Tests */}
-              {categorizedReports.firstTrimester.bloodTests.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Droplet className="h-5 w-5 text-red-500" />
-                        <h5 className="font-semibold text-gray-900">Blood Tests</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.firstTrimester.bloodTests.length} tests</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.firstTrimester.bloodTests.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'} {test.unit || ''}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.firstTrimester.bloodTests)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.firstTrimester.bloodTests, 'First_Trimester_Blood_Tests')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Urine Tests */}
-              {categorizedReports.firstTrimester.urineTests.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Flask className="h-5 w-5 text-yellow-500" />
-                        <h5 className="font-semibold text-gray-900">Urine Tests</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.firstTrimester.urineTests.length} tests</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.firstTrimester.urineTests.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.firstTrimester.urineTests)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.firstTrimester.urineTests, 'First_Trimester_Urine_Tests')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Ultrasound Scans */}
-              {categorizedReports.firstTrimester.ultrasoundScans.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Microscope className="h-5 w-5 text-purple-500" />
-                        <h5 className="font-semibold text-gray-900">Ultrasound Scans</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.firstTrimester.ultrasoundScans.length} scans</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.firstTrimester.ultrasoundScans.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Normal'}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.firstTrimester.ultrasoundScans)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.firstTrimester.ultrasoundScans, 'First_Trimester_Ultrasound_Scans')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
-          </div>
-        )}
+          )}
 
         {/* Second Trimester */}
-        {(categorizedReports.secondTrimester.bloodTests.length > 0 || 
-          categorizedReports.secondTrimester.urineTests.length > 0 || 
+        {(categorizedReports.secondTrimester.bloodTests.length > 0 ||
+          categorizedReports.secondTrimester.urineTests.length > 0 ||
           categorizedReports.secondTrimester.ultrasoundScans.length > 0) && (
-          <div className="mb-8">
-            <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2">
-                <span className="text-xs font-bold text-blue-600">2</span>
+            <div className="mb-8">
+              <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2">
+                  <span className="text-xs font-bold text-blue-600">2</span>
+                </div>
+                Second Trimester Investigations (13–27 Weeks)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Blood Tests */}
+                {categorizedReports.secondTrimester.bloodTests.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Droplet className="h-5 w-5 text-red-500" />
+                          <h5 className="font-semibold text-gray-900">Blood Tests</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.secondTrimester.bloodTests.length} tests</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.secondTrimester.bloodTests.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'} {test.unit || ''}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.secondTrimester.bloodTests)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.secondTrimester.bloodTests, 'Second_Trimester_Blood_Tests')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Urine Tests */}
+                {categorizedReports.secondTrimester.urineTests.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Flask className="h-5 w-5 text-yellow-500" />
+                          <h5 className="font-semibold text-gray-900">Urine Tests</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.secondTrimester.urineTests.length} tests</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.secondTrimester.urineTests.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.secondTrimester.urineTests)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.secondTrimester.urineTests, 'Second_Trimester_Urine_Tests')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Ultrasound Scans */}
+                {categorizedReports.secondTrimester.ultrasoundScans.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Microscope className="h-5 w-5 text-purple-500" />
+                          <h5 className="font-semibold text-gray-900">Ultrasound Scans</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.secondTrimester.ultrasoundScans.length} scans</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.secondTrimester.ultrasoundScans.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Normal'}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.secondTrimester.ultrasoundScans)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.secondTrimester.ultrasoundScans, 'Second_Trimester_Ultrasound_Scans')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-              Second Trimester Investigations (13–27 Weeks)
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Blood Tests */}
-              {categorizedReports.secondTrimester.bloodTests.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Droplet className="h-5 w-5 text-red-500" />
-                        <h5 className="font-semibold text-gray-900">Blood Tests</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.secondTrimester.bloodTests.length} tests</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.secondTrimester.bloodTests.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'} {test.unit || ''}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.secondTrimester.bloodTests)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.secondTrimester.bloodTests, 'Second_Trimester_Blood_Tests')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Urine Tests */}
-              {categorizedReports.secondTrimester.urineTests.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Flask className="h-5 w-5 text-yellow-500" />
-                        <h5 className="font-semibold text-gray-900">Urine Tests</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.secondTrimester.urineTests.length} tests</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.secondTrimester.urineTests.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.secondTrimester.urineTests)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.secondTrimester.urineTests, 'Second_Trimester_Urine_Tests')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Ultrasound Scans */}
-              {categorizedReports.secondTrimester.ultrasoundScans.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Microscope className="h-5 w-5 text-purple-500" />
-                        <h5 className="font-semibold text-gray-900">Ultrasound Scans</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.secondTrimester.ultrasoundScans.length} scans</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.secondTrimester.ultrasoundScans.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Normal'}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.secondTrimester.ultrasoundScans)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.secondTrimester.ultrasoundScans, 'Second_Trimester_Ultrasound_Scans')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
-          </div>
-        )}
+          )}
 
         {/* Third Trimester */}
-        {(categorizedReports.thirdTrimester.bloodTests.length > 0 || 
-          categorizedReports.thirdTrimester.urineTests.length > 0 || 
+        {(categorizedReports.thirdTrimester.bloodTests.length > 0 ||
+          categorizedReports.thirdTrimester.urineTests.length > 0 ||
           categorizedReports.thirdTrimester.ultrasoundScans.length > 0) && (
-          <div className="mb-8">
-            <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
-              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-2">
-                <span className="text-xs font-bold text-purple-600">3</span>
+            <div className="mb-8">
+              <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-2">
+                  <span className="text-xs font-bold text-purple-600">3</span>
+                </div>
+                Third Trimester Investigations (28 Weeks & Above)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Blood Tests */}
+                {categorizedReports.thirdTrimester.bloodTests.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Droplet className="h-5 w-5 text-red-500" />
+                          <h5 className="font-semibold text-gray-900">Blood Tests</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.thirdTrimester.bloodTests.length} tests</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.thirdTrimester.bloodTests.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'} {test.unit || ''}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.thirdTrimester.bloodTests)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.thirdTrimester.bloodTests, 'Third_Trimester_Blood_Tests')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Urine Tests */}
+                {categorizedReports.thirdTrimester.urineTests.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Flask className="h-5 w-5 text-yellow-500" />
+                          <h5 className="font-semibold text-gray-900">Urine Tests</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.thirdTrimester.urineTests.length} tests</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.thirdTrimester.urineTests.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.thirdTrimester.urineTests)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.thirdTrimester.urineTests, 'Third_Trimester_Urine_Tests')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Ultrasound Scans */}
+                {categorizedReports.thirdTrimester.ultrasoundScans.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Microscope className="h-5 w-5 text-purple-500" />
+                          <h5 className="font-semibold text-gray-900">Ultrasound Scans</h5>
+                        </div>
+                        <Badge variant="success">{categorizedReports.thirdTrimester.ultrasoundScans.length} scans</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categorizedReports.thirdTrimester.ultrasoundScans.map((test, idx) => (
+                          <div key={idx} className="text-sm border-b border-gray-100 pb-2">
+                            <p className="font-medium text-gray-800">{test.test_name}</p>
+                            <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
+                            <p className="text-xs text-gray-600">Result: {test.test_value || 'Normal'}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex space-x-2">
+                        <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.thirdTrimester.ultrasoundScans)}>
+                          <Eye className="h-3 w-3 mr-1" /> View All
+                        </Button>
+                        <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.thirdTrimester.ultrasoundScans, 'Third_Trimester_Ultrasound_Scans')}>
+                          <Download className="h-3 w-3 mr-1" /> Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-              Third Trimester Investigations (28 Weeks & Above)
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Blood Tests */}
-              {categorizedReports.thirdTrimester.bloodTests.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Droplet className="h-5 w-5 text-red-500" />
-                        <h5 className="font-semibold text-gray-900">Blood Tests</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.thirdTrimester.bloodTests.length} tests</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.thirdTrimester.bloodTests.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'} {test.unit || ''}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.thirdTrimester.bloodTests)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.thirdTrimester.bloodTests, 'Third_Trimester_Blood_Tests')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Urine Tests */}
-              {categorizedReports.thirdTrimester.urineTests.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Flask className="h-5 w-5 text-yellow-500" />
-                        <h5 className="font-semibold text-gray-900">Urine Tests</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.thirdTrimester.urineTests.length} tests</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.thirdTrimester.urineTests.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Not available'}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.thirdTrimester.urineTests)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.thirdTrimester.urineTests, 'Third_Trimester_Urine_Tests')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Ultrasound Scans */}
-              {categorizedReports.thirdTrimester.ultrasoundScans.length > 0 && (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Microscope className="h-5 w-5 text-purple-500" />
-                        <h5 className="font-semibold text-gray-900">Ultrasound Scans</h5>
-                      </div>
-                      <Badge variant="success">{categorizedReports.thirdTrimester.ultrasoundScans.length} scans</Badge>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {categorizedReports.thirdTrimester.ultrasoundScans.map((test, idx) => (
-                        <div key={idx} className="text-sm border-b border-gray-100 pb-2">
-                          <p className="font-medium text-gray-800">{test.test_name}</p>
-                          <p className="text-xs text-gray-500">Completed: {test.collected_date ? formatDate(test.collected_date, 'short') : 'Date not set'}</p>
-                          <p className="text-xs text-gray-600">Result: {test.test_value || 'Normal'}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button size="sm" variant="ghost" className="text-pink-600 flex-1" onClick={() => handleViewCategory(categorizedReports.thirdTrimester.ultrasoundScans)}>
-                        <Eye className="h-3 w-3 mr-1" /> View All
-                      </Button>
-                      <Button size="sm" className="bg-pink-600 text-white flex-1" onClick={() => handleDownloadCategory(categorizedReports.thirdTrimester.ultrasoundScans, 'Third_Trimester_Ultrasound_Scans')}>
-                        <Download className="h-3 w-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
-          </div>
-        )}
+          )}
 
         {labReports.length === 0 && (
           <div className="col-span-full text-center py-8 bg-gray-50 rounded-xl">
@@ -1332,9 +1332,9 @@ const EMCHCardPage = () => {
                           <p className="text-xs text-gray-600 mt-2 italic">{report.notes}</p>
                         )}
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         className="text-pink-600"
                         onClick={() => handleDownloadReport(report)}
                       >

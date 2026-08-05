@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2, Download, Edit2, Save } from 'lucide-react';
+import { Search, Filter, AlertCircle, ChevronRight, Eye, Plus, X, Calendar, User, Droplet, Phone, MapPin, Activity, Heart, Loader, CheckCircle2, Download, Edit2, Save, Lock } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -1204,82 +1204,94 @@ const MothersListPage = () => {
                   </div>
                 </div>
 
-                {/* Personal & Contact Information */}
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 flex items-center">
-                    <User className="mr-2 text-indigo-500" size={16} />
-                    Personal & Contact Information
-                  </h3>
+                {/* Personal & Contact Information (Read-Only) */}
+                <div className="bg-gray-50/80 border border-gray-200 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+                      <User className="mr-2 text-indigo-500" size={16} />
+                      Personal & Contact Information
+                    </h3>
+                    <span className="text-[11px] font-medium text-gray-500 bg-gray-200/80 px-2 py-0.5 rounded flex items-center">
+                      <Lock size={11} className="mr-1 text-gray-500" />
+                      Read-Only (Registered Details)
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
                       <input
                         type="text"
                         name="full_name"
                         value={editForm.full_name}
-                        onChange={handleEditChange}
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-600 rounded-lg text-sm cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">NIC Number</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">NIC Number</label>
                       <input
                         type="text"
                         name="nic"
                         value={editForm.nic}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-600 rounded-lg text-sm cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Date of Birth</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Date of Birth</label>
                       <input
                         type="date"
                         name="dob"
                         value={editForm.dob}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-600 rounded-lg text-sm cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Phone Number</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Phone Number</label>
                       <input
                         type="tel"
                         name="phone_no"
                         value={editForm.phone_no}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-600 rounded-lg text-sm cursor-not-allowed"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Address</label>
                       <textarea
                         rows="2"
                         name="address"
                         value={editForm.address}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-600 rounded-lg text-sm cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">District</label>
                       <input
                         type="text"
                         name="district"
                         value={editForm.district}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-600 rounded-lg text-sm cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">GS Division</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">GS Division</label>
                       <input
                         type="text"
                         name="gs_division"
                         value={editForm.gs_division}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-600 rounded-lg text-sm cursor-not-allowed"
                       />
                     </div>
                   </div>

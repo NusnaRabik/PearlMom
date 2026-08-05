@@ -1,8 +1,8 @@
 // frontend/src/components/common/MotherSidebar.jsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
+import {
+  LayoutDashboard,
   Heart,
   Syringe,
   MapPin,
@@ -34,7 +34,7 @@ const MotherSidebar = () => {
       label: 'Vaccination',
       description: 'Schedule & Reminders'
     },
-        {
+    {
       path: '/mother/nutrition',
       icon: Apple,
       label: 'Nutrition Tracker',
@@ -60,7 +60,7 @@ const MotherSidebar = () => {
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
-  
+
   return (
     <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
       {/* Logo Section */}
@@ -81,11 +81,10 @@ const MotherSidebar = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
-                isActive 
-                  ? 'bg-pink-50 text-pink-600 shadow-sm' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
+              className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${isActive
+                ? 'bg-pink-50 text-pink-600 shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
             >
               <item.icon size={20} className={isActive ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
               <div className="flex flex-col flex-1">
@@ -105,11 +104,10 @@ const MotherSidebar = () => {
         {/* Help & Support */}
         <Link
           to="/help"
-          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
-            location.pathname === '/help'
-              ? 'bg-pink-50 text-pink-600 shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          }`}
+          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${location.pathname === '/help'
+            ? 'bg-pink-50 text-pink-600 shadow-sm'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
         >
           <HelpCircle size={20} className={location.pathname === '/help' ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
           <div className="flex flex-col flex-1">
@@ -121,11 +119,10 @@ const MotherSidebar = () => {
         {/* Settings */}
         <Link
           to="/mother/settings"
-          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
-            isActiveRoute('/mother/settings')
-              ? 'bg-pink-50 text-pink-600 shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          }`}
+          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${isActiveRoute('/mother/settings')
+            ? 'bg-pink-50 text-pink-600 shadow-sm'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
         >
           <Settings size={20} className={isActiveRoute('/mother/settings') ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
           <div className="flex flex-col flex-1">

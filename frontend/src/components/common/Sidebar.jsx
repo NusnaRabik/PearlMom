@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Apple, 
-  CalendarCheck, 
-  Users, 
+import {
+  LayoutDashboard,
+  Apple,
+  CalendarCheck,
+  Users,
   Settings,
   HelpCircle,
   Package,
-  Syringe
+  ShieldCheck
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -47,7 +47,7 @@ const Sidebar = () => {
     },
     {
       path: '/provider/vaccine-stock',
-      icon: Syringe,
+      icon: ShieldCheck,
       label: 'Vaccine Stock',
       description: 'Manage Vaccines'
     }
@@ -60,7 +60,7 @@ const Sidebar = () => {
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
-  
+
   return (
     <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
       {/* Logo Section */}
@@ -81,11 +81,10 @@ const Sidebar = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
-                isActive 
-                  ? 'bg-pink-50 text-pink-600 shadow-sm' 
+              className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${isActive
+                  ? 'bg-pink-50 text-pink-600 shadow-sm'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
+                }`}
             >
               <item.icon size={20} className={isActive ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
               <div className="flex flex-col flex-1">
@@ -105,11 +104,10 @@ const Sidebar = () => {
         {/* Help & Support */}
         <Link
           to="/help"
-          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
-            location.pathname === '/help'
+          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${location.pathname === '/help'
               ? 'bg-pink-50 text-pink-600 shadow-sm'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          }`}
+            }`}
         >
           <HelpCircle size={20} className={location.pathname === '/help' ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
           <div className="flex flex-col flex-1">
@@ -124,11 +122,10 @@ const Sidebar = () => {
         {/* Provider Settings */}
         <Link
           to="/provider/settings"
-          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
-            isActiveRoute('/provider/settings')
+          className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 group ${isActiveRoute('/provider/settings')
               ? 'bg-pink-50 text-pink-600 shadow-sm'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          }`}
+            }`}
         >
           <Settings size={20} className={isActiveRoute('/provider/settings') ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'} />
           <div className="flex flex-col flex-1">

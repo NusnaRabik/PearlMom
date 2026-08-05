@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { 
-  Syringe, TrendingUp, AlertTriangle, Plus, X, 
+import {
+  Syringe, TrendingUp, AlertTriangle, Plus, X,
   Loader, Calendar, Building, FileText, Thermometer,
   CheckCircle, AlertCircle, Package, Droplet, Search
 } from 'lucide-react';
@@ -66,25 +66,25 @@ const VaccineStockPage = () => {
     // Filter both stats and batches when search term changes
     if (searchTerm.trim() === '') {
       // No search: show only default 4 vaccines in stats, all batches in table
-      const defaultSummary = stockSummary.filter(vaccine => 
+      const defaultSummary = stockSummary.filter(vaccine =>
         defaultDisplayVaccines.includes(vaccine.vaccine_name)
       );
       setFilteredSummary(defaultSummary);
       setFilteredBatches(allBatches);
     } else {
       // With search: show only matching vaccines in stats AND matching batches in table
-      const matchedBatches = allBatches.filter(batch => 
+      const matchedBatches = allBatches.filter(batch =>
         batch.vaccine_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      
+
       // Get unique vaccine names from matched batches
       const matchedVaccineNames = [...new Set(matchedBatches.map(batch => batch.vaccine_name))];
-      
+
       // Filter summary to only show vaccines that have matching batches
-      const matchedSummary = stockSummary.filter(vaccine => 
+      const matchedSummary = stockSummary.filter(vaccine =>
         matchedVaccineNames.includes(vaccine.vaccine_name)
       );
-      
+
       setFilteredSummary(matchedSummary);
       setFilteredBatches(matchedBatches);
     }
@@ -97,9 +97,9 @@ const VaccineStockPage = () => {
       if (response.data.success) {
         setStockSummary(response.data.data.summary);
         setAllBatches(response.data.data.all_batches);
-        
+
         // Initialize with default view
-        const defaultSummary = response.data.data.summary.filter(vaccine => 
+        const defaultSummary = response.data.data.summary.filter(vaccine =>
           defaultDisplayVaccines.includes(vaccine.vaccine_name)
         );
         setFilteredSummary(defaultSummary);
@@ -134,7 +134,7 @@ const VaccineStockPage = () => {
           notes: ''
         });
         fetchStockData();
-        
+
         setTimeout(() => {
           setSuccessMessage('');
         }, 3000);
@@ -161,7 +161,7 @@ const VaccineStockPage = () => {
         setShowUsageModal(false);
         setSelectedBatch(null);
         fetchStockData();
-        
+
         setTimeout(() => {
           setSuccessMessage('');
         }, 3000);
@@ -179,7 +179,7 @@ const VaccineStockPage = () => {
   };
 
   const getVaccineIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'tetanus': return <Droplet className="h-5 w-5" />;
       case 'covid': return <AlertCircle className="h-5 w-5" />;
       default: return <Syringe className="h-5 w-5" />;
@@ -287,7 +287,7 @@ const VaccineStockPage = () => {
                   </div>
                   <div className="mt-3 pt-2 border-t border-gray-100">
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-pink-500 h-2 rounded-full transition-all"
                         style={{ width: `${(remaining / total) * 100}%` }}
                       />
@@ -354,8 +354,8 @@ const VaccineStockPage = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => {
                             setSelectedBatch(batch);
@@ -400,7 +400,7 @@ const VaccineStockPage = () => {
                     type="text"
                     required
                     value={newBatch.vaccine_name}
-                    onChange={(e) => setNewBatch({...newBatch, vaccine_name: e.target.value})}
+                    onChange={(e) => setNewBatch({ ...newBatch, vaccine_name: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                     placeholder="e.g., Tetanus Toxoid"
                   />
@@ -410,7 +410,7 @@ const VaccineStockPage = () => {
                   <select
                     required
                     value={newBatch.vaccine_type}
-                    onChange={(e) => setNewBatch({...newBatch, vaccine_type: e.target.value})}
+                    onChange={(e) => setNewBatch({ ...newBatch, vaccine_type: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                   >
                     <option value="">Select Type</option>
@@ -425,7 +425,7 @@ const VaccineStockPage = () => {
                     type="text"
                     required
                     value={newBatch.batch_number}
-                    onChange={(e) => setNewBatch({...newBatch, batch_number: e.target.value})}
+                    onChange={(e) => setNewBatch({ ...newBatch, batch_number: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                   />
                 </div>
@@ -434,7 +434,7 @@ const VaccineStockPage = () => {
                   <input
                     type="text"
                     value={newBatch.manufacturer}
-                    onChange={(e) => setNewBatch({...newBatch, manufacturer: e.target.value})}
+                    onChange={(e) => setNewBatch({ ...newBatch, manufacturer: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                   />
                 </div>
@@ -445,7 +445,7 @@ const VaccineStockPage = () => {
                   type="number"
                   required
                   value={newBatch.doses_received}
-                  onChange={(e) => setNewBatch({...newBatch, doses_received: parseInt(e.target.value)})}
+                  onChange={(e) => setNewBatch({ ...newBatch, doses_received: parseInt(e.target.value) })}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                 />
               </div>
@@ -456,7 +456,7 @@ const VaccineStockPage = () => {
                     type="date"
                     required
                     value={newBatch.received_date}
-                    onChange={(e) => setNewBatch({...newBatch, received_date: e.target.value})}
+                    onChange={(e) => setNewBatch({ ...newBatch, received_date: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                   />
                 </div>
@@ -466,7 +466,7 @@ const VaccineStockPage = () => {
                     type="date"
                     required
                     value={newBatch.expiry_date}
-                    onChange={(e) => setNewBatch({...newBatch, expiry_date: e.target.value})}
+                    onChange={(e) => setNewBatch({ ...newBatch, expiry_date: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                   />
                 </div>
@@ -478,7 +478,7 @@ const VaccineStockPage = () => {
                     type="number"
                     step="0.1"
                     value={newBatch.storage_temperature}
-                    onChange={(e) => setNewBatch({...newBatch, storage_temperature: parseFloat(e.target.value)})}
+                    onChange={(e) => setNewBatch({ ...newBatch, storage_temperature: parseFloat(e.target.value) })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                     placeholder="2-8"
                   />
@@ -488,7 +488,7 @@ const VaccineStockPage = () => {
                   <input
                     type="text"
                     value={newBatch.supplier}
-                    onChange={(e) => setNewBatch({...newBatch, supplier: e.target.value})}
+                    onChange={(e) => setNewBatch({ ...newBatch, supplier: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                   />
                 </div>
@@ -498,7 +498,7 @@ const VaccineStockPage = () => {
                 <input
                   type="text"
                   value={newBatch.lot_number}
-                  onChange={(e) => setNewBatch({...newBatch, lot_number: e.target.value})}
+                  onChange={(e) => setNewBatch({ ...newBatch, lot_number: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                 />
               </div>
@@ -507,7 +507,7 @@ const VaccineStockPage = () => {
                 <textarea
                   rows="2"
                   value={newBatch.notes}
-                  onChange={(e) => setNewBatch({...newBatch, notes: e.target.value})}
+                  onChange={(e) => setNewBatch({ ...newBatch, notes: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
                 />
               </div>

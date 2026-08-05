@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Search, ChevronDown, ChevronUp, Phone, UploadCloud, Asterisk, 
   ExternalLink, GraduationCap, CheckCircle2, FileText, Bug, 
@@ -9,6 +10,7 @@ import api from '../../services/api';
 import ChatWidget from '../../components/common/ChatWidget';
 
 const HelpSupportPage = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('Mother');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState(0);
@@ -21,6 +23,19 @@ const HelpSupportPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [attachment, setAttachment] = useState(null);
+
+  // Auto-scroll to contact form if navigated to /contact or #contact-form
+  useEffect(() => {
+    if (location.pathname === '/contact' || location.hash === '#contact-form' || location.hash === '#contact') {
+      const timer = setTimeout(() => {
+        const el = document.getElementById('contact-form');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, location.hash]);
 
   // Mouse tracking for hero background animation
   const heroRef = useRef(null);
