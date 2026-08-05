@@ -35,24 +35,49 @@ const getMyVaccinations = async (req, res) => {
   }
 };
 
+const findMotherFlexible = async (motherId) => {
+  if (!motherId) return null;
+  const clean = decodeURIComponent(String(motherId)).trim();
+  if (!clean) return null;
+
+  if (!isNaN(clean) && Number(clean) > 0) {
+    const byId = await Mother.findOne({ where: { mother_id: Number(clean), is_deleted: false } });
+    if (byId) return byId;
+  }
+
+  const momMatch = clean.match(/^MOM-(?:2\d-)?0*(\d+)$/i);
+  if (momMatch && momMatch[1]) {
+    const num = Number(momMatch[1]);
+    const byNum = await Mother.findOne({
+      where: {
+        [Op.or]: [{ mother_id: num }, { mother_code: clean }],
+        is_deleted: false
+      }
+    });
+    if (byNum) return byNum;
+  }
+
+  let mother = await Mother.findOne({ where: { mother_code: clean, is_deleted: false } });
+  if (mother) return mother;
+
+  mother = await Mother.findOne({
+    where: {
+      [Op.or]: [
+        { mother_code: { [Op.like]: `%${clean}%` } },
+        { full_name: { [Op.like]: `%${clean}%` } },
+        { nic: { [Op.like]: `%${clean}%` } }
+      ],
+      is_deleted: false
+    }
+  });
+  return mother;
+};
+
 // Get vaccinations by mother ID (for providers)
 const getVaccinationsByMotherId = async (req, res) => {
   try {
     const { motherId } = req.params;
-    
-    // Find mother by mother_code or mother_id
-    let mother = null;
-    if (motherId) {
-      if (isNaN(parseInt(motherId))) {
-        mother = await Mother.findOne({ 
-          where: { mother_code: motherId, is_deleted: false }
-        });
-      } else {
-        mother = await Mother.findOne({ 
-          where: { mother_id: parseInt(motherId), is_deleted: false }
-        });
-      }
-    }
+    const mother = await findMotherFlexible(motherId);
     
     if (!mother) {
       return error(res, 'Mother not found', 404);
@@ -94,19 +119,7 @@ const addVaccinationForMother = async (req, res) => {
       return error(res, 'Vaccine name and given date are required', 400);
     }
     
-    // Find mother by mother_code or mother_id
-    let mother = null;
-    if (motherId) {
-      if (isNaN(parseInt(motherId))) {
-        mother = await Mother.findOne({ 
-          where: { mother_code: motherId, is_deleted: false }
-        });
-      } else {
-        mother = await Mother.findOne({ 
-          where: { mother_id: parseInt(motherId), is_deleted: false }
-        });
-      }
-    }
+    const mother = await findMotherFlexible(motherId);
     
     if (!mother) {
       return error(res, 'Mother not found', 404);
