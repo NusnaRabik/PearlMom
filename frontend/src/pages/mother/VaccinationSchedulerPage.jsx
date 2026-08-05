@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Calendar, Download, ChevronLeft, ChevronRight, CheckCircle2, ChevronDown, Syringe, Baby, Clock, MapPin, User, FileText, AlertCircle, Bell, CalendarDays, Droplet, Shield, Plus, X, Stethoscope, Phone, Mail } from 'lucide-react';
+import { Calendar, Download, ChevronLeft, ChevronRight, CheckCircle2, ChevronDown, ShieldCheck, Baby, Clock, MapPin, User, FileText, AlertCircle, Bell, CalendarDays, Droplet, Shield, Plus, X, Stethoscope, Phone, Mail } from 'lucide-react';
 import { formatDate, getMonthName, getShortMonthName } from '../../utils/formatDate';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -45,17 +45,17 @@ const VaccinationSchedulerPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
+
       const profileResponse = await api.get('/mothers/profile');
       if (profileResponse.data.success) {
         const mother = profileResponse.data.data?.mother || profileResponse.data.mother;
         setMotherData(mother);
-        
+
         const vaccinationResponse = await api.get('/vaccinations');
         if (vaccinationResponse.data.success) {
           setVaccinations(vaccinationResponse.data.data?.vaccinations || []);
         }
-        
+
         const appointmentResponse = await api.get('/appointments/my');
         if (appointmentResponse.data.success) {
           setAppointments(appointmentResponse.data.data?.appointments || []);
@@ -74,7 +74,7 @@ const VaccinationSchedulerPage = () => {
       vaccinations: [],
       appointments: []
     };
-    
+
     // Check for vaccinations on this date
     vaccinations.forEach(vacc => {
       if (vacc.due_date) {
@@ -84,7 +84,7 @@ const VaccinationSchedulerPage = () => {
         }
       }
     });
-    
+
     // Check for appointments on this date
     appointments.forEach(app => {
       if (app.appointment_date) {
@@ -94,7 +94,7 @@ const VaccinationSchedulerPage = () => {
         }
       }
     });
-    
+
     return dateEvents;
   };
 
@@ -124,7 +124,7 @@ const VaccinationSchedulerPage = () => {
   // Get highlighted dates from vaccinations and appointments
   const getHighlightedDates = () => {
     const highlighted = {};
-    
+
     vaccinations.forEach(vacc => {
       if (vacc.due_date) {
         const date = new Date(vacc.due_date);
@@ -136,7 +136,7 @@ const VaccinationSchedulerPage = () => {
         }
       }
     });
-    
+
     appointments.forEach(app => {
       if (app.appointment_date) {
         const date = new Date(app.appointment_date);
@@ -148,7 +148,7 @@ const VaccinationSchedulerPage = () => {
         }
       }
     });
-    
+
     return highlighted;
   };
 
@@ -194,7 +194,7 @@ const VaccinationSchedulerPage = () => {
       }
       return false;
     });
-    
+
     return { completed, upcoming, pending, overdue };
   };
 
@@ -221,23 +221,23 @@ const VaccinationSchedulerPage = () => {
   const handleDownloadReport = async (appointment) => {
     try {
       const doc = new jsPDF();
-      
+
       doc.setFontSize(20);
       doc.setTextColor(219, 39, 119);
       doc.text('Appointment Report', 20, 20);
-      
+
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
       doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 35);
       doc.line(20, 40, 190, 40);
-      
+
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text('Appointment Details', 20, 55);
-      
+
       doc.setFontSize(11);
       doc.setTextColor(60, 60, 60);
-      
+
       const details = [
         ['Date:', formatDate(appointment.appointment_date, 'long')],
         ['Time:', appointment.appointment_time || 'Not specified'],
@@ -247,7 +247,7 @@ const VaccinationSchedulerPage = () => {
         ['Location:', appointment.Clinic?.address || 'Not specified'],
         ['Notes:', appointment.notes || 'No additional notes']
       ];
-      
+
       let y = 70;
       details.forEach(detail => {
         doc.setFont('helvetica', 'bold');
@@ -256,12 +256,12 @@ const VaccinationSchedulerPage = () => {
         doc.text(detail[1], 70, y);
         y += 10;
       });
-      
+
       doc.setFontSize(10);
       doc.setTextColor(150, 150, 150);
       doc.text('This is an electronically generated report from PearlMom System', 20, 280);
       doc.text('For any queries, please contact your healthcare provider.', 20, 290);
-      
+
       doc.save(`Appointment_Report_${appointment.appointment_date}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -273,24 +273,24 @@ const VaccinationSchedulerPage = () => {
   const handleDownloadVaccinationCertificate = async (vaccination) => {
     try {
       const doc = new jsPDF();
-      
+
       doc.setFontSize(24);
       doc.setTextColor(219, 39, 119);
       doc.text('Vaccination Certificate', 20, 30);
-      
+
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
       doc.text(`Certificate ID: ${vaccination.vaccination_id || 'N/A'}`, 20, 50);
       doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 60);
       doc.line(20, 65, 190, 65);
-      
+
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text('Vaccination Details', 20, 80);
-      
+
       doc.setFontSize(11);
       doc.setTextColor(60, 60, 60);
-      
+
       const details = [
         ['Vaccine Name:', vaccination.vaccine_name],
         ['Vaccine Type:', vaccination.vaccine_type?.toUpperCase() || 'N/A'],
@@ -301,7 +301,7 @@ const VaccinationSchedulerPage = () => {
         ['Batch Number:', vaccination.batch_number || 'N/A'],
         ['Notes:', vaccination.notes || 'No additional notes']
       ];
-      
+
       let y = 95;
       details.forEach(detail => {
         doc.setFont('helvetica', 'bold');
@@ -310,12 +310,12 @@ const VaccinationSchedulerPage = () => {
         doc.text(detail[1], 80, y);
         y += 12;
       });
-      
+
       doc.setFontSize(10);
       doc.setTextColor(150, 150, 150);
       doc.text('This is an electronically generated certificate from PearlMom System', 20, 280);
       doc.text('Keep this record for your medical history.', 20, 290);
-      
+
       doc.save(`Vaccination_Certificate_${vaccination.vaccine_name.replace(/\s/g, '_')}.pdf`);
     } catch (error) {
       console.error('Error generating certificate:', error);
@@ -328,13 +328,13 @@ const VaccinationSchedulerPage = () => {
     const name = vaccineName?.toLowerCase() || '';
     if (name.includes('tetanus') || name.includes('tdap')) return <Shield className="h-5 w-5" />;
     if (name.includes('influenza') || name.includes('flu')) return <Droplet className="h-5 w-5" />;
-    if (name.includes('covid')) return <Syringe className="h-5 w-5" />;
+    if (name.includes('covid')) return <ShieldCheck className="h-5 w-5" />;
     if (name.includes('hepatitis')) return <AlertCircle className="h-5 w-5" />;
-    return <Syringe className="h-5 w-5" />;
+    return <ShieldCheck className="h-5 w-5" />;
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'completed':
       case 'given':
         return 'bg-green-100 text-green-800';
@@ -351,7 +351,7 @@ const VaccinationSchedulerPage = () => {
   };
 
   const getStatusText = (status) => {
-    switch(status) {
+    switch (status) {
       case 'given':
       case 'completed':
         return 'COMPLETED';
@@ -367,7 +367,7 @@ const VaccinationSchedulerPage = () => {
   };
 
   const getAppointmentTypeColor = (type) => {
-    switch(type?.toLowerCase()) {
+    switch (type?.toLowerCase()) {
       case 'antenatal':
       case 'routine checkup':
         return 'bg-blue-100 text-blue-800';
@@ -393,16 +393,16 @@ const VaccinationSchedulerPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
-      
+
       <div>
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Vaccination & Care</h2>
         <p className="text-gray-500">Manage your pregnancy milestones and upcoming pediatric appointments in one serene space.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Calendar Section */}
           <Card className="bg-white">
             <CardContent className="p-5">
@@ -462,21 +462,20 @@ const VaccinationSchedulerPage = () => {
                 {Array.from({ length: getDaysInMonth(currentMonth, currentYear) }).map((_, i) => {
                   const day = i + 1;
                   const isHighlighted = highlightedDates[currentMonth]?.includes(day);
-                  const isToday = day === new Date().getDate() && 
-                                  currentMonth === new Date().getMonth() && 
-                                  currentYear === new Date().getFullYear();
+                  const isToday = day === new Date().getDate() &&
+                    currentMonth === new Date().getMonth() &&
+                    currentYear === new Date().getFullYear();
                   const events = getEventsForDate(currentYear, currentMonth, day);
                   const hasMultipleEvents = (events.vaccinations.length + events.appointments.length) > 1;
-                  
+
                   return (
-                    <div 
+                    <div
                       key={day}
                       onClick={() => handleDateClick(day)}
-                      className={`aspect-square p-1 rounded-lg flex flex-col items-center justify-center text-sm cursor-pointer transition-all relative ${
-                        isToday ? 'bg-pink-600 text-white font-bold shadow-md' :
-                        isHighlighted ? 'bg-pink-100 text-pink-700 font-semibold border border-pink-200 hover:bg-pink-200' :
-                        'hover:bg-gray-100 text-gray-700'
-                      }`}
+                      className={`aspect-square p-1 rounded-lg flex flex-col items-center justify-center text-sm cursor-pointer transition-all relative ${isToday ? 'bg-pink-600 text-white font-bold shadow-md' :
+                          isHighlighted ? 'bg-pink-100 text-pink-700 font-semibold border border-pink-200 hover:bg-pink-200' :
+                            'hover:bg-gray-100 text-gray-700'
+                        }`}
                     >
                       <span>{day}</span>
                       {isHighlighted && !isToday && (
@@ -507,9 +506,8 @@ const VaccinationSchedulerPage = () => {
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {months.map((month, index) => (
                   <button key={month} onClick={() => handleMonthSelect(index)}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                      index === currentMonth ? 'bg-pink-600 text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-gray-200'
-                    }`}>
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${index === currentMonth ? 'bg-pink-600 text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-pink-50 hover:text-pink-600 border border-gray-200'
+                      }`}>
                     {getShortMonthName(index)}
                   </button>
                 ))}
@@ -539,7 +537,7 @@ const VaccinationSchedulerPage = () => {
               </div>
               <Badge className="bg-pink-600 text-white hover:bg-pink-700 border-none px-3 py-1 text-[10px] uppercase font-bold tracking-wider">Growth Phase</Badge>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="px-5 pt-3">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -547,7 +545,7 @@ const VaccinationSchedulerPage = () => {
                 <span>{completionPercentage}%</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-pink-600 rounded-full transition-all duration-500"
                   style={{ width: `${completionPercentage}%` }}
                 ></div>
@@ -572,7 +570,7 @@ const VaccinationSchedulerPage = () => {
 
             <CardContent className="p-5 pt-4 relative z-10">
               <div className="relative border-l border-gray-200 ml-3 space-y-6 py-2 max-h-[500px] overflow-y-auto custom-scrollbar">
-                
+
                 {/* Overdue Vaccinations */}
                 {overdueVaccinations.length > 0 && (
                   <div>
@@ -694,7 +692,7 @@ const VaccinationSchedulerPage = () => {
 
                 {vaccinations.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
-                    <Syringe className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <ShieldCheck className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                     <p>No vaccination records found</p>
                     <p className="text-xs mt-1">Vaccinations will appear here once scheduled</p>
                   </div>
@@ -751,8 +749,8 @@ const VaccinationSchedulerPage = () => {
                       {appointment.notes || '-'}
                     </td>
                     <td className="py-4 px-4">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDownloadReport(appointment); }} 
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDownloadReport(appointment); }}
                         className="text-pink-600 hover:text-pink-700 font-medium text-sm flex items-center space-x-1 transition-colors"
                       >
                         <Download className="h-4 w-4" /><span>Download</span>
@@ -797,7 +795,7 @@ const VaccinationSchedulerPage = () => {
               {selectedDateEvents.vaccinations.length > 0 && (
                 <div>
                   <div className="flex items-center space-x-2 mb-3">
-                    <Syringe className="h-4 w-4 text-pink-500" />
+                    <ShieldCheck className="h-4 w-4 text-pink-500" />
                     <h3 className="font-semibold text-gray-900">Vaccinations ({selectedDateEvents.vaccinations.length})</h3>
                   </div>
                   <div className="space-y-3">

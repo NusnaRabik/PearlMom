@@ -1,12 +1,12 @@
 // frontend/src/pages/public/LandingPage.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import {
   Users, CheckCircle, Stethoscope, Building,
-  User, Briefcase, Activity, Syringe,
+  User, Briefcase, Activity,
   Utensils, Calendar, ArrowRight, ShieldCheck,
   Heart, Sparkles
 } from 'lucide-react';
@@ -32,9 +32,32 @@ const LandingPage = () => {
     clinicsConnected: 0
   });
 
+  const location = useLocation();
   const statsRef = useRef(null);
   const hasAnimated = useRef(false);
   const heroRef = useRef(null);
+
+  // Handle URL route and hash scroll
+  useEffect(() => {
+    let targetId = null;
+    if (location.pathname === '/about' || location.hash === '#about-section') {
+      targetId = 'about-section';
+    } else if (location.pathname === '/mission' || location.hash === '#mission-section') {
+      targetId = 'mission-section';
+    } else if (location.hash) {
+      targetId = location.hash.replace('#', '');
+    }
+
+    if (targetId) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, location.hash]);
 
   // Mouse position tracking
   const mouseX = useMotionValue(0);
@@ -128,7 +151,7 @@ const LandingPage = () => {
       (entries) => {
         if (entries[0].isIntersecting && !hasAnimated.current && !loading) {
           hasAnimated.current = true;
-          
+
           animateValue(0, stats.totalMothers, 2000, (value) =>
             setAnimatedStats(prev => ({ ...prev, totalMothers: value }))
           );
@@ -325,7 +348,7 @@ const LandingPage = () => {
           >
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl blur-2xl opacity-30 animate-pulse" />
-              
+
               <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-pink-100 to-rose-100">
                 <img
                   src={heroImage}
@@ -358,9 +381,8 @@ const LandingPage = () => {
           </motion.div>
         </section>
 
-        {/* Rest of your sections remain unchanged */}
-        {/* Community Impact Section */}
-        <section className="bg-white py-20" ref={statsRef}>
+        {/* Community Impact & Mission Section */}
+        <section id="mission-section" className="bg-white py-20 scroll-mt-20" ref={statsRef}>
           <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
             <motion.h2
               initial={{ opacity: 0, y: 30 }}
@@ -570,7 +592,7 @@ const LandingPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { icon: Activity, title: "Pregnancy Tracking", desc: "Visualize development milestones and track vitals through every trimester.", color: "text-pink-500" },
-                { icon: Syringe, title: "Vaccination Management", desc: "Automatic scheduling and reminders for mother and newborn vaccinations.", color: "text-pink-600" },
+                { icon: ShieldCheck, title: "Vaccination Management", desc: "Automatic scheduling and reminders for mother and newborn vaccinations.", color: "text-pink-600" },
                 { icon: Utensils, title: "Nutrition Tracking", desc: "Personalized diet plans tailored to Sri Lankan nutritional standards.", color: "text-pink-500" },
                 { icon: Calendar, title: "Clinic Management", desc: "Seamlessly book and manage visits to government and private clinics.", color: "text-pink-500" }
               ].map((service, idx) => (

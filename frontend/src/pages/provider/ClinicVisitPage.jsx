@@ -1,10 +1,10 @@
 // frontend/src/pages/provider/ClinicVisitPage.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Heart, FlaskConical, BookOpen, Calendar, ChevronDown, 
+import {
+  Heart, FlaskConical, BookOpen, Calendar, ChevronDown,
   Search, User, Clock, ArrowRight, AlertCircle, CheckCircle2, Users,
   Loader, Save, FileText, Phone, MapPin, Droplet, Activity, Edit3, Eye,
-  Syringe, Plus, X, CalendarPlus
+  ShieldCheck, Plus, X, CalendarPlus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -136,19 +136,19 @@ const ClinicVisitPage = () => {
         const data = response.data.data;
         setPatientDetails(data);
         setPreviousVisits(data.visitHistory || []);
-        
+
         // Fetch existing vaccinations for this mother
         await fetchMotherVaccinations(motherId);
-        
+
         // Fetch existing appointments for this mother
         await fetchMotherAppointments(motherId);
-        
+
         if (!data.visitHistory || data.visitHistory.length === 0) {
           setSelectedPreviousVisit(null);
         } else {
           setSelectedPreviousVisit(data.visitHistory[0]);
         }
-        
+
         setShowNewVisitForm(false);
         setVisitForm({
           visit_date: new Date().toISOString().split('T')[0],
@@ -170,7 +170,7 @@ const ClinicVisitPage = () => {
           next_visit_date: '',
           health_education_checklist: data.healthEducation || []
         });
-        
+
         if (data.draftVisit) {
           setDraftVisit(data.draftVisit);
         }
@@ -209,7 +209,7 @@ const ClinicVisitPage = () => {
     if (searchTerm.trim()) {
       const found = assignedMothers.find(
         p => p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             p.name?.toLowerCase().includes(searchTerm.toLowerCase())
+          p.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       if (found) {
         setSelectedPatient(found);
@@ -269,7 +269,7 @@ const ClinicVisitPage = () => {
       return;
     }
     setIsSaving(true);
-    
+
     try {
       const response = await api.post(`/clinic-visits/draft/${selectedPatient.id}`, visitForm);
       if (response.data.success) {
@@ -290,7 +290,7 @@ const ClinicVisitPage = () => {
       return;
     }
     setIsSaving(true);
-    
+
     try {
       const response = await api.post(`/clinic-visits/complete/${selectedPatient.id}`, visitForm);
       if (response.data.success) {
@@ -564,15 +564,14 @@ const ClinicVisitPage = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          patient.visitStatus === 'recent' 
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${patient.visitStatus === 'recent'
                             ? 'bg-green-100 text-green-800'
                             : patient.visitStatus === 'overdue'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {patient.visitStatus === 'recent' ? 'Recent' : 
-                           patient.visitStatus === 'overdue' ? 'Overdue' : 'Upcoming'}
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                          {patient.visitStatus === 'recent' ? 'Recent' :
+                            patient.visitStatus === 'overdue' ? 'Overdue' : 'Upcoming'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -673,7 +672,7 @@ const ClinicVisitPage = () => {
               <FileText className="mr-2 text-blue-500" size={20} />
               Previous Clinic Visits
             </h3>
-            
+
             {previousVisits.length === 0 ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
                 <AlertCircle size={48} className="mx-auto text-gray-400 mb-3" />
@@ -687,17 +686,16 @@ const ClinicVisitPage = () => {
                     <button
                       key={index}
                       onClick={() => handleViewPreviousVisit(visit)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                        selectedPreviousVisit === visit
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${selectedPreviousVisit === visit
                           ? 'bg-pink-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       {visit.date}
                     </button>
                   ))}
                 </div>
-                
+
                 {selectedPreviousVisit && (
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-4">
@@ -732,7 +730,7 @@ const ClinicVisitPage = () => {
 
           {/* ==================== NEW CLINIC VISIT SECTION ==================== */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-pink-200">
-            <div 
+            <div
               className="px-6 py-4 bg-pink-50 cursor-pointer hover:bg-pink-100 transition-colors border-b border-pink-200"
               onClick={() => setShowNewVisitForm(!showNewVisitForm)}
             >
@@ -744,7 +742,7 @@ const ClinicVisitPage = () => {
                 <ChevronDown className={`transform transition-transform text-pink-500 ${showNewVisitForm ? 'rotate-180' : ''}`} size={30} />
               </div>
             </div>
-            
+
             {showNewVisitForm && (
               <div className="max-h-[600px] overflow-y-auto">
                 <div className="p-6">
@@ -916,7 +914,7 @@ const ClinicVisitPage = () => {
                             </select>
                           </div>
                         </div>
-                        
+
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-1">Patient Complaints</label>
                           <textarea
@@ -928,7 +926,7 @@ const ClinicVisitPage = () => {
                             placeholder="Document any complaints or symptoms reported by the patient..."
                           ></textarea>
                         </div>
-                        
+
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-1">Clinical Notes</label>
                           <textarea
@@ -940,7 +938,7 @@ const ClinicVisitPage = () => {
                             placeholder="Enter clinical observations, findings, and recommendations..."
                           ></textarea>
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Referrals (if any)</label>
                           <textarea
@@ -969,9 +967,8 @@ const ClinicVisitPage = () => {
                               <span className="text-sm text-gray-700">{item.title}</span>
                               <button
                                 onClick={() => handleHealthEducationToggle(item.id)}
-                                className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                  item.completed ? 'bg-pink-500 border-pink-500' : 'border-gray-300'
-                                }`}
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center ${item.completed ? 'bg-pink-500 border-pink-500' : 'border-gray-300'
+                                  }`}
                               >
                                 {item.completed && (
                                   <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -985,7 +982,7 @@ const ClinicVisitPage = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Action Buttons - Bottom Right */}
                   <div className="flex justify-end gap-3 pt-6 mt-4 border-t border-gray-200">
                     <button
@@ -1012,7 +1009,7 @@ const ClinicVisitPage = () => {
 
           {/* ==================== VACCINATION MANAGEMENT SECTION ==================== */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-rose-200">
-            <div 
+            <div
               className="px-6 py-4 bg-rose-0 cursor-pointer hover:bg-rose-50 transition-colors border-b border-rose-200"
               onClick={() => setShowVaccinationForm(!showVaccinationForm)}
             >
@@ -1024,7 +1021,7 @@ const ClinicVisitPage = () => {
                 <ChevronDown className={`transform transition-transform text-rose-500 ${showVaccinationForm ? 'rotate-180' : ''}`} size={30} />
               </div>
             </div>
-            
+
             {showVaccinationForm && (
               <div className="max-h-[600px] overflow-y-auto">
                 <div className="p-6">
@@ -1037,9 +1034,9 @@ const ClinicVisitPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Vaccine Name *</label>
-                        <select 
-                          name="vaccine_name" 
-                          value={vaccinationForm.vaccine_name} 
+                        <select
+                          name="vaccine_name"
+                          value={vaccinationForm.vaccine_name}
                           onChange={handleVaccinationInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
                         >
@@ -1056,9 +1053,9 @@ const ClinicVisitPage = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Dose Number</label>
-                        <select 
-                          name="dose_number" 
-                          value={vaccinationForm.dose_number} 
+                        <select
+                          name="dose_number"
+                          value={vaccinationForm.dose_number}
                           onChange={handleVaccinationInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         >
@@ -1070,20 +1067,20 @@ const ClinicVisitPage = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Given Date *</label>
-                        <input 
-                          type="date" 
-                          name="given_date" 
-                          value={vaccinationForm.given_date} 
+                        <input
+                          type="date"
+                          name="given_date"
+                          value={vaccinationForm.given_date}
                           onChange={handleVaccinationInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
-                        <input 
-                          type="text" 
-                          name="batch_number" 
-                          value={vaccinationForm.batch_number} 
+                        <input
+                          type="text"
+                          name="batch_number"
+                          value={vaccinationForm.batch_number}
                           onChange={handleVaccinationInputChange}
                           placeholder="e.g., BATCH-2024-001"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
@@ -1091,9 +1088,9 @@ const ClinicVisitPage = () => {
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea 
-                          name="notes" 
-                          value={vaccinationForm.notes} 
+                        <textarea
+                          name="notes"
+                          value={vaccinationForm.notes}
                           onChange={handleVaccinationInputChange}
                           rows="2"
                           placeholder="Any additional notes about the vaccination..."
@@ -1111,11 +1108,10 @@ const ClinicVisitPage = () => {
                       <button
                         onClick={handleAddVaccination}
                         disabled={vaccinationLoading || !vaccinationForm.vaccine_name || !vaccinationForm.given_date}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2 ${
-                          vaccinationLoading || !vaccinationForm.vaccine_name || !vaccinationForm.given_date
+                        className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2 ${vaccinationLoading || !vaccinationForm.vaccine_name || !vaccinationForm.given_date
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-rose-600 hover:bg-rose-700'
-                        }`}
+                          }`}
                       >
                         {vaccinationLoading ? <Loader size={16} className="animate-spin" /> : <Plus size={16} />}
                         {vaccinationLoading ? 'Adding...' : 'Add Vaccination'}
@@ -1125,7 +1121,7 @@ const ClinicVisitPage = () => {
 
                   {/* Vaccination History */}
                   <div>
-                    <div 
+                    <div
                       className="flex items-center justify-between cursor-pointer mb-3"
                       onClick={() => setShowVaccinationHistory(!showVaccinationHistory)}
                     >
@@ -1135,7 +1131,7 @@ const ClinicVisitPage = () => {
                       </h4>
                       <ChevronDown className={`transform transition-transform text-rose-500 ${showVaccinationHistory ? 'rotate-180' : ''}`} size={20} />
                     </div>
-                    
+
                     {showVaccinationHistory && (
                       <div className="border-t border-rose-200 pt-3">
                         {existingVaccinations.length > 0 ? (
@@ -1179,7 +1175,7 @@ const ClinicVisitPage = () => {
 
           {/* ==================== APPOINTMENT MANAGEMENT SECTION ==================== */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-fuchsia-200">
-            <div 
+            <div
               className="px-6 py-4 bg-fuchsia-0 cursor-pointer hover:bg-fuchsia-50 transition-colors border-b border-fuchsia-200"
               onClick={() => setShowAppointmentForm(!showAppointmentForm)}
             >
@@ -1191,7 +1187,7 @@ const ClinicVisitPage = () => {
                 <ChevronDown className={`transform transition-transform text-fuchsia-500 ${showAppointmentForm ? 'rotate-180' : ''}`} size={30} />
               </div>
             </div>
-            
+
             {showAppointmentForm && (
               <div className="max-h-[600px] overflow-y-auto">
                 <div className="p-6">
@@ -1204,29 +1200,29 @@ const ClinicVisitPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Date *</label>
-                        <input 
-                          type="date" 
-                          name="appointment_date" 
-                          value={appointmentForm.appointment_date} 
+                        <input
+                          type="date"
+                          name="appointment_date"
+                          value={appointmentForm.appointment_date}
                           onChange={handleAppointmentInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Time</label>
-                        <input 
-                          type="time" 
-                          name="appointment_time" 
-                          value={appointmentForm.appointment_time} 
+                        <input
+                          type="time"
+                          name="appointment_time"
+                          value={appointmentForm.appointment_time}
                           onChange={handleAppointmentInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Type *</label>
-                        <select 
-                          name="appointment_type" 
-                          value={appointmentForm.appointment_type} 
+                        <select
+                          name="appointment_type"
+                          value={appointmentForm.appointment_type}
                           onChange={handleAppointmentInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         >
@@ -1239,9 +1235,9 @@ const ClinicVisitPage = () => {
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea 
-                          name="notes" 
-                          value={appointmentForm.notes} 
+                        <textarea
+                          name="notes"
+                          value={appointmentForm.notes}
                           onChange={handleAppointmentInputChange}
                           rows="2"
                           placeholder="Any additional notes about the appointment..."
@@ -1259,11 +1255,10 @@ const ClinicVisitPage = () => {
                       <button
                         onClick={handleAddAppointment}
                         disabled={appointmentLoading || !appointmentForm.appointment_date || !appointmentForm.appointment_type}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2 ${
-                          appointmentLoading || !appointmentForm.appointment_date || !appointmentForm.appointment_type
+                        className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2 ${appointmentLoading || !appointmentForm.appointment_date || !appointmentForm.appointment_type
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-fuchsia-600 hover:bg-fuchsia-700'
-                        }`}
+                          }`}
                       >
                         {appointmentLoading ? <Loader size={16} className="animate-spin" /> : <CalendarPlus size={16} />}
                         {appointmentLoading ? 'Adding...' : 'Add Appointment'}
@@ -1273,7 +1268,7 @@ const ClinicVisitPage = () => {
 
                   {/* Appointment History */}
                   <div>
-                    <div 
+                    <div
                       className="flex items-center justify-between cursor-pointer mb-3"
                       onClick={() => setShowAppointmentHistory(!showAppointmentHistory)}
                     >
@@ -1283,7 +1278,7 @@ const ClinicVisitPage = () => {
                       </h4>
                       <ChevronDown className={`transform transition-transform text-fuchsia-500 ${showAppointmentHistory ? 'rotate-180' : ''}`} size={20} />
                     </div>
-                    
+
                     {showAppointmentHistory && (
                       <div className="border-t border-fuchsia-200 pt-3">
                         {existingAppointments.length > 0 ? (
@@ -1305,12 +1300,11 @@ const ClinicVisitPage = () => {
                                     <td className="px-4 py-3 text-sm text-gray-900">{app.appointment_time || '-'}</td>
                                     <td className="px-4 py-3 text-sm text-gray-900 capitalize">{app.appointment_type}</td>
                                     <td className="px-4 py-3 text-sm text-gray-900">
-                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                        app.status === 'scheduled' ? 'bg-green-100 text-green-800' :
-                                        app.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                        app.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
-                                      }`}>
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${app.status === 'scheduled' ? 'bg-green-100 text-green-800' :
+                                          app.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                            app.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                              'bg-yellow-100 text-yellow-800'
+                                        }`}>
                                         {app.status}
                                       </span>
                                     </td>

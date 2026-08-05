@@ -31,18 +31,41 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import FitnessGuidePage from './pages/mother/FitnessGuidePage';
 import ThriposhaStockPage from './pages/provider/ThriposhaStockPage';
 import VaccineStockPage from './pages/provider/VaccineStockPage';
+import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
 
 function App() {
   return (
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/about" element={<LandingPage />} />
+      <Route path="/mission" element={<LandingPage />} />
       
       <Route path="/help" element={
         <div className="min-h-screen bg-slate-50 flex flex-col">
           <Navbar />
           <main className="flex-1">
             <HelpSupportPage />
+          </main>
+          <Footer />
+        </div>
+      } />
+
+      <Route path="/contact" element={
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+          <Navbar />
+          <main className="flex-1">
+            <HelpSupportPage />
+          </main>
+          <Footer />
+        </div>
+      } />
+
+      <Route path="/privacy" element={
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+          <Navbar />
+          <main className="flex-1">
+            <PrivacyPolicyPage />
           </main>
           <Footer />
         </div>

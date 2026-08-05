@@ -750,7 +750,7 @@ const MotherDashboard = () => {
                         <select name="blood_group" value={profileData.blood_group} onChange={handleProfileInputChange}
                           className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
                           <option value="">Select Blood Group</option>
-                          {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map((g) => <option key={g}>{g}</option>)}
+                          {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((g) => <option key={g}>{g}</option>)}
                         </select>
                       </div>
                     </div>
@@ -766,9 +766,9 @@ const MotherDashboard = () => {
                         <select name="district" value={profileData.district} onChange={handleProfileInputChange}
                           className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
                           <option value="">Select District</option>
-                          {['Colombo','Gampaha','Kalutara','Kandy','Matale','Nuwara Eliya','Galle','Matara','Hambantota',
-                            'Jaffna','Kilinochchi','Mannar','Vavuniya','Mullaitivu','Batticaloa','Ampara','Trincomalee',
-                            'Kurunegala','Puttalam','Anuradhapura','Polonnaruwa','Badulla','Moneragala','Ratnapura','Kegalle']
+                          {['Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Matale', 'Nuwara Eliya', 'Galle', 'Matara', 'Hambantota',
+                            'Jaffna', 'Kilinochchi', 'Mannar', 'Vavuniya', 'Mullaitivu', 'Batticaloa', 'Ampara', 'Trincomalee',
+                            'Kurunegala', 'Puttalam', 'Anuradhapura', 'Polonnaruwa', 'Badulla', 'Moneragala', 'Ratnapura', 'Kegalle']
                             .map((d) => <option key={d}>{d}</option>)}
                         </select>
                       </div>

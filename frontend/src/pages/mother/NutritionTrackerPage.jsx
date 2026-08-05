@@ -39,13 +39,13 @@ const NutritionTrackerPage = () => {
     try {
       setLoading(true);
       setFetchError(false);
-      
+
       // Fetch mother profile
       const profileResponse = await api.get('/mothers/profile');
       if (profileResponse.data.success) {
         const mother = profileResponse.data.data?.mother || profileResponse.data.mother;
         setMotherData(mother);
-        
+
         // Calculate BMI
         if (mother.current_weight && mother.height) {
           const heightInMeters = mother.height / 100;
@@ -53,7 +53,7 @@ const NutritionTrackerPage = () => {
           const category = getBMICategory(parseFloat(bmi));
           setBmiCategory(category);
         }
-        
+
         // Calculate trimester based on weeks
         if (mother.weeks) {
           const trimester = getTrimesterFromWeeks(mother.weeks);
@@ -61,20 +61,20 @@ const NutritionTrackerPage = () => {
           setTrimesterAdvice(NUTRITIONAL_GUIDELINES[trimester]);
         }
       }
-      
+
       // Fetch Thriposha status
       const thriposhaResponse = await api.get('/thriposha/status');
       if (thriposhaResponse.data.success) {
         const data = thriposhaResponse.data.data;
         setThriposhaStatus(data);
       }
-      
+
       // Fetch distribution history and set next distribution directly from response
       const historyResponse = await api.get('/thriposha/history');
       if (historyResponse.data.success) {
         const history = historyResponse.data.data?.history || [];
         setDistributionHistory(history);
-        
+
         // Calculate next distribution using the raw history data (not the state)
         if (history.length > 0) {
           const lastDistribution = history[0];
@@ -97,7 +97,7 @@ const NutritionTrackerPage = () => {
           });
         }
       }
-      
+
       // Fetch weight history from clinic visits
       const weightHistoryResponse = await api.get('/mothers/emch-card-data');
       if (weightHistoryResponse.data.success) {
@@ -112,7 +112,7 @@ const NutritionTrackerPage = () => {
           .sort((a, b) => new Date(a.date) - new Date(b.date));
         setWeightHistory(weights);
       }
-      
+
     } catch (error) {
       console.error('Error fetching nutrition data:', error);
       setFetchError(true);
@@ -161,7 +161,7 @@ const NutritionTrackerPage = () => {
       alert('No upcoming distribution to set reminder for.');
       return;
     }
-    
+
     setSettingReminder(true);
     try {
       // Send reminder notification to backend
@@ -172,7 +172,7 @@ const NutritionTrackerPage = () => {
         scheduled_for: nextDistribution.date,
         priority: 'high'
       });
-      
+
       setReminderSet(true);
       setTimeout(() => setReminderSet(false), 3000);
     } catch (error) {
@@ -192,13 +192,13 @@ const NutritionTrackerPage = () => {
     if (!thriposhaStatus?.eligibility) return { eligible: true, packets: 2, reason: null };
     const isEligible = thriposhaStatus.eligibility.is_eligible !== false;
     let packets = 1;
-    
+
     if (thriposhaStatus.eligibility.recommended_packets) {
       packets = thriposhaStatus.eligibility.recommended_packets;
     } else if (thriposhaStatus.bmi) {
       packets = (thriposhaStatus.bmi < 18.5 || thriposhaStatus.bmi >= 30) ? 2 : 1;
     }
-    
+
     return { eligible: isEligible, packets, reason: thriposhaStatus.eligibility.ineligibility_reason };
   };
 
@@ -232,7 +232,7 @@ const NutritionTrackerPage = () => {
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <p className="text-gray-700 font-medium">Failed to load nutrition data</p>
           <p className="text-sm text-gray-500 mt-1">Please check your connection and try again</p>
-          <button 
+          <button
             onClick={fetchNutritionData}
             className="mt-4 px-4 py-2 bg-pink-600 text-white rounded-lg text-sm hover:bg-pink-700 transition-colors"
           >
@@ -245,7 +245,7 @@ const NutritionTrackerPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 p-6 space-y-6 pb-8 relative overflow-hidden">
-      
+
       {/* Header */}
       <div>
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Nutrition & Thriposha Tracker</h2>
@@ -253,30 +253,18 @@ const NutritionTrackerPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column (2/3) */}
         <div className="lg:col-span-2 space-y-6 ">
-          
+
           {/* Thriposha Hero - Dynamic based on eligibility */}
-          <div className={`rounded-2xl p-8 text-white relative overflow-hidden shadow-sm ${
-            eligibility.eligible 
-              ? 'bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500' 
-              : 'bg-gradient-to-br from-gray-500 to-gray-600'
-          }`}>
-            {/* Decorative background */}
-            <div className="absolute right-0 bottom-0 opacity-10">
-              <svg width="200" height="200" viewBox="0 0 200 200">
-                <circle fill="currentColor" cx="150" cy="150" r="100" />
-                <circle fill="currentColor" cx="100" cy="100" r="60" />
-              </svg>
-            </div>
-            <div className="absolute top-4 right-8 opacity-10">
-              <Package size={120} />
-            </div>
-            
+          <div className={`rounded-2xl p-8 text-white relative overflow-hidden shadow-sm ${eligibility.eligible
+            ? 'bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500'
+            : 'bg-gradient-to-br from-gray-500 to-gray-600'
+            }`}>
             <div className="relative z-10">
               <div className="flex items-center space-x-3 mb-4">
-                <Badge className={eligibility.eligible 
+                <Badge className={eligibility.eligible
                   ? "bg-green-500 text-white hover:bg-green-400 border-none tracking-wide uppercase text-sm font-bold px-5 py-2 shadow-md"
                   : "bg-red-500 text-white hover:bg-red-400 border-none tracking-wide uppercase text-sm font-bold px-5 py-2 shadow-md"
                 }>
@@ -286,15 +274,15 @@ const NutritionTrackerPage = () => {
                   {eligibility.eligible ? "Active Program" : "Review Required"}
                 </Badge>
               </div>
-              
+
               <h2 className="text-3xl font-bold mb-3">Thriposha Supplement Program</h2>
               <p className="text-rose-50 mb-8 leading-relaxed max-w-lg">
-                {eligibility.eligible 
+                {eligibility.eligible
                   ? "You qualify for the government-sponsored Thriposha nutritional supplement program. Your health records are verified and up-to-date."
                   : "You are currently not eligible for the Thriposha program. Please consult with your healthcare provider for more information."
                 }
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="bg-white/15 rounded-xl px-5 py-4 backdrop-blur-sm border border-white/20 flex-1">
                   <div className="flex items-center space-x-2 mb-2">
@@ -304,7 +292,7 @@ const NutritionTrackerPage = () => {
                   <p className="text-2xl font-bold">{nextDistribution ? formatDate(nextDistribution.date, 'long') : 'Not scheduled'}</p>
                   <p className="text-xs text-rose-100 mt-1">{nextDistribution?.location || 'Contact your clinic'}</p>
                 </div>
-                
+
                 <div className="bg-white/15 rounded-xl px-5 py-4 backdrop-blur-sm border border-white/20 flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     <Package className="h-4 w-4 text-rose-100" />
@@ -313,8 +301,8 @@ const NutritionTrackerPage = () => {
                   <p className="text-2xl font-bold">{eligibility.packets} Packet{eligibility.packets !== 1 ? 's' : ''}</p>
                   <p className="text-xs text-rose-100 mt-1">Per distribution cycle</p>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={handleSetReminder}
                   disabled={settingReminder || !eligibility.eligible || !nextDistribution}
                   className="bg-white text-rose-500 rounded-xl px-5 py-4 font-semibold hover:bg-rose-50 transition-colors flex items-center justify-center space-x-2 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -341,12 +329,12 @@ const NutritionTrackerPage = () => {
                   <p className="text-sm text-gray-500">Monitoring your healthy weight gain progress for a safe pregnancy.</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-rose-50 border border-rose-100 rounded-xl p-5 flex flex-col justify-center text-center">
                   <p className="text-xs font-semibold text-rose-700 tracking-wider uppercase mb-2">Current Weight</p>
                   <p className="text-4xl font-bold text-gray-900 mb-2">
-                    {motherData?.current_weight || '--'} 
+                    {motherData?.current_weight || '--'}
                     <span className="text-lg text-gray-500 font-medium">kg</span>
                   </p>
                   <p className="text-xs text-gray-500">
@@ -369,8 +357,8 @@ const NutritionTrackerPage = () => {
                     </div>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                    <div 
-                      className="bg-rose-400 h-2 rounded-full transition-all duration-500" 
+                    <div
+                      className="bg-rose-400 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${progressPercentage}%` }}
                     ></div>
                   </div>
@@ -441,7 +429,7 @@ const NutritionTrackerPage = () => {
                 )}
               </CardContent>
             </Card>
-            
+
             {/* Essential Nutrition Tips */}
             <Card className="bg-white h-full">
               <CardContent className="p-6 flex flex-col h-full">
@@ -452,7 +440,7 @@ const NutritionTrackerPage = () => {
                 <p className="text-sm text-gray-600 leading-relaxed mb-6">
                   Key nutritional guidelines to support your health and your baby's development throughout pregnancy.
                 </p>
-                
+
                 <div className="space-y-3 flex-grow">
                   <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-xl border border-green-100">
                     <div className="h-10 w-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center flex-shrink-0">
@@ -463,7 +451,7 @@ const NutritionTrackerPage = () => {
                       <p className="text-xs text-gray-600 mt-0.5">Drink 8-10 glasses of water daily. Proper hydration helps prevent UTIs and maintains amniotic fluid levels.</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
                     <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
                       <Sun className="h-5 w-5" />
@@ -473,7 +461,7 @@ const NutritionTrackerPage = () => {
                       <p className="text-xs text-gray-600 mt-0.5">Get 15-20 minutes of morning sunlight and consume vitamin D-rich foods like eggs and fortified milk.</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
                     <div className="h-10 w-10 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center flex-shrink-0">
                       <Award className="h-5 w-5" />
@@ -507,13 +495,12 @@ const NutritionTrackerPage = () => {
               <div className="space-y-4 max-h-[280px] overflow-y-auto">
                 {distributionHistory.length > 0 ? (
                   distributionHistory.map((item, i) => (
-                    <div 
-                      key={i} 
-                      className={`rounded-xl p-4 border flex justify-between items-center transition-all cursor-pointer hover:shadow-md ${
-                        i === 0 
-                          ? 'border-rose-300 bg-rose-50 ring-1 ring-rose-200' 
-                          : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
-                      }`}
+                    <div
+                      key={i}
+                      className={`rounded-xl p-4 border flex justify-between items-center transition-all cursor-pointer hover:shadow-md ${i === 0
+                        ? 'border-rose-300 bg-rose-50 ring-1 ring-rose-200'
+                        : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
+                        }`}
                       onClick={() => handleViewHistoryDetails(item)}
                     >
                       <div>
@@ -531,11 +518,10 @@ const NutritionTrackerPage = () => {
                             {item.location || 'Colombo Central Clinic'}
                           </p>
                         </div>
-                        <span className={`text-[10px] tracking-wider uppercase font-semibold px-2 py-0.5 rounded-full ${
-                          item.status === 'collected' || item.status === 'COLLECTED'
-                            ? 'bg-green-100 text-green-700'
-                            : i === 0 ? 'bg-rose-200 text-rose-800' : 'bg-gray-200 text-gray-500'
-                        }`}>
+                        <span className={`text-[10px] tracking-wider uppercase font-semibold px-2 py-0.5 rounded-full ${item.status === 'collected' || item.status === 'COLLECTED'
+                          ? 'bg-green-100 text-green-700'
+                          : i === 0 ? 'bg-rose-200 text-rose-800' : 'bg-gray-200 text-gray-500'
+                          }`}>
                           {item.status === 'collected' || item.status === 'COLLECTED' ? 'COLLECTED' : 'Pending'}
                         </span>
                       </div>
@@ -557,7 +543,7 @@ const NutritionTrackerPage = () => {
                   <h4 className="font-semibold text-green-900 text-sm">Eligibility Status</h4>
                 </div>
                 <p className="text-xs text-green-700 leading-relaxed">
-                  {eligibility.eligible 
+                  {eligibility.eligible
                     ? `You are currently eligible for ${eligibility.packets} packet${eligibility.packets !== 1 ? 's' : ''} per distribution cycle. Next eligibility review: ${new Date().getFullYear() + 1}`
                     : 'Please consult with your healthcare provider for eligibility requirements.'
                   }
@@ -646,7 +632,7 @@ const NutritionTrackerPage = () => {
       {showVideo && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="relative w-full max-w-3xl">
-            <button 
+            <button
               onClick={() => setShowVideo(false)}
               className="absolute -top-10 right-0 text-white hover:text-pink-300 transition-colors flex items-center space-x-1"
             >
@@ -667,7 +653,7 @@ const NutritionTrackerPage = () => {
           </div>
         </div>
       )}
-      
+
       <ChatWidget />
     </div>
   );
