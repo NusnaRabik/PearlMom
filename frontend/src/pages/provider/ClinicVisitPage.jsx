@@ -367,10 +367,11 @@ const ClinicVisitPage = () => {
       alert('Please select a patient first.');
       return;
     }
+    const targetId = selectedPatient.mother_id || selectedPatient.id;
     setIsSaving(true);
 
     try {
-      const response = await api.post(`/clinic-visits/draft/${selectedPatient.id}`, visitForm);
+      const response = await api.post(`/clinic-visits/draft/${encodeURIComponent(targetId)}`, visitForm);
       if (response.data.success) {
         alert('Draft saved successfully!');
         setDraftVisit(response.data.data.draft);
@@ -388,14 +389,15 @@ const ClinicVisitPage = () => {
       alert('Please select a patient first.');
       return;
     }
+    const targetId = selectedPatient.mother_id || selectedPatient.id;
     setIsSaving(true);
 
     try {
-      const response = await api.post(`/clinic-visits/complete/${selectedPatient.id}`, visitForm);
+      const response = await api.post(`/clinic-visits/complete/${encodeURIComponent(targetId)}`, visitForm);
       if (response.data.success) {
         alert('Visit completed successfully!');
         setShowNewVisitForm(false);
-        await fetchMotherDetails(selectedPatient.id);
+        await fetchMotherDetails(targetId, selectedPatient);
         await fetchAssignedMothers();
       }
     } catch (error) {
@@ -422,9 +424,15 @@ const ClinicVisitPage = () => {
       return;
     }
 
+    const targetId = selectedPatient?.mother_id || selectedPatient?.id;
+    if (!targetId) {
+      alert('Please select a patient first');
+      return;
+    }
+
     setVaccinationLoading(true);
     try {
-      const response = await api.post(`/vaccinations/mother/${selectedPatient?.id}`, {
+      const response = await api.post(`/vaccinations/mother/${encodeURIComponent(targetId)}`, {
         vaccine_name: vaccinationForm.vaccine_name,
         dose_number: vaccinationForm.dose_number,
         given_date: vaccinationForm.given_date,
@@ -434,10 +442,10 @@ const ClinicVisitPage = () => {
 
       if (response.data.success) {
         setVaccinationSuccess(true);
-        await fetchMotherVaccinations(selectedPatient?.id);
+        await fetchMotherVaccinations(targetId);
         // Reset form
         setVaccinationForm({
-          mother_id: selectedPatient?.id || '',
+          mother_id: targetId || '',
           vaccine_name: '',
           dose_number: 1,
           given_date: new Date().toISOString().split('T')[0],
@@ -468,9 +476,15 @@ const ClinicVisitPage = () => {
       return;
     }
 
+    const targetId = selectedPatient?.mother_id || selectedPatient?.id;
+    if (!targetId) {
+      alert('Please select a patient first');
+      return;
+    }
+
     setAppointmentLoading(true);
     try {
-      const response = await api.post(`/appointments/mother/${selectedPatient?.id}`, {
+      const response = await api.post(`/appointments/mother/${encodeURIComponent(targetId)}`, {
         appointment_date: appointmentForm.appointment_date,
         appointment_time: appointmentForm.appointment_time,
         appointment_type: appointmentForm.appointment_type,
@@ -479,10 +493,10 @@ const ClinicVisitPage = () => {
 
       if (response.data.success) {
         setAppointmentSuccess(true);
-        await fetchMotherAppointments(selectedPatient?.id);
+        await fetchMotherAppointments(targetId);
         // Reset form
         setAppointmentForm({
-          mother_id: selectedPatient?.id || '',
+          mother_id: targetId || '',
           appointment_date: new Date().toISOString().split('T')[0],
           appointment_time: '',
           appointment_type: 'antenatal',
