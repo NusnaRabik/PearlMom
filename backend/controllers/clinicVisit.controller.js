@@ -21,23 +21,39 @@ const getAssignedMothers = async (req, res) => {
 
     // Format the response
     const formattedMothers = await Promise.all(mothers.map(async (mother) => {
-      const lastVisit = await ClinicVisit.findOne({
-        where: { mother_id: mother.mother_id, status: 'completed' },
-        order: [['visit_date', 'DESC']]
-      });
+      let lastVisit = null;
+      try {
+        lastVisit = await ClinicVisit.findOne({
+          where: { mother_id: mother.mother_id, status: 'completed' },
+          order: [['visit_date', 'DESC']]
+        });
+      } catch (err) {
+        console.warn('Error querying lastVisit:', err.message);
+      }
       
-      const nextAppointment = await Appointment.findOne({
-        where: { 
-          mother_id: mother.mother_id, 
-          status: 'scheduled', 
-          appointment_date: { [Op.gte]: new Date() } 
-        },
-        order: [['appointment_date', 'ASC']]
-      });
+      let nextAppointment = null;
+      try {
+        nextAppointment = await Appointment.findOne({
+          where: { 
+            mother_id: mother.mother_id, 
+            status: 'scheduled', 
+            appointment_date: { [Op.gte]: new Date() } 
+          },
+          order: [['appointment_date', 'ASC']]
+        });
+      } catch (err) {
+        console.warn('Error querying nextAppointment:', err.message);
+      }
+
+      const displayId = mother.mother_code || `MOM-${mother.mother_id}`;
 
       return {
-        id: mother.mother_code,
-        name: mother.full_name,
+        id: displayId,
+        mother_id: mother.mother_id,
+        mother_code: mother.mother_code,
+        name: mother.full_name || mother.User?.name || 'Unnamed Patient',
+        nic: mother.nic || '',
+        phone: mother.emergency_contact_phone || mother.User?.phone_no || '',
         weeks: mother.weeks || 0,
         bloodType: mother.blood_group || 'Not specified',
         edd: mother.expected_delivery_date,
@@ -120,12 +136,13 @@ const sanitizeVisitData = (data) => {
 const getMotherForVisit = async (req, res) => {
   try {
     const { motherId } = req.params;
+    const cleanId = decodeURIComponent(String(motherId || '')).trim();
     
-    const mother = await Mother.findOne({
+    let mother = await Mother.findOne({
       where: {
         [Op.or]: [
-          { mother_code: motherId },
-          { mother_id: isNaN(motherId) ? 0 : Number(motherId) }
+          { mother_code: cleanId },
+          { mother_id: isNaN(cleanId) ? 0 : Number(cleanId) }
         ],
         is_deleted: false
       },
@@ -133,6 +150,23 @@ const getMotherForVisit = async (req, res) => {
         { model: User, attributes: ['name', 'email', 'phone_no'] }
       ]
     });
+
+    // Fallback search by partial code, name, or NIC if exact match not found
+    if (!mother) {
+      mother = await Mother.findOne({
+        where: {
+          [Op.or]: [
+            { mother_code: { [Op.like]: `%${cleanId}%` } },
+            { full_name: { [Op.like]: `%${cleanId}%` } },
+            { nic: { [Op.like]: `%${cleanId}%` } }
+          ],
+          is_deleted: false
+        },
+        include: [
+          { model: User, attributes: ['name', 'email', 'phone_no'] }
+        ]
+      });
+    }
 
     if (!mother) {
       return errorResponse(res, 'Mother not found', 404);

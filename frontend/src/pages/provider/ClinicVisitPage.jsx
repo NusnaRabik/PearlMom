@@ -1,5 +1,5 @@
 // frontend/src/pages/provider/ClinicVisitPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Heart, FlaskConical, BookOpen, Calendar, ChevronDown,
   Search, User, Clock, ArrowRight, AlertCircle, CheckCircle2, Users,
@@ -86,20 +86,19 @@ const ClinicVisitPage = () => {
     health_education_checklist: []
   });
 
-  // Fetch assigned mothers on load
+  // Fetch assigned mothers on initial component load
   useEffect(() => {
-    if (user && (user.role === 'midwife' || user.role === 'doctor')) {
-      fetchAssignedMothers();
-    }
-  }, [user]);
+    fetchAssignedMothers();
+  }, []);
 
   const fetchAssignedMothers = async () => {
     try {
       setLoading(true);
       const response = await api.get('/clinic-visits/assigned-mothers');
-      if (response.data.success) {
-        setAssignedMothers(response.data.data.mothers || []);
-        calculateStats(response.data.data.mothers || []);
+      if (response.data && response.data.success) {
+        const list = response.data.data.mothers || [];
+        setAssignedMothers(list);
+        calculateStats(list);
       }
     } catch (error) {
       console.error('Error fetching assigned mothers:', error);
@@ -107,6 +106,20 @@ const ClinicVisitPage = () => {
       setLoading(false);
     }
   };
+
+  // Filtered mothers list based on search term
+  const filteredMothers = useMemo(() => {
+    if (!searchTerm.trim()) return assignedMothers;
+    const term = searchTerm.trim().toLowerCase();
+    return assignedMothers.filter(p =>
+      (p.id && String(p.id).toLowerCase().includes(term)) ||
+      (p.name && String(p.name).toLowerCase().includes(term)) ||
+      (p.nic && String(p.nic).toLowerCase().includes(term)) ||
+      (p.phone && String(p.phone).toLowerCase().includes(term)) ||
+      (p.mother_id && String(p.mother_id).includes(term)) ||
+      (p.mother_code && String(p.mother_code).toLowerCase().includes(term))
+    );
+  }, [assignedMothers, searchTerm]);
 
   const calculateStats = (mothers) => {
     const today = new Date().toISOString().split('T')[0];
@@ -131,8 +144,8 @@ const ClinicVisitPage = () => {
   const fetchMotherDetails = async (motherId) => {
     try {
       setLoading(true);
-      const response = await api.get(`/clinic-visits/mother/${motherId}`);
-      if (response.data.success) {
+      const response = await api.get(`/clinic-visits/mother/${encodeURIComponent(motherId)}`);
+      if (response.data && response.data.success) {
         const data = response.data.data;
         setPatientDetails(data);
         setPreviousVisits(data.visitHistory || []);
@@ -184,8 +197,8 @@ const ClinicVisitPage = () => {
 
   const fetchMotherVaccinations = async (motherId) => {
     try {
-      const response = await api.get(`/vaccinations/mother/${motherId}`);
-      if (response.data.success) {
+      const response = await api.get(`/vaccinations/mother/${encodeURIComponent(motherId)}`);
+      if (response.data && response.data.success) {
         setExistingVaccinations(response.data.data.vaccinations || []);
       }
     } catch (error) {
@@ -195,8 +208,8 @@ const ClinicVisitPage = () => {
 
   const fetchMotherAppointments = async (motherId) => {
     try {
-      const response = await api.get(`/appointments/mother/${motherId}`);
-      if (response.data.success) {
+      const response = await api.get(`/appointments/mother/${encodeURIComponent(motherId)}`);
+      if (response.data && response.data.success) {
         setExistingAppointments(response.data.data.appointments || []);
       }
     } catch (error) {
@@ -205,24 +218,64 @@ const ClinicVisitPage = () => {
   };
 
   const handleSearch = async () => {
+    const term = searchTerm.trim();
+    if (!term) {
+      handleClearSearch();
+      return;
+    }
     setHasSearched(true);
-    if (searchTerm.trim()) {
-      const found = assignedMothers.find(
-        p => p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      if (found) {
-        setSelectedPatient(found);
-        await fetchMotherDetails(found.id);
-      } else {
+    
+    // Look up in local assigned mothers list first
+    const found = assignedMothers.find(p =>
+      (p.id && String(p.id).toLowerCase() === term.toLowerCase()) ||
+      (p.name && String(p.name).toLowerCase() === term.toLowerCase()) ||
+      (p.id && String(p.id).toLowerCase().includes(term.toLowerCase())) ||
+      (p.name && String(p.name).toLowerCase().includes(term.toLowerCase())) ||
+      (p.nic && String(p.nic).toLowerCase().includes(term.toLowerCase())) ||
+      (p.phone && String(p.phone).toLowerCase().includes(term.toLowerCase())) ||
+      (p.mother_id && String(p.mother_id) === term) ||
+      (p.mother_code && String(p.mother_code).toLowerCase().includes(term.toLowerCase()))
+    );
+
+    if (found) {
+      setSelectedPatient(found);
+      await fetchMotherDetails(found.id || found.mother_id);
+    } else {
+      // Fallback: direct backend search if not found in preloaded list
+      try {
+        setLoading(true);
+        const response = await api.get(`/clinic-visits/mother/${encodeURIComponent(term)}`);
+        if (response.data && response.data.success && response.data.data) {
+          const data = response.data.data;
+          const patientObj = {
+            id: data.mother?.id || term,
+            mother_id: data.mother?.mother_id,
+            name: data.mother?.name || 'Patient',
+            weeks: data.mother?.weeks || 0,
+            bloodType: data.mother?.bloodType || 'Not specified',
+            edd: data.mother?.edd,
+            lastVisit: data.visitHistory?.[0]?.date || 'No visits',
+            nextSchedule: 'Not scheduled',
+            visitStatus: data.visitHistory?.length > 0 ? 'recent' : 'upcoming'
+          };
+          setSelectedPatient(patientObj);
+          setPatientDetails(data);
+          setPreviousVisits(data.visitHistory || []);
+          await fetchMotherVaccinations(patientObj.id);
+          await fetchMotherAppointments(patientObj.id);
+        } else {
+          setSelectedPatient(null);
+          setPatientDetails(null);
+          setPreviousVisits([]);
+        }
+      } catch (err) {
+        console.error('Direct search error:', err);
         setSelectedPatient(null);
         setPatientDetails(null);
         setPreviousVisits([]);
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setSelectedPatient(null);
-      setPatientDetails(null);
-      setPreviousVisits([]);
     }
   };
 
@@ -244,9 +297,9 @@ const ClinicVisitPage = () => {
 
   const handlePatientSelect = async (patient) => {
     setSelectedPatient(patient);
-    setSearchTerm(patient.name);
+    setSearchTerm(patient.name || patient.id);
     setHasSearched(true);
-    await fetchMotherDetails(patient.id);
+    await fetchMotherDetails(patient.id || patient.mother_id);
   };
 
   const handleFormChange = (e) => {
@@ -428,49 +481,94 @@ const ClinicVisitPage = () => {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="bg-white rounded-xl shadow-sm p-6 relative">
         <div className="max-w-3xl mx-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            Search Patient by ID or Name
-          </label>
+          <div className="flex justify-between items-center mb-3">
+            <label className="block text-sm font-semibold text-gray-700">
+              Search Patient by ID, Name, NIC, or Phone
+            </label>
+            {assignedMothers.length > 0 && (
+              <span className="text-xs text-gray-500 bg-pink-50 text-pink-700 font-medium px-2.5 py-0.5 rounded-full border border-pink-100">
+                {assignedMothers.length} Total Patients
+              </span>
+            )}
+          </div>
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={20} className="text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <Search size={18} className="text-gray-400" />
               </div>
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  if (selectedPatient && e.target.value !== selectedPatient.name && e.target.value !== selectedPatient.id) {
+                    setSelectedPatient(null);
+                    setPatientDetails(null);
+                    setHasSearched(false);
+                  }
+                }}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter Patient ID (e.g., MOM-26-0009) or Name"
-                className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm 
+                placeholder="Type Patient ID (e.g. MOM-26-0009), Name, or Phone..."
+                className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm 
                          focus:ring-2 focus:ring-pink-500 focus:border-pink-500
-                         placeholder-gray-400"
+                         placeholder-gray-400 transition-all shadow-sm"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
             <button
               onClick={handleSearch}
-              className="px-6 py-3 bg-pink-600 text-white rounded-lg text-sm font-medium 
-                       hover:bg-pink-700 transition-colors whitespace-nowrap"
+              className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-sm font-medium 
+                       transition-colors whitespace-nowrap shadow-sm shadow-pink-200 flex items-center gap-2"
             >
-              Search Patient
+              <Search size={16} />
+              <span>Search</span>
             </button>
-            {searchTerm && (
-              <button
-                onClick={handleClearSearch}
-                className="px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium 
-                         text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Clear
-              </button>
-            )}
           </div>
+
+          {/* Live Search Quick Suggestion Dropdown */}
+          {searchTerm.trim() && !selectedPatient && filteredMothers.length > 0 && (
+            <div className="absolute left-6 right-6 max-w-3xl mx-auto mt-2 bg-white rounded-xl shadow-xl border border-pink-100 z-50 overflow-hidden divide-y divide-gray-100 max-h-64 overflow-y-auto">
+              <div className="p-2.5 bg-pink-50/80 text-xs font-semibold text-pink-800 flex justify-between items-center">
+                <span>Matching Patients ({filteredMothers.length})</span>
+                <span className="text-pink-600 font-normal">Click to select & start visit</span>
+              </div>
+              {filteredMothers.slice(0, 5).map((patient) => (
+                <div
+                  key={patient.id}
+                  onClick={() => handlePatientSelect(patient)}
+                  className="p-3 hover:bg-pink-50/60 cursor-pointer flex items-center justify-between transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-xs font-bold text-pink-600">
+                      {patient.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{patient.name}</p>
+                      <p className="text-xs text-gray-500">ID: {patient.id} • {patient.weeks} Weeks • Blood: {patient.bloodType}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-pink-600 bg-pink-50 px-2.5 py-1 rounded-lg hover:bg-pink-100 transition-colors">
+                    Start Visit →
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* No Patient Selected - Show Overview */}
-      {!selectedPatient && !hasSearched && (
+      {!selectedPatient && (
         <>
           {/* Quick Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -514,80 +612,104 @@ const ClinicVisitPage = () => {
 
           {/* All Assigned Mothers Overview Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                 <Users className="mr-2 text-pink-500" size={20} />
-                All Assigned Mothers - Visit Overview
+                {searchTerm ? `Search Results (${filteredMothers.length})` : 'All Assigned Mothers - Visit Overview'}
               </h2>
+              {searchTerm && (
+                <button
+                  onClick={handleClearSearch}
+                  className="text-xs text-pink-600 hover:text-pink-800 font-medium"
+                >
+                  Show All Patients
+                </button>
+              )}
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Schedule</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {assignedMothers.map((patient) => (
-                    <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-semibold text-pink-600">
-                              {patient.name?.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{patient.name}</p>
-                            <p className="text-xs text-gray-500">{patient.id}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">{patient.weeks}w</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <Clock size={14} className="text-gray-400" />
-                          <span className="text-sm text-gray-600">{patient.lastVisit}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <Calendar size={14} className="text-gray-400" />
-                          <span className="text-sm text-gray-600">{patient.nextSchedule}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${patient.visitStatus === 'recent'
-                            ? 'bg-green-100 text-green-800'
-                            : patient.visitStatus === 'overdue'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                          {patient.visitStatus === 'recent' ? 'Recent' :
-                            patient.visitStatus === 'overdue' ? 'Overdue' : 'Upcoming'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handlePatientSelect(patient)}
-                          className="text-pink-600 hover:text-pink-900 font-medium text-sm flex items-center space-x-1 transition-colors"
-                        >
-                          <span>Start Visit</span>
-                          <ArrowRight size={14} />
-                        </button>
-                      </td>
+            {filteredMothers.length === 0 ? (
+              <div className="p-12 text-center">
+                <User size={48} className="mx-auto text-gray-300 mb-3" />
+                <h3 className="text-base font-semibold text-gray-900 mb-1">No Matching Patients</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  No patient matches "{searchTerm}". Please try a different ID, name, or phone number.
+                </p>
+                <button
+                  onClick={handleClearSearch}
+                  className="px-4 py-2 bg-pink-50 text-pink-600 rounded-lg text-sm font-medium hover:bg-pink-100 transition-colors"
+                >
+                  Clear Search & View All
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Schedule</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredMothers.map((patient) => (
+                      <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-semibold text-pink-600">
+                                {patient.name?.split(' ').map(n => n[0]).join('')}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{patient.name}</p>
+                              <p className="text-xs text-gray-500">{patient.id} {patient.phone ? `• ${patient.phone}` : ''}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900">{patient.weeks}w</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <Clock size={14} className="text-gray-400" />
+                            <span className="text-sm text-gray-600">{patient.lastVisit}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <Calendar size={14} className="text-gray-400" />
+                            <span className="text-sm text-gray-600">{patient.nextSchedule}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${patient.visitStatus === 'recent'
+                              ? 'bg-green-100 text-green-800'
+                              : patient.visitStatus === 'overdue'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                            {patient.visitStatus === 'recent' ? 'Recent' :
+                              patient.visitStatus === 'overdue' ? 'Overdue' : 'Upcoming'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => handlePatientSelect(patient)}
+                            className="text-pink-600 hover:text-pink-900 font-medium text-sm flex items-center space-x-1 transition-colors"
+                          >
+                            <span>Start Visit</span>
+                            <ArrowRight size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Quick Access Recent Patients */}
@@ -619,23 +741,6 @@ const ClinicVisitPage = () => {
             </div>
           </div>
         </>
-      )}
-
-      {/* No Patient Found */}
-      {!selectedPatient && hasSearched && (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <User size={64} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Patient Found</h3>
-          <p className="text-gray-500 mb-4">
-            No patient matches "{searchTerm}". Please try a different Patient ID or Name.
-          </p>
-          <button
-            onClick={handleClearSearch}
-            className="text-pink-600 hover:text-pink-700 font-medium text-sm"
-          >
-            Clear Search & View All Patients
-          </button>
-        </div>
       )}
 
       {/* Patient Found - Show Details */}
