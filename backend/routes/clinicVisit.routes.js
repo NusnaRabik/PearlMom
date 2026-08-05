@@ -7,7 +7,7 @@ const clinicVisitController = require('../controllers/clinicVisit.controller');
 
 // All routes require provider role
 router.use(protect);
-router.use(authorize('midwife', 'doctor'));
+router.use(authorize('midwife', 'doctor', 'admin'));
 
 // Clinic visit routes
 router.get('/assigned-mothers', clinicVisitController.getAssignedMothers);
