@@ -5,7 +5,7 @@ import {
   Heart, FlaskConical, BookOpen, Calendar, ChevronDown,
   Search, User, Clock, ArrowRight, AlertCircle, CheckCircle2, Users,
   Loader, Save, FileText, Phone, MapPin, Droplet, Activity, Edit3, Eye,
-  ShieldCheck, Plus, X, CalendarPlus
+  ShieldCheck, Plus, X, CalendarPlus, Syringe
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
