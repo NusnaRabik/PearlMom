@@ -1,5 +1,6 @@
 // frontend/src/pages/provider/ClinicVisitPage.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Heart, FlaskConical, BookOpen, Calendar, ChevronDown,
   Search, User, Clock, ArrowRight, AlertCircle, CheckCircle2, Users,
@@ -12,6 +13,7 @@ import ProviderChatWidget from '../../components/provider/ProviderChatWidget';
 
 const ClinicVisitPage = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -90,6 +92,16 @@ const ClinicVisitPage = () => {
   useEffect(() => {
     fetchAssignedMothers();
   }, []);
+
+  // Handle incoming navigation state (e.g. from MothersListPage "Start Visit" button)
+  useEffect(() => {
+    if (location.state?.motherId || location.state?.motherCode || location.state?.motherName) {
+      const term = location.state.motherCode || location.state.motherName || location.state.motherId;
+      setSearchTerm(term);
+      setHasSearched(true);
+      fetchMotherDetails(location.state.motherId || term);
+    }
+  }, [location.state]);
 
   const fetchAssignedMothers = async () => {
     try {
