@@ -57,8 +57,8 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Direct Links - Medium sized with icons above text */}
-          <div className="flex-1 flex flex-wrap items-center justify-between md:pl-16 lg:pl-24 gap-y-3 text-sm font-medium">
+          {/* Direct Links - Reduced left offset to pull all four items to the left while keeping their inter-item distances */}
+          <div className="flex-1 flex flex-wrap items-center justify-between md:pl-6 lg:pl-8 pr-4 md:pr-10 gap-y-3 text-sm font-medium">
             <Link
               to="/about"
               onClick={(e) => handleNavClick(e, '/', 'about-section')}
