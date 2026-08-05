@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
-  Search, ChevronDown, ChevronUp, Phone, UploadCloud, Asterisk, 
-  ExternalLink, GraduationCap, CheckCircle2, FileText, Bug, 
+  Search, ChevronDown, ChevronUp, Phone, Asterisk, 
+  ExternalLink, GraduationCap, CheckCircle2, Bug, 
   MessageSquare, Info, Sparkles, Loader 
 } from 'lucide-react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
@@ -22,7 +22,6 @@ const HelpSupportPage = () => {
   const [formType, setFormType] = useState('contact');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [attachment, setAttachment] = useState(null);
 
   // Auto-scroll to contact form if navigated to /contact or #contact-form
   useEffect(() => {
@@ -150,7 +149,6 @@ const HelpSupportPage = () => {
       if (response.data.success) {
         setSubmitSuccess(true);
         e.target.reset();
-        setAttachment(null);
         setTimeout(() => setSubmitSuccess(false), 5000);
       }
     } catch (error) {
@@ -436,25 +434,6 @@ const HelpSupportPage = () => {
               </div>
             </div>
 
-            {/* Download Manuals Section */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900 mb-6">User Guides & Manuals</h2>
-              
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Download Manuals</h3>
-                <div className="flex flex-wrap gap-3">
-                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-pink-600 hover:border-pink-300 transition-colors">
-                    <FileText className="w-4 h-4 text-pink-500" /> English PDF
-                  </button>
-                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-pink-600 hover:border-pink-300 transition-colors">
-                    <FileText className="w-4 h-4 text-pink-500" /> Sinhala PDF
-                  </button>
-                  <button className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:text-pink-600 hover:border-pink-300 transition-colors">
-                    <FileText className="w-4 h-4 text-pink-500" /> Tamil PDF
-                  </button>
-                </div>
-              </div>
-            </div>
 
             {/* Dynamic Support Form Section */}
             <div id="contact-form" className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-100 scroll-mt-20">
@@ -498,7 +477,7 @@ const HelpSupportPage = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
                   {formType === 'contact' ? (
                     <div>
                       <label className="block text-[12px] font-bold text-slate-700 mb-2">Subject</label>
@@ -519,15 +498,6 @@ const HelpSupportPage = () => {
                       <input name="page_url" required type="text" placeholder="e.g. Dashboard, Registration" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-[15px] focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-800 font-medium hover:border-slate-300" />
                     </div>
                   )}
-                  
-                  <div>
-                    <label className="block text-[12px] font-bold text-slate-700 mb-2">Attachment (Optional)</label>
-                    <label className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-pink-600 font-semibold rounded-xl px-4 py-3.5 transition-colors border border-transparent cursor-pointer">
-                      <UploadCloud className="h-5 w-5" />
-                      <span>{attachment ? attachment.name : 'Upload Screenshot'}</span>
-                      <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                    </label>
-                  </div>
                 </div>
 
                 {formType === 'bug' && (
